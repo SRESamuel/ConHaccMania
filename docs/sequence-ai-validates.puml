@@ -1,0 +1,64 @@
+@startuml AI Validates Submission
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Segoe UI"
+skinparam shadowing false
+skinparam sequenceArrowThickness 2
+skinparam participantPadding 20
+skinparam boxPadding 10
+
+title UC3: AI Validates Submission (Instructor-Triggered)
+
+actor Instructor as I
+box "Frontend (React)" #EFF6FF
+  participant "Analysis\nDashboard" as AD
+end box
+box "Analysis Service (FastAPI)" #FCE7F3
+  participant "ValidateRouter" as VR
+  participant "ClaudeValidator" as CV
+end box
+participant "Claude CLI\n(subprocess)" as CLI #F1F5F9
+database "Neon\n(PostgreSQL)" as DB #F1F5F9
+
+== 1. Instructor Triggers Validation ==
+
+I -> AD : Click "Analyze" on submission
+AD -> VR : POST /api/analysis/validate\n{ submission_id }
+VR -> DB : SELECT submission + answers\nFROM submissions\nJOIN answers\nWHERE submission_id
+DB --> VR : submission with answers[]
+
+== 2. Load Question Context ==
+
+loop for each answer
+  VR -> DB : SELECT question (scenario, eval_criteria)\n+ all solutions (code, hint, is_correct, why_wrong)\nFROM questions JOIN solutions\nWHERE question_id
+  DB --> VR : question context
+end
+
+== 3. AI Validation per Answer ==
+
+VR -> DB : INSERT INTO analyses\n(submission_id, overall_score=null)
+DB --> VR : analysis_id
+
+loop for each answer
+  VR -> CV : validate(scenario, solutions[],\nselected_solution, reasoning,\neval_criteria)
+  CV -> CV : Build prompt:\n- "Given this scenario..."\n- "These solutions exist: A, B, C"\n- "Student picked: B"\n- "Student's reasoning: ..."\n- "Instructor criteria: ..."\n- "Return JSON: score, concepts,\n  strengths, gaps, ai_detection"
+  CV -> CLI : subprocess.run(\n  ["claude", "-p", prompt,\n   "--output-format", "json"]\n)
+  CLI --> CV : JSON response
+  CV -> CV : Parse response
+  CV --> VR : { score, concepts_found,\n  strengths, gaps,\n  is_ai_generated, confidence }
+  VR -> DB : INSERT INTO answer_analyses\n(analysis_id, answer_id, score,\nconcepts_found, strengths, gaps,\nis_ai_generated, confidence)
+end
+
+== 4. Calculate Overall Score ==
+
+VR -> VR : overall_score =\navg(answer_analyses.score)
+VR -> VR : Aggregate:\n- top strengths across answers\n- recurring gaps\n- recommended topics
+VR -> DB : UPDATE analyses\nSET overall_score, overall (JSONB)\nWHERE analysis_id
+DB --> VR : updated
+
+== 5. Return Results ==
+
+VR --> AD : 200 OK { analysis_id,\noverall_score, per_answer results }
+AD -> I : Display analysis results
+
+@enduml

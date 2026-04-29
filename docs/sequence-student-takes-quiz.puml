@@ -63,11 +63,6 @@ SR -> DB : INSERT INTO submissions\n(quiz_id, student_name)
 SR -> DB : INSERT INTO answers\n(submission_id, question_id,\nselected_solution_id, reasoning)\n× N questions
 DB --> SR : submission_id
 SR --> QT : 201 Created { submission_id }
-
-== 5. Trigger Analysis ==
-
-QT -> VR : POST /api/analysis/validate\n{ submission_id }
-VR --> QT : 202 Accepted\n(analysis runs async)
-QT -> S : "Submitted! Your reasoning\nis being analyzed."
+QT -> S : "Submitted successfully!"
 
 @enduml
