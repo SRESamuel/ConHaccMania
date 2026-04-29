@@ -6,7 +6,7 @@
 |--------|------|-------------|-------------|----------|
 | POST | `/api/analysis/validate` | Validate all submissions for a quiz | `ValidateDto` | 201 |
 | GET | `/api/analysis/{submission_id}` | Get stored analysis results | - | `AnalysisDetail` 200 / 404 |
-| GET | `/api/analysis/dashboard` | Aggregated class overview | - | `DashboardData` 200 |
+| GET | `/api/analysis/dashboard` | Aggregated class overview (optional `?quiz_id=X`) | - | `DashboardData` 200 |
 
 ## Provided — To Other Services
 

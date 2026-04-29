@@ -6,11 +6,23 @@
 |--------|------|-------------|-------------|----------|
 | GET | `/api/quizzes` | List all quizzes | - | `Quiz[]` 200 |
 | POST | `/api/quizzes` | Create quiz | `CreateQuizDto` | 201 |
-| GET | `/api/quizzes/{id}` | Get quiz + questions + solutions | - | `QuizDetail` 200 / 404 |
+| GET | `/api/quizzes/{id}?role=student` | Get quiz for student (hides is_correct, why_wrong) | - | `QuizDetail` 200 / 404 |
+| GET | `/api/quizzes/{id}?role=instructor` | Get quiz with full solution data (default) | - | `QuizDetail` 200 / 404 |
 | POST | `/api/quizzes/{id}/questions` | Add question with correct solution | `CreateQuestionDto` | 201 |
 | PUT | `/api/questions/{id}` | Update question | `UpdateQuestionDto` | 200 / 404 |
 | POST | `/api/questions/{id}/generate-wrong-options` | AI generates wrong options | `GenerateDto` | `GeneratedOption[]` 200 |
 | POST | `/api/questions/{id}/solutions` | Save accepted wrong option | `CreateSolutionDto` | 201 |
+
+### Role Query Parameter
+
+`GET /api/quizzes/{id}?role=`
+
+| Value | Behavior |
+|-------|----------|
+| `student` | Hides `is_correct` and `why_wrong` from solutions |
+| `instructor` (default) | Returns full solution data |
+
+No auth, no header. Role is a simple query param.
 
 ## Provided — To Other Services
 
@@ -34,6 +46,7 @@ Quiz { id, title, course, created_by, created_at }
 QuizDetail { id, title, course, created_by, questions[] }
 Question { id, quiz_id, scenario, eval_criteria, solutions[] }
 Solution { id, label, code, language, hint, is_correct, why_wrong }
+SolutionStudentView { id, label, code, language, hint }
 
 CreateQuizDto { title, course, created_by }
 CreateQuestionDto { scenario, eval_criteria, correct_solution: { code, language, hint } }
@@ -42,12 +55,6 @@ GenerateDto { count }
 CreateSolutionDto { code, language, hint, why_wrong }
 GeneratedOption { code, language, hint, why_wrong }
 ```
-
-## Student View Note
-
-When serving questions to students (via frontend), the API **excludes**:
-- `is_correct` — student should not see which is correct
-- `why_wrong` — instructor-only explanation
 
 ## Error Responses
 

@@ -59,13 +59,14 @@ For each, provide:
 Return JSON array.
 ```
 
-### Student View Filtering
+### Role-Based Filtering
 
-When `GET /api/quizzes/{id}` is called, solutions are returned WITHOUT:
-- `is_correct`
-- `why_wrong`
+`GET /api/quizzes/{id}?role=student|instructor`
 
-These fields are instructor-only. Filtering happens at the application layer.
+- `?role=student` — strips `is_correct` and `why_wrong` from solutions
+- `?role=instructor` (default) — returns full solution data
+
+No auth. Simple query param filtering at the application layer.
 
 ## Dependencies
 

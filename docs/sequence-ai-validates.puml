@@ -41,11 +41,11 @@ loop for each submission
     DB --> VR : question context
 
     VR -> CV : validate(scenario, solutions[],\nselected_solution, reasoning,\neval_criteria)
-    CV -> CV : Build prompt:\n- "Given this scenario..."\n- "These solutions exist: A, B, C"\n- "Student picked: B"\n- "Student's reasoning: ..."\n- "Instructor criteria: ..."\n- "Return JSON: score, concepts,\n  strengths, gaps, ai_detection"
+    CV -> CV : Build prompt:\n- "Given this scenario..."\n- "These solutions exist: A, B, C"\n- "Student picked: B"\n- "Student's reasoning: ..."\n- "Instructor criteria: ..."\n- "Return JSON: score,\n  strengths, gaps, ai_detection"
     CV -> CLI : subprocess.run(\n  ["claude", "-p", prompt,\n   "--output-format", "json"]\n)
     CLI --> CV : JSON response
-    CV --> VR : { score, concepts_found,\n  strengths, gaps,\n  is_ai_generated, confidence }
-    VR -> DB : INSERT INTO answer_analyses\n(analysis_id, answer_id, score,\nconcepts_found, strengths, gaps,\nis_ai_generated, confidence)
+    CV --> VR : { score, strengths, gaps,\n  is_ai_generated, confidence }
+    VR -> DB : INSERT INTO answer_analyses\n(analysis_id, answer_id, score,\nstrengths, gaps,\nis_ai_generated, confidence)
   end
 
   VR -> VR : overall_score =\navg(answer_analyses.score)

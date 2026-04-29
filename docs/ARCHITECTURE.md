@@ -46,7 +46,7 @@ Owns quizzes, questions, solutions. Calls Gemini for wrong option generation.
 |--------|----------|-------------|
 | GET | `/api/quizzes` | List quizzes |
 | POST | `/api/quizzes` | Create quiz |
-| GET | `/api/quizzes/{id}` | Get quiz + questions + solutions |
+| GET | `/api/quizzes/{id}` | Get quiz + questions + solutions (`?role=student` hides is_correct, why_wrong) |
 | POST | `/api/quizzes/{id}/questions` | Add question with correct solution |
 | PUT | `/api/questions/{id}` | Update question |
 | POST | `/api/questions/{id}/generate-wrong-options` | Gemini generates wrong options |
@@ -70,7 +70,7 @@ Reasoning validation only. Calls Claude CLI via subprocess. Stores results to DB
 |--------|----------|-------------|
 | POST | `/api/analysis/validate` | Validate all submissions for quiz `{ quiz_id }` → store to DB (201) |
 | GET | `/api/analysis/{submission_id}` | Get stored analysis results |
-| GET | `/api/analysis/dashboard` | Aggregated class overview |
+| GET | `/api/analysis/dashboard` | Aggregated class overview (optional `?quiz_id=X`) |
 
 ---
 

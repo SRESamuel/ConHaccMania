@@ -37,8 +37,9 @@ QL -> S : Display available quizzes
 == 2. Start Quiz ==
 
 S -> QL : Select quiz
-QL -> QR : GET /api/quizzes/{id}
-QR -> DB : SELECT questions + solutions\nWHERE quiz_id\n(exclude why_wrong, is_correct)
+QL -> QR : GET /api/quizzes/{id}?role=student
+QR -> DB : SELECT questions + solutions\nWHERE quiz_id
+QR -> QR : Strip is_correct, why_wrong\n(role=student filtering)
 DB --> QR : questions[] with solutions[]
 QR --> QL : 200 OK { quiz, questions }
 QL -> QT : Navigate to quiz taking page

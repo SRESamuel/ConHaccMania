@@ -50,7 +50,7 @@ package "Frontend (React)" <<frontend>> {
 
 ' ========== QUIZ API ==========
 package "Quiz API (FastAPI + Gemini)" <<quiz>> {
-  component [QuizRouter\n---\nGET/POST /api/quizzes\nGET /api/quizzes/{id}\nPOST /api/quizzes/{id}/questions\nPUT /api/questions/{id}\nPOST /api/questions/{id}/\n  generate-wrong-options\nPOST /api/questions/{id}/solutions] as QR
+  component [QuizRouter\n---\nGET/POST /api/quizzes\nGET /api/quizzes/{id}\n  ?role=student|instructor\nPOST /api/quizzes/{id}/questions\nPUT /api/questions/{id}\nPOST /api/questions/{id}/\n  generate-wrong-options\nPOST /api/questions/{id}/solutions] as QR
   component [GeminiGenerator\n---\nGenerates plausible\nwrong options from\ncorrect solution] as GG
 }
 
@@ -62,7 +62,7 @@ package "Submission API (FastAPI)" <<submission>> {
 ' ========== ANALYSIS SERVICE ==========
 package "Analysis Service (FastAPI + Claude)" <<analysis>> {
   component [ValidateRouter\n---\nPOST /api/analysis/validate\n  { quiz_id } (all submissions)\nGET /api/analysis/{submission_id}] as VR
-  component [DashboardRouter\n---\nGET /api/analysis/dashboard] as DR
+  component [DashboardRouter\n---\nGET /api/analysis/dashboard\n  (?quiz_id optional)] as DR
   component [ClaudeValidator\n---\nsubprocess → claude CLI\n(subscription, not API)] as CV
 }
 
