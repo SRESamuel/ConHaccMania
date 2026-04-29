@@ -1,0 +1,73 @@
+@startuml Student Takes Quiz
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Segoe UI"
+skinparam shadowing false
+skinparam sequenceArrowThickness 2
+skinparam participantPadding 20
+skinparam boxPadding 10
+
+title UC2: Student Takes Quiz
+
+actor Student as S
+box "Frontend (React)" #EFF6FF
+  participant "Quiz List" as QL
+  participant "Quiz Taking" as QT
+end box
+box "Quiz API (FastAPI)" #DCFCE7
+  participant "QuizRouter" as QR
+end box
+box "Submission API (FastAPI)" #FEF3C7
+  participant "SubmissionRouter" as SR
+end box
+box "Analysis Service (FastAPI)" #FCE7F3
+  participant "ValidateRouter" as VR
+end box
+database "Neon\n(PostgreSQL)" as DB #F1F5F9
+
+== 1. Browse Quizzes ==
+
+S -> QL : Open quiz list
+QL -> QR : GET /api/quizzes
+QR -> DB : SELECT * FROM quizzes
+DB --> QR : quizzes[]
+QR --> QL : 200 OK { quizzes }
+QL -> S : Display available quizzes
+
+== 2. Start Quiz ==
+
+S -> QL : Select quiz
+QL -> QR : GET /api/quizzes/{id}
+QR -> DB : SELECT questions + solutions\nWHERE quiz_id\n(exclude why_wrong, is_correct)
+DB --> QR : questions[] with solutions[]
+QR --> QL : 200 OK { quiz, questions }
+QL -> QT : Navigate to quiz taking page
+QT -> S : Display first question\n(scenario + code blocks)
+
+== 3. Answer Questions ==
+
+loop for each question
+  S -> QT : Read scenario
+  S -> QT : Compare code blocks
+  S -> QT : Select best solution
+  S -> QT : Write reasoning\nin text area
+  S -> QT : Click "Next"
+  QT -> QT : Store answer locally\n(selected_solution_id + reasoning)
+end
+
+== 4. Submit Quiz ==
+
+S -> QT : Click "Submit"
+QT -> SR : POST /api/submissions\n{ quiz_id, student_name, answers: [\n  { question_id, selected_solution_id, reasoning },\n  ...\n] }
+SR -> DB : INSERT INTO submissions\n(quiz_id, student_name)
+SR -> DB : INSERT INTO answers\n(submission_id, question_id,\nselected_solution_id, reasoning)\n× N questions
+DB --> SR : submission_id
+SR --> QT : 201 Created { submission_id }
+
+== 5. Trigger Analysis ==
+
+QT -> VR : POST /api/analysis/validate\n{ submission_id }
+VR --> QT : 202 Accepted\n(analysis runs async)
+QT -> S : "Submitted! Your reasoning\nis being analyzed."
+
+@enduml
