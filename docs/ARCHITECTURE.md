@@ -38,28 +38,22 @@ Reasoning-first code assessment platform. Students evaluate code solutions and e
           ▼            ▼                ▼
 ┌──────────────┐ ┌───────────┐ ┌─────────────────────┐
 │ Quiz API     │ │Submission │ │ Analysis Service     │
-│ (REST + AI)  │ │API (REST) │ │ (FastAPI + AI)       │
+│(FastAPI + AI)│ │API (REST) │ │ (FastAPI + AI)       │
 │              │ │           │ │                       │
 │ CRUD quizzes │ │ Submit    │ │ Validate reasoning    │
-│ CRUD questions│ │ answers  │ │ Generate distractors  │
-│              │ │ + reason  │ │ AI-detection          │
-│              │ │           │ │ Custom criteria eval   │
-└──────┬───────┘ └───────────┘ └───────────┬───────────┘
-       │                                    │
-       │    ┌───────────────────────────┐   │
-       └───→│ AI Distractor Generation  │←──┘
-             │ Quiz API requests         │
-             │ Analysis Service executes │
-             └─────────┬─────────────────┘
-                       │
-          ┌────────────┼──────────────┐
-          │            │              │
-          ▼            ▼              ▼
-   ┌──────────────┐ ┌──────────────┐ ┌──────────┐
-   │ Claude CLI   │ │ Gemini API   │ │ SQLite   │
-   │ (subprocess) │ │ (sponsor)    │ │ (DB)     │
-   │ subscription │ │              │ │          │
-   └──────────────┘ └──────────────┘ └──────────┘
+│ CRUD questions│ │ answers  │ │ AI-detection          │
+│ AI distractor│ │ + reason  │ │ Custom criteria eval   │
+│  generation  │ │           │ │                       │
+│  (Gemini)    │ │           │ │       (Claude)        │
+└──────┬───────┘ └─────┬─────┘ └───────────┬───────────┘
+       │               │                    │
+       ▼               ▼                    ▼
+┌──────────────┐ ┌──────────┐       ┌──────────────┐
+│ Gemini API   │ │ SQLite   │       │ Claude CLI   │
+│ (sponsor)    │ │ (DB)     │       │ (subprocess) │
+│ distractor   │ │          │       │ subscription │
+│  generation  │ │          │       │ validation   │
+└──────────────┘ └──────────┘       └──────────────┘
 ```
 
 ### Contract-Centric Diagram
@@ -80,7 +74,7 @@ flowchart LR
             SubmitConfirm(["«interface»<br/>SubmissionConfirm"]):::iface
         end
         subgraph InstructorView["Instructor View"]
-            QuestionBuilder(["«interface»<br/>QuestionBuilder<br/>correct answer → AI<br/>generates distractors"]):::iface
+            QuestionBuilder(["«interface»<br/>QuestionBuilder<br/>correct answer → AI<br/>generates wrong options"]):::iface
             Dashboard(["«interface»<br/>AnalysisDashboard<br/>per-student insights<br/>+ knowledge gaps"]):::iface
             CriteriaEditor(["«interface»<br/>CriteriaEditor<br/>focus areas + weights"]):::iface
         end
@@ -88,33 +82,28 @@ flowchart LR
 
     C_QuizData{{"«contract»<br/>Quiz data flows through<br/>Quiz API only"}}:::contract
     C_SubmissionData{{"«contract»<br/>Answers + reasoning<br/>submitted via<br/>Submission API only"}}:::contract
-    C_AIBoundary{{"«contract»<br/>Only Analysis Service<br/>talks to AI providers"}}:::contract
     C_CriteriaInjection{{"«contract»<br/>Instructor criteria<br/>injected into<br/>AI validation prompt"}}:::contract
 
-    subgraph QuizAPI["Quiz API (REST + AI-assisted)"]
+    subgraph QuizAPI["Quiz API (FastAPI + Gemini)"]
         QuizRouter["«class»<br/>QuizRouter<br/>GET/POST /api/quizzes<br/>POST /api/quizzes/:id/questions<br/>PUT /api/questions/:id"]:::cls
-        C_QuizAI{{"«contract»<br/>Question creation can<br/>request AI distractor<br/>generation via<br/>Analysis Service"}}:::contract
+        C_Distractor{{"«contract»<br/>Gemini receives:<br/>correct solution →<br/>returns N plausible<br/>wrong options +<br/>why_wrong explanation"}}:::contract
+        GeminiGenerator[["«abstract»<br/>GeminiGenerator<br/>Gemini API call<br/>(sponsor prize)"]]:::abs
     end
 
-    subgraph SubmissionAPI["Submission API (REST)"]
+    subgraph SubmissionAPI["Submission API (FastAPI)"]
         SubmissionRouter["«class»<br/>SubmissionRouter<br/>POST /api/submissions<br/>GET /api/submissions?quiz_id<br/>GET /api/submissions/:id"]:::cls
     end
 
-    subgraph AnalysisService["Analysis Service (FastAPI + Python)"]
+    subgraph AnalysisService["Analysis Service (FastAPI + Claude)"]
         ValidateRouter["«class»<br/>ValidateRouter<br/>POST /api/analysis/validate<br/>GET /api/analysis/:submission_id"]:::cls
-        GenerateRouter["«class»<br/>GenerateRouter<br/>POST /api/analysis/<br/>generate-distractors"]:::cls
         DashboardRouter["«class»<br/>DashboardRouter<br/>GET /api/analysis/<br/>dashboard?quiz_id"]:::cls
-
         C_Validation{{"«contract»<br/>Claude receives: scenario<br/>+ solutions + reasoning<br/>+ criteria → returns<br/>score, gaps, strengths,<br/>AI-detection flag"}}:::contract
-        C_Distractor{{"«contract»<br/>Gemini receives:<br/>correct solution →<br/>returns N plausible<br/>wrong options +<br/>why_wrong explanation"}}:::contract
-
         ClaudeValidator[["«abstract»<br/>ClaudeValidator<br/>subprocess → claude CLI<br/>(subscription, not API)"]]:::abs
-        GeminiGenerator[["«abstract»<br/>GeminiGenerator<br/>Gemini API call<br/>(sponsor prize target)"]]:::abs
     end
 
     subgraph External["External Systems"]
         ClaudeCLI["«class»<br/>Claude CLI<br/>Opus-level reasoning<br/>via subprocess"]:::cls
-        GeminiAPI["«class»<br/>Gemini API<br/>distractor generation"]:::cls
+        GeminiAPI["«class»<br/>Gemini API<br/>wrong option generation"]:::cls
         SQLite["«class»<br/>SQLite<br/>quizzes, submissions,<br/>analysis results"]:::cls
     end
 
@@ -124,11 +113,8 @@ flowchart LR
     C_SubmissionData -- "stores submission" --> SubmissionRouter
     SubmitConfirm -. "triggers validation" .-> ValidateRouter
 
-    QuestionBuilder -- "request distractors" --> C_AIBoundary
-    C_AIBoundary -- "only AI gateway" --> GenerateRouter
-    QuizRouter -- "needs AI distractors" --> C_QuizAI
-    C_QuizAI -. "calls Analysis Service" .-> GenerateRouter
-    GenerateRouter -- "generate wrong options" --> C_Distractor
+    QuestionBuilder -- "create question +<br/>generate wrong options" --> QuizRouter
+    QuizRouter -- "generate wrong options" --> C_Distractor
     C_Distractor -- "call Gemini" --> GeminiGenerator
     GeminiGenerator -. "API call" .-> GeminiAPI
 
@@ -148,15 +134,14 @@ flowchart LR
     linkStyle 0,1 stroke:#3b82f6,stroke-width:2px
     linkStyle 2,3 stroke:#f97316,stroke-width:2px
     linkStyle 4 stroke:#ef4444,stroke-width:2px,stroke-dasharray:5
-    linkStyle 5,6 stroke:#ec4899,stroke-width:2px
-    linkStyle 7,8 stroke:#14b8a6,stroke-width:2px
-    linkStyle 9,10 stroke:#0d9488,stroke-width:2px
-    linkStyle 11 stroke:#ef4444,stroke-width:2px,stroke-dasharray:5
-    linkStyle 12,13 stroke:#a855f7,stroke-width:2px
-    linkStyle 14,15 stroke:#a855f7,stroke-width:2px
-    linkStyle 16 stroke:#ef4444,stroke-width:2px,stroke-dasharray:5
-    linkStyle 17 stroke:#14b8a6,stroke-width:2px
-    linkStyle 18,19,20 stroke:#eab308,stroke-width:2px,stroke-dasharray:5
+    linkStyle 5 stroke:#ec4899,stroke-width:2px
+    linkStyle 6,7 stroke:#0d9488,stroke-width:2px
+    linkStyle 8 stroke:#ef4444,stroke-width:2px,stroke-dasharray:5
+    linkStyle 9,10 stroke:#a855f7,stroke-width:2px
+    linkStyle 11,12 stroke:#a855f7,stroke-width:2px
+    linkStyle 13 stroke:#ef4444,stroke-width:2px,stroke-dasharray:5
+    linkStyle 14 stroke:#14b8a6,stroke-width:2px
+    linkStyle 15,16,17 stroke:#eab308,stroke-width:2px,stroke-dasharray:5
 ```
 
 ---

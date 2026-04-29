@@ -44,65 +44,67 @@ package "Frontend (React)" <<frontend>> {
   }
 
   package "Instructor View" {
-    component [Question Builder\n---\nAdd correct answer\n→ AI generates distractors\n→ Accept / Reject / Regen] as QB
+    component [Question Builder\n---\nAdd correct answer\n→ AI generates wrong\n  options + explains\n→ Accept / Reject / Regen] as QB
     component [Analysis Dashboard\n---\nPer-student results\nKnowledge gap report\nAI-generated flags] as AD
     component [Criteria Editor\n---\nFocus areas + Weights\nCustom instructions] as CE
   }
 }
 
 ' ========== QUIZ API ==========
-package "Quiz API (REST + AI-assisted)" <<quiz>> {
-  component [QuizRouter\n---\nGET/POST /api/quizzes\nPOST /api/quizzes/:id/questions\nPUT /api/questions/:id] as QR
+package "Quiz API (FastAPI + Gemini)" <<quiz>> {
+  component [QuizRouter\n---\nGET/POST /api/quizzes\nPOST /api/quizzes/:id/questions\nPUT /api/questions/:id\nPOST /api/quizzes/:id/\n  generate-wrong-options] as QR
+  component [GeminiGenerator\n---\nGenerates plausible\nwrong options from\ncorrect solution] as GG
 }
 
 ' ========== SUBMISSION API ==========
-package "Submission API (REST)" <<submission>> {
+package "Submission API (FastAPI)" <<submission>> {
   component [SubmissionRouter\n---\nPOST /api/submissions\nGET /api/submissions?quiz_id\nGET /api/submissions/:id] as SR
 }
 
 ' ========== ANALYSIS SERVICE ==========
-package "Analysis Service (FastAPI + Python)" <<analysis>> {
+package "Analysis Service (FastAPI + Claude)" <<analysis>> {
   component [ValidateRouter\n---\nPOST /api/analysis/validate\nGET /api/analysis/:submission_id] as VR
-  component [GenerateRouter\n---\nPOST /api/analysis/\ngenerate-distractors] as GR
   component [DashboardRouter\n---\nGET /api/analysis/\ndashboard?quiz_id] as DR
+  component [ClaudeValidator\n---\nsubprocess → claude CLI\n(subscription, not API)] as CV
 }
 
 ' ========== EXTERNAL ==========
 package "External Systems" <<external>> {
-  component [Claude CLI\n---\nOpus-level reasoning\nvia subprocess\n(subscription, not API)] as CLAUDE
-  component [Gemini API\n---\nDistractor generation\n(sponsor prize target)] as GEMINI
+  component [Claude CLI\n---\nOpus-level reasoning\nvia subprocess] as CLAUDE
+  component [Gemini API\n---\nWrong option generation\n(sponsor prize target)] as GEMINI
   database "SQLite" as DB
 }
 
 ' ========== CONTRACTS (Notes) ==========
 note as C1
-  **«contract»**
+  **«contract» Quiz Data**
   Quiz data flows
   through Quiz API only
 end note
 
 note as C2
-  **«contract»**
+  **«contract» Submission**
   Answers + reasoning
   submitted via
   Submission API only
 end note
 
 note as C3
-  **«contract»**
-  Only Analysis Service
-  talks to AI providers
+  **«contract» AI Boundary**
+  Quiz API → Gemini (wrong options)
+  Analysis Service → Claude (validation)
+  Each service owns its AI provider
 end note
 
 note as C4
-  **«contract»**
+  **«contract» Criteria Injection**
   Instructor criteria
-  injected into AI
+  injected into Claude
   validation prompt
 end note
 
 note as C5
-  **«contract»**
+  **«contract» Claude Validation**
   Claude receives:
   scenario + solutions
   + reasoning + criteria
@@ -111,19 +113,12 @@ note as C5
 end note
 
 note as C6
-  **«contract»**
+  **«contract» Wrong Option Generation**
   Gemini receives:
   correct solution
   → returns N plausible
   wrong options +
   why_wrong explanation
-end note
-
-note as C7
-  **«contract»**
-  Quiz API requests
-  AI distractor generation
-  via Analysis Service
 end note
 
 ' ========== STUDENT FLOW ==========
@@ -132,15 +127,16 @@ QT -[#F97316]-> SR : submit answers\n+ reasoning
 SC .[#EF4444].> VR : triggers\nvalidation
 
 ' ========== INSTRUCTOR QUESTION FLOW ==========
-QB -[#EC4899]-> GR : request\ndistractors
-QR -[#14B8A6]-> GR : needs AI\ndistractors
+QB -[#EC4899]-> QR : create question +\ngenerate wrong options
+QR -[#0D9488]-> GG : generate wrong options
+GG .[#EF4444].> GEMINI : Gemini API call
 
 ' ========== INSTRUCTOR CRITERIA FLOW ==========
 CE -[#A855F7]-> VR : set focus\n+ weights
 
-' ========== AI FLOWS ==========
-VR -[#A855F7]-> CLAUDE : subprocess\nclaude CLI
-GR -[#0D9488]-> GEMINI : API call
+' ========== VALIDATION FLOW ==========
+VR -[#A855F7]-> CV : validate reasoning
+CV .[#EF4444].> CLAUDE : subprocess\nclaude CLI
 
 ' ========== DASHBOARD ==========
 AD -[#3B82F6]-> DR : fetch results
@@ -153,10 +149,10 @@ DR .[#EAB308].> DB : read
 ' ========== CONTRACT PLACEMENTS ==========
 C1 .. QR
 C2 .. SR
-C3 .. GR
+C3 .. GG
+C3 .. CV
 C4 .. VR
 C5 .. CLAUDE
 C6 .. GEMINI
-C7 .. QR
 
 @enduml
