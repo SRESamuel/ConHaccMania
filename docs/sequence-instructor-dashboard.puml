@@ -42,13 +42,13 @@ DB --> SR : submissions with answers[]
 SR --> AD : 200 OK { submissions }
 AD -> I : Display student's submissions\n+ reasoning per question
 
-== 3. Trigger Analysis (if not yet analyzed) ==
+== 3. Trigger Analysis for Quiz ==
 
-I -> AD : Click "Analyze"
-AD -> VR : POST /api/analysis/validate\n{ submission_id }
-note right of VR : See UC3 for full\nClaude validation flow
-VR --> AD : 201 Created { analysis_id }
-AD -> I : "Analysis complete"
+I -> AD : Click "Analyze All"
+AD -> VR : POST /api/analysis/validate\n{ quiz_id }
+note right of VR : See UC3 for full\nClaude validation flow\n(all submissions for quiz)
+VR --> AD : 201 Created\n{ analyzed: N submissions }
+AD -> I : "Analysis complete\nfor N students"
 
 == 4. View Student Analysis ==
 

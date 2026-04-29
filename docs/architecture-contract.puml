@@ -39,32 +39,30 @@ package "Frontend (React)" <<frontend>> {
 
   package "Student View" {
     component [Quiz List] as QL
-    component [Quiz Taking\n---\nScenario + Code Blocks\n+ Reasoning Input] as QT
-    component [Submission\nConfirmation] as SC
+    component [Quiz Taking\n---\nScenario + Code Blocks\n+ Reasoning Input\n+ Submit] as QT
   }
 
   package "Instructor View" {
-    component [Question Builder\n---\nAdd correct answer\n→ AI generates wrong\n  options + explains\n→ Accept / Reject / Regen] as QB
-    component [Analysis Dashboard\n---\nPer-student results\nKnowledge gap report\nAI-generated flags] as AD
-    component [Criteria Editor\n---\nFocus areas + Weights\nCustom instructions] as CE
+    component [Question Builder\n---\nAdd correct answer\n→ AI generates wrong\n  options + explains\n→ Accept / Reject / Regen\n→ Set eval_criteria (text)] as QB
+    component [Analysis Dashboard\n---\nView students\nTrigger analysis\nPer-student results\nClass overview] as AD
   }
 }
 
 ' ========== QUIZ API ==========
 package "Quiz API (FastAPI + Gemini)" <<quiz>> {
-  component [QuizRouter\n---\nGET/POST /api/quizzes\nPOST /api/quizzes/:id/questions\nPUT /api/questions/:id\nPOST /api/quizzes/:id/\n  generate-wrong-options] as QR
+  component [QuizRouter\n---\nGET/POST /api/quizzes\nGET /api/quizzes/{id}\nPOST /api/quizzes/{id}/questions\nPUT /api/questions/{id}\nPOST /api/questions/{id}/\n  generate-wrong-options\nPOST /api/questions/{id}/solutions] as QR
   component [GeminiGenerator\n---\nGenerates plausible\nwrong options from\ncorrect solution] as GG
 }
 
 ' ========== SUBMISSION API ==========
 package "Submission API (FastAPI)" <<submission>> {
-  component [SubmissionRouter\n---\nPOST /api/submissions\nGET /api/submissions?quiz_id\nGET /api/submissions/:id] as SR
+  component [SubmissionRouter\n---\nPOST /api/submissions\nGET /api/submissions\n  (?student_name=X)\nGET /api/submissions/{id}] as SR
 }
 
 ' ========== ANALYSIS SERVICE ==========
 package "Analysis Service (FastAPI + Claude)" <<analysis>> {
-  component [ValidateRouter\n---\nPOST /api/analysis/validate\nGET /api/analysis/:submission_id] as VR
-  component [DashboardRouter\n---\nGET /api/analysis/\ndashboard?quiz_id] as DR
+  component [ValidateRouter\n---\nPOST /api/analysis/validate\n  { quiz_id } (all submissions)\nGET /api/analysis/{submission_id}] as VR
+  component [DashboardRouter\n---\nGET /api/analysis/dashboard] as DR
   component [ClaudeValidator\n---\nsubprocess → claude CLI\n(subscription, not API)] as CV
 }
 
@@ -97,19 +95,20 @@ note as C3
 end note
 
 note as C4
-  **«contract» Criteria Injection**
-  Instructor criteria
-  injected into Claude
-  validation prompt
+  **«contract» Instructor-Triggered**
+  Analysis is NOT auto-triggered
+  on submit. Instructor manually
+  triggers via Dashboard.
 end note
 
 note as C5
   **«contract» Claude Validation**
   Claude receives:
   scenario + solutions
-  + reasoning + criteria
-  → returns score, gaps,
-  strengths, AI-detection
+  + reasoning + eval_criteria
+  → stores score, gaps,
+  strengths, AI-detection to DB
+  → returns 201 { analysis_id }
 end note
 
 note as C6
@@ -121,29 +120,29 @@ note as C6
   why_wrong explanation
 end note
 
-' ========== STUDENT FLOW ==========
+' ========== STUDENT FLOW (UC2) ==========
 QL -[#3B82F6]-> QR : fetch quizzes
 QT -[#F97316]-> SR : submit answers\n+ reasoning
-SC .[#EF4444].> VR : triggers\nvalidation
 
-' ========== INSTRUCTOR QUESTION FLOW ==========
+' ========== INSTRUCTOR QUESTION FLOW (UC1) ==========
 QB -[#EC4899]-> QR : create question +\ngenerate wrong options
 QR -[#0D9488]-> GG : generate wrong options
 GG .[#EF4444].> GEMINI : Gemini API call
 
-' ========== INSTRUCTOR CRITERIA FLOW ==========
-CE -[#A855F7]-> VR : set focus\n+ weights
+' ========== INSTRUCTOR ANALYSIS FLOW (UC3/UC4) ==========
+AD -[#A855F7]-> VR : trigger analysis\n(instructor-initiated)
+AD -[#3B82F6]-> VR : fetch analysis\nresults (GET)
+AD -[#3B82F6]-> SR : fetch student\nsubmissions
+AD -[#14B8A6]-> DR : fetch class\noverview
 
 ' ========== VALIDATION FLOW ==========
 VR -[#A855F7]-> CV : validate reasoning
 CV .[#EF4444].> CLAUDE : subprocess\nclaude CLI
 
-' ========== DASHBOARD ==========
-AD -[#3B82F6]-> DR : fetch results
-
 ' ========== DATABASE ==========
 QR .[#EAB308].> DB : read/write
 SR .[#EAB308].> DB : read/write
+VR .[#EAB308].> DB : write analysis
 DR .[#EAB308].> DB : read
 
 ' ========== CONTRACT PLACEMENTS ==========
@@ -151,7 +150,7 @@ C1 .. QR
 C2 .. SR
 C3 .. GG
 C3 .. CV
-C4 .. VR
+C4 .. AD
 C5 .. CLAUDE
 C6 .. GEMINI
 
