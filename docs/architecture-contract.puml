@@ -1,0 +1,162 @@
+@startuml NewGenLearning Architecture Contract
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Segoe UI"
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam arrowThickness 2
+skinparam shadowing false
+
+title NewGenLearning — Contract-Centric Architecture
+
+' === Colors ===
+skinparam package {
+  BackgroundColor<<frontend>> #EFF6FF
+  BorderColor<<frontend>> #2563EB
+  BackgroundColor<<quiz>> #DCFCE7
+  BorderColor<<quiz>> #16A34A
+  BackgroundColor<<submission>> #FEF3C7
+  BorderColor<<submission>> #D97706
+  BackgroundColor<<analysis>> #FCE7F3
+  BorderColor<<analysis>> #DB2777
+  BackgroundColor<<external>> #F1F5F9
+  BorderColor<<external>> #64748B
+}
+
+skinparam component {
+  BackgroundColor #FFFFFF
+  BorderColor #94A3B8
+}
+
+skinparam note {
+  BackgroundColor #FCE7F3
+  BorderColor #DB2777
+  FontSize 11
+}
+
+' ========== FRONTEND ==========
+package "Frontend (React)" <<frontend>> {
+
+  package "Student View" {
+    component [Quiz List] as QL
+    component [Quiz Taking\n---\nScenario + Code Blocks\n+ Reasoning Input] as QT
+    component [Submission\nConfirmation] as SC
+  }
+
+  package "Instructor View" {
+    component [Question Builder\n---\nAdd correct answer\n→ AI generates distractors\n→ Accept / Reject / Regen] as QB
+    component [Analysis Dashboard\n---\nPer-student results\nKnowledge gap report\nAI-generated flags] as AD
+    component [Criteria Editor\n---\nFocus areas + Weights\nCustom instructions] as CE
+  }
+}
+
+' ========== QUIZ API ==========
+package "Quiz API (REST + AI-assisted)" <<quiz>> {
+  component [QuizRouter\n---\nGET/POST /api/quizzes\nPOST /api/quizzes/:id/questions\nPUT /api/questions/:id] as QR
+}
+
+' ========== SUBMISSION API ==========
+package "Submission API (REST)" <<submission>> {
+  component [SubmissionRouter\n---\nPOST /api/submissions\nGET /api/submissions?quiz_id\nGET /api/submissions/:id] as SR
+}
+
+' ========== ANALYSIS SERVICE ==========
+package "Analysis Service (FastAPI + Python)" <<analysis>> {
+  component [ValidateRouter\n---\nPOST /api/analysis/validate\nGET /api/analysis/:submission_id] as VR
+  component [GenerateRouter\n---\nPOST /api/analysis/\ngenerate-distractors] as GR
+  component [DashboardRouter\n---\nGET /api/analysis/\ndashboard?quiz_id] as DR
+}
+
+' ========== EXTERNAL ==========
+package "External Systems" <<external>> {
+  component [Claude CLI\n---\nOpus-level reasoning\nvia subprocess\n(subscription, not API)] as CLAUDE
+  component [Gemini API\n---\nDistractor generation\n(sponsor prize target)] as GEMINI
+  database "SQLite" as DB
+}
+
+' ========== CONTRACTS (Notes) ==========
+note as C1
+  **«contract»**
+  Quiz data flows
+  through Quiz API only
+end note
+
+note as C2
+  **«contract»**
+  Answers + reasoning
+  submitted via
+  Submission API only
+end note
+
+note as C3
+  **«contract»**
+  Only Analysis Service
+  talks to AI providers
+end note
+
+note as C4
+  **«contract»**
+  Instructor criteria
+  injected into AI
+  validation prompt
+end note
+
+note as C5
+  **«contract»**
+  Claude receives:
+  scenario + solutions
+  + reasoning + criteria
+  → returns score, gaps,
+  strengths, AI-detection
+end note
+
+note as C6
+  **«contract»**
+  Gemini receives:
+  correct solution
+  → returns N plausible
+  wrong options +
+  why_wrong explanation
+end note
+
+note as C7
+  **«contract»**
+  Quiz API requests
+  AI distractor generation
+  via Analysis Service
+end note
+
+' ========== STUDENT FLOW ==========
+QL -[#3B82F6]-> QR : fetch quizzes
+QT -[#F97316]-> SR : submit answers\n+ reasoning
+SC .[#EF4444].> VR : triggers\nvalidation
+
+' ========== INSTRUCTOR QUESTION FLOW ==========
+QB -[#EC4899]-> GR : request\ndistractors
+QR -[#14B8A6]-> GR : needs AI\ndistractors
+
+' ========== INSTRUCTOR CRITERIA FLOW ==========
+CE -[#A855F7]-> VR : set focus\n+ weights
+
+' ========== AI FLOWS ==========
+VR -[#A855F7]-> CLAUDE : subprocess\nclaude CLI
+GR -[#0D9488]-> GEMINI : API call
+
+' ========== DASHBOARD ==========
+AD -[#3B82F6]-> DR : fetch results
+
+' ========== DATABASE ==========
+QR .[#EAB308].> DB : read/write
+SR .[#EAB308].> DB : read/write
+DR .[#EAB308].> DB : read
+
+' ========== CONTRACT PLACEMENTS ==========
+C1 .. QR
+C2 .. SR
+C3 .. GR
+C4 .. VR
+C5 .. CLAUDE
+C6 .. GEMINI
+C7 .. QR
+
+@enduml
