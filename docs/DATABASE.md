@@ -20,9 +20,7 @@ Single shared Neon (PostgreSQL) database accessed by all 3 services.
 
 ---
 
-## Schema
-
-### ERD
+## ERD
 
 ```
 ┌──────────────┐     ┌──────────────────┐     ┌──────────────┐
@@ -35,7 +33,7 @@ Single shared Neon (PostgreSQL) database accessed by all 3 services.
 │ created_at   │     │ created_at       │     │ code         │
 └──────────────┘     └──────────────────┘     │ language     │
                                                │ hint         │
-                     └──────────────────┘     │ is_correct   │
+                                               │ is_correct   │
                                                │ why_wrong    │
                                                └──────────────┘
 
@@ -57,14 +55,12 @@ Single shared Neon (PostgreSQL) database accessed by all 3 services.
 │ id (PK)      │──┐  │ id (PK)          │
 │ submission_id│  └─→│ analysis_id (FK) │
 │  (FK)        │     │ answer_id (FK)   │
-│ overall_score│     │ score            │
-│ overall      │     │ concepts_found   │
-│  (JSONB)     │     │  (JSONB)         │
-│ created_at   │     │ strengths (JSONB)│
-└──────────────┘     │ gaps (JSONB)     │
-                     │ is_ai_generated  │
-                     │ confidence       │
-                     └──────────────────┘
+│ status       │     │ score            │
+│ overall_score│     │ strengths (JSONB)│
+│ overall      │     │ gaps (JSONB)     │
+│  (JSONB)     │     │ is_ai_generated  │
+│ created_at   │     │ confidence       │
+└──────────────┘     └──────────────────┘
 ```
 
 ---
@@ -86,9 +82,9 @@ Single shared Neon (PostgreSQL) database accessed by all 3 services.
 | Column | Type | Constraint | Description |
 |--------|------|-----------|-------------|
 | id | UUID | PK, DEFAULT gen_random_uuid() | |
-| quiz_id | UUID | FK → quizzes.id, NOT NULL | |
+| quiz_id | UUID | FK → quizzes.id CASCADE, NOT NULL | |
 | scenario | TEXT | NOT NULL | Scenario description |
-| eval_criteria | TEXT | | Instructor's evaluation instructions for AI |
+| eval_criteria | TEXT | | Instructor's text instructions for AI validation |
 | created_at | TIMESTAMPTZ | DEFAULT now() | |
 
 ### solutions
@@ -96,7 +92,7 @@ Single shared Neon (PostgreSQL) database accessed by all 3 services.
 | Column | Type | Constraint | Description |
 |--------|------|-----------|-------------|
 | id | UUID | PK, DEFAULT gen_random_uuid() | |
-| question_id | UUID | FK → questions.id, NOT NULL | |
+| question_id | UUID | FK → questions.id CASCADE, NOT NULL | |
 | label | VARCHAR(1) | NOT NULL | "A", "B", "C" |
 | code | TEXT | NOT NULL | Code block content |
 | language | VARCHAR(50) | NOT NULL | "python", "javascript", etc. |
@@ -109,7 +105,7 @@ Single shared Neon (PostgreSQL) database accessed by all 3 services.
 | Column | Type | Constraint | Description |
 |--------|------|-----------|-------------|
 | id | UUID | PK, DEFAULT gen_random_uuid() | |
-| quiz_id | UUID | FK → quizzes.id, NOT NULL | |
+| quiz_id | UUID | FK → quizzes.id CASCADE, NOT NULL | |
 | student_name | VARCHAR(255) | NOT NULL | |
 | submitted_at | TIMESTAMPTZ | DEFAULT now() | |
 
@@ -118,9 +114,9 @@ Single shared Neon (PostgreSQL) database accessed by all 3 services.
 | Column | Type | Constraint | Description |
 |--------|------|-----------|-------------|
 | id | UUID | PK, DEFAULT gen_random_uuid() | |
-| submission_id | UUID | FK → submissions.id, NOT NULL | |
-| question_id | UUID | FK → questions.id, NOT NULL | |
-| selected_solution_id | UUID | FK → solutions.id, NOT NULL | Which solution student picked |
+| submission_id | UUID | FK → submissions.id CASCADE, NOT NULL | |
+| question_id | UUID | FK → questions.id CASCADE, NOT NULL | |
+| selected_solution_id | UUID | FK → solutions.id, NOT NULL | Frontend maps label (A/B/C) → UUID |
 | reasoning | TEXT | NOT NULL | Student's explanation |
 
 ### analyses
@@ -128,20 +124,22 @@ Single shared Neon (PostgreSQL) database accessed by all 3 services.
 | Column | Type | Constraint | Description |
 |--------|------|-----------|-------------|
 | id | UUID | PK, DEFAULT gen_random_uuid() | |
-| submission_id | UUID | FK → submissions.id, UNIQUE, NOT NULL | 1:1 with submission |
-| overall_score | INTEGER | | 0-100 |
-| overall | JSONB | | `{ strengths, areas_for_improvement, recommended_topics, criteria_alignment }` |
+| submission_id | UUID | FK → submissions.id CASCADE, NOT NULL | |
+| status | VARCHAR(20) | DEFAULT 'pending' | 'pending', 'completed', 'failed' |
+| overall_score | NUMERIC(5,2) | | 0-100, averaged from answer scores |
+| overall | JSONB | | `{ strengths, areas_for_improvement, recommended_topics }` |
 | created_at | TIMESTAMPTZ | DEFAULT now() | |
+
+> **Re-analysis**: If instructor runs analysis again, old analysis is deleted and replaced. Application handles this — no UNIQUE constraint on submission_id.
 
 ### answer_analyses
 
 | Column | Type | Constraint | Description |
 |--------|------|-----------|-------------|
 | id | UUID | PK, DEFAULT gen_random_uuid() | |
-| analysis_id | UUID | FK → analyses.id, NOT NULL | |
-| answer_id | UUID | FK → answers.id, NOT NULL | |
+| analysis_id | UUID | FK → analyses.id CASCADE, NOT NULL | |
+| answer_id | UUID | FK → answers.id CASCADE, NOT NULL | |
 | score | INTEGER | | 0-100 per question |
-| concepts_found | JSONB | DEFAULT '[]' | Concepts student demonstrated |
 | strengths | JSONB | DEFAULT '[]' | What they got right |
 | gaps | JSONB | DEFAULT '[]' | What they missed |
 | is_ai_generated | BOOLEAN | DEFAULT false | Flag if reasoning seems AI-written |
@@ -149,12 +147,12 @@ Single shared Neon (PostgreSQL) database accessed by all 3 services.
 
 ---
 
-## SQL — Create Tables
+## SQL
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- === Quiz API owns ===
+-- === Quiz API ===
 
 CREATE TABLE quizzes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -183,11 +181,11 @@ CREATE TABLE solutions (
     why_wrong TEXT
 );
 
--- === Submission API owns ===
+-- === Submission API ===
 
 CREATE TABLE submissions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    quiz_id UUID NOT NULL REFERENCES quizzes(id),
+    quiz_id UUID NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
     student_name VARCHAR(255) NOT NULL,
     submitted_at TIMESTAMPTZ DEFAULT now()
 );
@@ -195,17 +193,18 @@ CREATE TABLE submissions (
 CREATE TABLE answers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     submission_id UUID NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
-    question_id UUID NOT NULL REFERENCES questions(id),
+    question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
     selected_solution_id UUID NOT NULL REFERENCES solutions(id),
     reasoning TEXT NOT NULL
 );
 
--- === Analysis Service owns ===
+-- === Analysis Service ===
 
 CREATE TABLE analyses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    submission_id UUID NOT NULL UNIQUE REFERENCES submissions(id),
-    overall_score INTEGER,
+    submission_id UUID NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'pending',
+    overall_score NUMERIC(5,2),
     overall JSONB,
     created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -213,25 +212,35 @@ CREATE TABLE analyses (
 CREATE TABLE answer_analyses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     analysis_id UUID NOT NULL REFERENCES analyses(id) ON DELETE CASCADE,
-    answer_id UUID NOT NULL REFERENCES answers(id),
+    answer_id UUID NOT NULL REFERENCES answers(id) ON DELETE CASCADE,
     score INTEGER,
-    concepts_found JSONB DEFAULT '[]',
     strengths JSONB DEFAULT '[]',
     gaps JSONB DEFAULT '[]',
     is_ai_generated BOOLEAN DEFAULT false,
     confidence REAL
 );
+
+-- === Indexes ===
+
+CREATE INDEX idx_questions_quiz ON questions(quiz_id);
+CREATE INDEX idx_solutions_question ON solutions(question_id);
+CREATE INDEX idx_submissions_quiz ON submissions(quiz_id);
+CREATE INDEX idx_submissions_student ON submissions(student_name);
+CREATE INDEX idx_answers_submission ON answers(submission_id);
+CREATE INDEX idx_answers_question ON answers(question_id);
+CREATE INDEX idx_analyses_submission ON analyses(submission_id);
+CREATE INDEX idx_answer_analyses_analysis ON answer_analyses(analysis_id);
 ```
 
 ---
 
 ## Service Ownership
 
-Each service is responsible for its own tables. Cross-service reads are allowed, but writes only through the owning service.
+Each service owns its tables. Cross-service reads allowed, writes only through owning service.
 
 | Table | Owner | Other services |
 |-------|-------|---------------|
-| quizzes | Quiz API | Submission API reads (FK), Analysis reads |
+| quizzes | Quiz API | Submission API reads, Analysis reads |
 | questions | Quiz API | Submission API reads, Analysis reads |
 | solutions | Quiz API | Submission API reads, Analysis reads |
 | submissions | Submission API | Analysis reads |
@@ -241,18 +250,14 @@ Each service is responsible for its own tables. Cross-service reads are allowed,
 
 ---
 
-## JSONB Field Schemas
+## JSONB Schemas
 
 ### overall (analyses)
+
 ```json
 {
   "strengths": ["Strong time complexity understanding"],
   "areas_for_improvement": ["Explore space-time tradeoffs"],
-  "recommended_topics": ["Defensive Programming"],
-  "criteria_alignment": {
-    "Time Complexity": 95,
-    "Error Handling": 60,
-    "Readability": 80
-  }
+  "recommended_topics": ["Defensive Programming"]
 }
 ```
