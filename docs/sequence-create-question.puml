@@ -1,0 +1,74 @@
+@startuml Create Question with AI-Generated Wrong Options
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Segoe UI"
+skinparam shadowing false
+skinparam sequenceArrowThickness 2
+skinparam participantPadding 20
+skinparam boxPadding 10
+
+title UC1: Instructor Creates Question with AI-Generated Wrong Options
+
+actor Instructor as I
+box "Frontend (React)" #EFF6FF
+  participant "Question\nBuilder" as QB
+end box
+box "Quiz API (FastAPI)" #DCFCE7
+  participant "QuizRouter" as QR
+  participant "GeminiGenerator" as GG
+end box
+participant "Gemini API" as GM #F1F5F9
+database "Neon\n(PostgreSQL)" as DB #F1F5F9
+
+== 1. Create Question with Correct Answer ==
+
+I -> QB : Write scenario +\ncorrect solution code
+QB -> QR : POST /api/quizzes/{id}/questions\n{ scenario, correct_solution, language, eval_criteria }
+QR -> DB : INSERT INTO questions\n(quiz_id, scenario, eval_criteria)
+QR -> DB : INSERT INTO solutions\n(question_id, code, is_correct=true)
+DB --> QR : question_id, solution_id
+QR --> QB : 201 Created { question_id }
+
+== 2. Generate Wrong Options (AI) ==
+
+I -> QB : Click "Generate Wrong Options"
+QB -> QR : POST /api/questions/{id}/generate-wrong-options\n{ count: 3 }
+QR -> DB : SELECT correct solution\nFROM solutions WHERE question_id AND is_correct
+DB --> QR : { code, language }
+QR -> GG : generate(scenario, correct_code, language, count=3)
+GG -> GM : Gemini API call\n"Generate 3 plausible but wrong\nsolutions for this scenario..."
+GM --> GG : { options: [\n  { code, hint, why_wrong },\n  { code, hint, why_wrong },\n  { code, hint, why_wrong }\n] }
+GG --> QR : generated options
+QR --> QB : 200 OK { generated_options: [...] }
+QB -> I : Display options with\ncode + why_wrong explanation
+
+== 3. Instructor Review Loop ==
+
+loop for each generated option
+  I -> QB : Review option
+  alt Accept
+    I -> QB : Click "Accept"
+    QB -> QR : POST /api/questions/{id}/solutions\n{ code, hint, why_wrong, is_correct=false }
+    QR -> DB : INSERT INTO solutions
+    DB --> QR : solution_id
+    QR --> QB : 201 Created
+  else Reject
+    I -> QB : Click "Reject"
+    note right of QB : Option discarded,\nnot saved
+  else Regenerate
+    I -> QB : Click "Regenerate"
+    QB -> QR : POST /api/questions/{id}/generate-wrong-options\n{ count: 1 }
+    QR -> GG : generate(scenario, correct_code, language, count=1)
+    GG -> GM : Gemini API call
+    GM --> GG : { options: [{ code, hint, why_wrong }] }
+    GG --> QR : new option
+    QR --> QB : 200 OK { generated_options: [...] }
+    QB -> I : Display new option
+  end
+end
+
+== 4. Question Ready ==
+
+QB -> I : Question complete\nwith correct + wrong options
+
+@enduml

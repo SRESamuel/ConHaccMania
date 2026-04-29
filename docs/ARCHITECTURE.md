@@ -49,8 +49,8 @@ Reasoning-first code assessment platform. Students evaluate code solutions and e
        │               │                    │
        ▼               ▼                    ▼
 ┌──────────────┐ ┌──────────┐       ┌──────────────┐
-│ Gemini API   │ │ SQLite   │       │ Claude CLI   │
-│ (sponsor)    │ │ (DB)     │       │ (subprocess) │
+│ Gemini API   │ │ Neon     │       │ Claude CLI   │
+│ (sponsor)    │ │(Postgres)│       │ (subprocess) │
 │ distractor   │ │          │       │ subscription │
 │  generation  │ │          │       │ validation   │
 └──────────────┘ └──────────┘       └──────────────┘
@@ -379,11 +379,12 @@ Analysis scores reflect instructor's priorities
 | Layer                 | Technology                | Why                                   |
 | --------------------- | ------------------------- | ------------------------------------- |
 | Frontend              | React                     | Full UI, component-based              |
-| Quiz + Submission API | Express (Node) or FastAPI | Lightweight CRUD                      |
+| Quiz API              | FastAPI (Python)          | CRUD + Gemini integration             |
+| Submission API        | FastAPI (Python)          | Lightweight CRUD                      |
 | Analysis Service      | FastAPI (Python)          | AI subprocess, async                  |
 | AI Primary            | Claude CLI (subprocess)   | Free via subscription, best reasoning |
-| AI Secondary          | Gemini API                | Sponsor prize, distractor generation  |
-| Database              | SQLite                    | Zero setup, hackathon-friendly        |
+| AI Secondary          | Gemini API                | Sponsor prize, wrong option generation|
+| Database              | Neon (PostgreSQL)         | Serverless, shared across services    |
 
 ---
 

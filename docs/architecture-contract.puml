@@ -72,7 +72,7 @@ package "Analysis Service (FastAPI + Claude)" <<analysis>> {
 package "External Systems" <<external>> {
   component [Claude CLI\n---\nOpus-level reasoning\nvia subprocess] as CLAUDE
   component [Gemini API\n---\nWrong option generation\n(sponsor prize target)] as GEMINI
-  database "SQLite" as DB
+  database "Neon\n(PostgreSQL)" as DB
 }
 
 ' ========== CONTRACTS (Notes) ==========
