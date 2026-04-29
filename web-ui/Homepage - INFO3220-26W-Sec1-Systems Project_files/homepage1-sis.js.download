@@ -1,0 +1,210 @@
+// JavaScript Document
+
+function getCourseOutline(year, code, ver) {
+    var request = new XMLHttpRequest();
+    //request.open('GET', sisdomain + '/StudentPortalApps/eConestogaServices/api/CourseOutline/' + year + '/' + code + '/' + ver, true);
+    var route = sisdomain + '/StudentPortalApps/eConestogaServices/api/CourseOutline/' + year + '/' + code;
+    if (ver !== undefined) {
+        route += '/' + ver;
+    }
+    //console.log(route);
+    request.open('GET', route, true);
+    request.onload = function () {
+        // Begin accessing JSON data here
+        //console.log(this.response);
+
+        var ofound = false;
+        if (request.status == 200) {
+            var data = JSON.parse(this.response);
+            //console.log(JSON.parse(JSON.stringify(data)));
+
+            if (data.length > 0) {
+                ofound = true;
+                if(data.length === 1) {
+                    alldata.Outline = data;
+                }
+                else {
+                    var latestid = data[0];
+                    for(var v=1; v<data.length; v++) {
+                        var thisid = parseInt(data[v].OutlineId);
+                        if(thisid > parseInt(latestid.OutlineId)) {
+                            latestid = data[v];
+                        }
+                    }
+                    alldata.Outline = [latestid];
+                }
+            } else {
+                alldata.Outline = [];
+            }
+        }
+        else {
+            console.log("Failed to load data from Course Outline.");
+            alldata.Outline = [];
+        }
+        
+        if(alldata.OfficialModel) {
+            if(ofound) {
+                alldone.Outline = true;
+                checkAllDone();            
+            }
+            else {
+                var d = new Date();
+                var codeyear = d.getFullYear();
+                if(year < codeyear) {
+                    alldone.Outline = true;
+                    checkAllDone();    
+                }
+                else {
+                    codeyear = codeyear - 1;
+                    getCourseOutline(codeyear, code, ver);
+                }
+            }            
+        }
+        else {
+            alldone.Outline = true;
+            checkAllDone();    
+        }
+
+        
+    }
+    request.onerror= function(e) {
+        console.log("Failed to load data from Course Outline.");
+        alldata.Outline = [];
+        
+        alldone.Outline = true;
+        checkAllDone();
+    }; 
+    request.ontimeout= function(e) {
+        console.log("Timed out attempting to load data from Course Outline.");
+        alldata.Outline = [];
+        
+        alldone.Outline = true;
+        checkAllDone();
+    };       
+
+    request.send();
+}
+
+function getSourceInfo(code, ver, sem, sec, sourceid) {
+    var request = new XMLHttpRequest();
+    var route = sisdomain + '/StudentPortalApps/eConestogaServices/Api/CourseSection/' + code + '/' + ver + '/' + sem + '/' + sec;
+    //console.log(route);
+    request.open('GET', route, true);
+    request.onload = function () {
+        // Begin accessing JSON data here
+        //console.log(this.response);
+
+        if (request.status == 200) {
+            var data = JSON.parse(this.response);
+            if(alldata.MergeComponents.SourceCourses.length > 0) {
+                for(var sc=0; sc<alldata.MergeComponents.SourceCourses.length; sc++) {
+                    var thissource = alldata.MergeComponents.SourceCourses[sc];
+                    if(thissource.OrgUnitId === sourceid) {
+                        thissource.SIS = data;
+                        break;
+                    }
+                }
+                alldata.MergeComponents.SourcesDone++;
+                if(alldata.MergeComponents.SourcesDone === alldata.MergeComponents.SourceCourses.length) {
+                    alldone.Merges = true;
+                    processCourseOffering();  
+                }                   
+            }
+            //alldata.SIS = data;
+
+        } else {
+            // No information found
+            console.log("Failed to load data from SIS.");
+            if(alldata.MergeComponents.SourceCourses.length > 0) {
+                for(var sc=0; sc<alldata.MergeComponents.SourceCourses.length; sc++) {
+                    var thissource = alldata.MergeComponents.SourceCourses[sc];
+                    if(thissource.OrgUnitId === sourceid) {
+                        thissource.SIS = null;
+                        break;
+                    }
+                }
+                alldata.MergeComponents.SourcesDone++;
+                if(alldata.MergeComponents.SourcesDone === alldata.MergeComponents.SourceCourses.length) {
+                    alldone.Merges = true;
+                    processCourseOffering();  
+                }                   
+            }
+        }
+    }
+    request.onerror = function(e) {
+        console.log("Failed to load data from SIS.");
+        if(alldata.MergeComponents.SourceCourses.length > 0) {
+            for(var sc=0; sc<alldata.MergeComponents.SourceCourses.length; sc++) {
+                var thissource = alldata.MergeComponents.SourceCourses[sc];
+                if(thissource.OrgUnitId === sourceid) {
+                    thissource.SIS = null;
+                    break;
+                }
+            }
+            alldata.MergeComponents.SourcesDone++;
+            if(alldata.MergeComponents.SourcesDone === alldata.MergeComponents.SourceCourses.length) {
+                alldone.Merges = true;
+                processCourseOffering();  
+            }                   
+        }
+    };  
+
+    request.send();
+}
+
+var coursedeliverydone = false;
+function getCourseInfo(code, ver, sem, sec) {
+    var request = new XMLHttpRequest();
+    var route = sisdomain + '/StudentPortalApps/eConestogaServices/Api/CourseSection/' + code + '/' + ver + '/' + sem + '/' + sec;
+    //console.log(route);
+    request.open('GET', route, true);
+    request.onload = function () {
+        // Begin accessing JSON data here
+        //console.log(this.response);
+
+        if (request.status == 200) {
+            var data = JSON.parse(this.response);
+
+            var thisobj = {
+                "code": code,
+                "ver": ver,
+                "sem": sem,
+                "sec": sec,
+                "info": data,
+                "WIL": data.WIL.length,
+                "SAT": []
+            }
+
+            for (var c = 0; c < data.Components.length; c++) {
+                thisobj.SAT.push(data.Components[c].SAT);
+            }
+
+            alldata.SIS = data;
+
+        } else {
+            // No information found
+            console.log("Failed to load data from SIS.");
+            alldata.SIS = null;
+            //console.log('error');
+        }
+        
+        alldone.SIS = true;
+        coursedeliverydone = true;
+        updateWidgetDataAuto();
+        
+        checkAllDone();
+
+    }
+    request.onerror = function(e) {
+        console.log("Failed to load data from SIS.");
+        alldata.SIS = null;  
+        
+        alldone.SIS = true;
+        coursedeliverydone = true;
+        updateWidgetDataAuto();
+        
+        checkAllDone();
+    };        
+
+    request.send();
+}

@@ -1,0 +1,1185 @@
+let initCalendar = (calendarData) => {
+  var formatDate = mobiscroll.formatDate;
+  var currentEvent;
+  var timer;
+  var tooltip = document.getElementById("cc-calendar-tooltip-popup");
+  var viewButton = document.getElementById("tooltip-event-view");
+  var header = document.getElementById("tooltip-event-header");
+  var time = document.getElementById("tooltip-event-time");
+  var type = document.getElementById("tooltip-event-type");
+  var title = document.getElementById("tooltip-event-title");
+  var calendarZone = document.querySelector(".calendarzone");
+  const mobileNavBreakpoint = 620;
+  let containerFluidBounds = document
+    .querySelector(".container-fluid")
+    .getBoundingClientRect();
+  var isInstructor = false;
+  if (
+    studentroles.indexOf(alldata.CurrentRole) === -1 &&
+    observeroles.indexOf(alldata.CurrentRole) === -1
+  ) {
+    isInstructor = true;
+  }
+
+  function generateUniqueId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+  }
+
+  const eventStylingObj = {
+    calendarEvent: {
+      backgroundColor: "#C0CED8",
+      className: "calendar-event",
+    },
+    assignment: {
+      backgroundColor: "#FFCE00",
+      className: "assignment",
+    },
+    checklist: {
+      backgroundColor: "#FCDBF6",
+      className: "checklist",
+    },
+    content: {
+      backgroundColor: "#63BED5",
+      className: "content",
+    },
+    discussion: {
+      backgroundColor: "#E97A73",
+      className: "discussion",
+    },
+    quiz: {
+      backgroundColor: "#7788D0",
+      className: "quiz",
+    },
+    grade: {
+      backgroundColor: "#AAE066",
+      className: "grade",
+    },
+  };
+
+  const currentTime = getServerTime();
+  //console.log(calendarData);
+  let calendarWidgetData = calendarData
+    .map((eventObj) => {
+      if (!eventObj.StartDate && !eventObj.EndDate && !eventObj.DueDate) {
+        return [];
+      }
+
+      let formattedEventObj = {
+        title: eventObj.Name,
+        end: eventObj.EndDate,
+        start: eventObj.StartDate,
+        formattedTime: (function () {
+          let formattedTimeStr = "";
+
+          if (eventObj.StartDate) {
+            formattedTimeStr += formatDate(
+              "h:mm A",
+              new Date(eventObj.StartDate)
+            );
+          }
+
+          if (eventObj.EndDate) {
+            if (formattedTimeStr !== "") {
+              formattedTimeStr += " - ";
+            }
+            formattedTimeStr += formatDate(
+              "h:mm A",
+              new Date(eventObj.EndDate)
+            );
+          }
+
+          return formattedTimeStr;
+        })(),
+        type: eventObj.Type,
+        formattedType: eventObj.Type,
+        url: eventObj.URL,
+        id: generateUniqueId(),
+        fullData: eventObj.Data,
+      };
+            
+      if (eventObj.StartDate && eventObj.EndDate) {          
+          if (
+              formattedEventObj.start.getFullYear() ===
+                formattedEventObj.end.getFullYear() &&
+              formattedEventObj.start.getMonth() ===
+                formattedEventObj.end.getMonth() &&
+              formattedEventObj.start.getDate() ===
+                formattedEventObj.end.getDate()
+            ) {
+              // The two dates are on the same day. No need to modify formattedTime.
+            } else {
+                //console.log(formattedEventObj);
+                var spantime = '';
+                spantime += formattedEventObj.start.toLocaleString("default", {month: "long"}) + " " + formattedEventObj.start.getDate() + " " + formattedEventObj.start.getFullYear() + " " + formatDate("h:mm A", new Date(formattedEventObj.start));
+                spantime += "<br>";
+                spantime += formattedEventObj.end.toLocaleString("default", {month: "long"}) + " " + formattedEventObj.end.getDate() + " " + formattedEventObj.end.getFullYear() + " " + formatDate("h:mm A", new Date(formattedEventObj.end));
+                //console.log(spantime);
+                formattedEventObj.formattedTime = spantime;
+            }
+      }
+
+      switch (formattedEventObj.type) {
+        case "Assignment":
+          var dueDate = undefined;
+          formattedEventObj.typeShort = "Assignment";
+          if (eventObj.DueDate) {
+            dueDate = eventObj.DueDate;
+          } else if (eventObj.EndDate) {
+            dueDate = eventObj.EndDate;
+          } else {
+            //Not sure what to do here.
+          }
+
+          if (eventObj.StartDate) {
+            if (eventObj.StartDate > currentTime) {
+              formattedEventObj.disableURL = true;
+            }
+          }
+
+          if (eventObj.EndDate) {
+            if (eventObj.EndDate < currentTime) {
+              formattedEventObj.disableURL = true;
+            }
+          }
+
+          //Check to see if this event has a grade item id I can search for.
+          if (formattedEventObj.fullData.GradeItemId) {
+            //Search through the data from alldata to find the corresponding grade item.
+            let currentGradeItem =
+              alldata.GradeItems.Objects.filter(
+                (gradeItem) =>
+                  gradeItem.Id === formattedEventObj.fullData.GradeItemId
+              )[0] || undefined;
+            //If we have found the grade item, add details to formattedEventObj
+            if (currentGradeItem) {
+              //This array will contain string. These strings will be used to fill out the calendar's detailed event view for assignments.
+              formattedEventObj.eventDetails = [];
+
+              if (currentGradeItem.WeightCalc) {
+                formattedEventObj.eventDetails.push(
+                  `<dt>Grade Weight</dt> <dd>${parseFloat(
+                    currentGradeItem.WeightCalc
+                  ).toFixed(2)}%</dd>`
+                );
+              }
+
+              if (isInstructor) {
+                //Instructor specific information.
+                if (currentGradeItem.Statistics.Average) {
+                  formattedEventObj.eventDetails.push(
+                    `<dt>Grade Average</dt> <dd>${
+                      Math.ceil(currentGradeItem.Statistics.Average) + "%"
+                    }</dd>`
+                  );
+                }
+
+                if (
+                  formattedEventObj.fullData.TotalUsersWithSubmissions !==
+                  "undefined"
+                ) {
+                  formattedEventObj.eventDetails.push(
+                    `<dt>Total Submissions</dt> <dd>${formattedEventObj.fullData.TotalUsersWithSubmissions}</dd>`
+                  );
+                }
+              } else {
+                if (studentroles.indexOf(alldata.CurrentRole) > -1) {
+                  //Student
+                  //TODO Fix this to actually work. Student "Has Submitted" status.
+                  if (
+                    alldata.AssignmentsAll.Objects.filter(
+                      (assignment) =>
+                        assignment.Id === formattedEventObj.fullData.Id
+                    )[0].Submissions
+                  ) {
+                    formattedEventObj.eventDetails.push(
+                      `<dt>Has Submitted</dt> <dd>Yes</dd>`
+                    );
+                  } else {
+                    formattedEventObj.eventDetails.push(
+                      `<dt>Has Submitted</dt> <dd>No</dd>`
+                    );
+                  }
+
+                  if (
+                    currentGradeItem.Values &&
+                    currentGradeItem.Values.Objects &&
+                    currentGradeItem.Values.Objects.length > 0
+                  ) {
+                    formattedEventObj.eventDetails.push(
+                      `<dt>Grade</dt> <dd>${currentGradeItem.Values.Objects[0].DisplayedGrade}</dd>`
+                    );
+                  }
+                }
+              }
+            }
+          }
+
+          formattedEventObj.color = eventStylingObj.assignment.backgroundColor;
+          formattedEventObj.styleObj = eventStylingObj.assignment;
+          formattedEventObj.start = dueDate;
+          formattedEventObj.end = dueDate;
+          formattedEventObj.formattedTime =
+            "Due at " + formatDate("h:mm A", new Date(dueDate));
+          break;
+        case "Quiz":
+          formattedEventObj.color = eventStylingObj.quiz.backgroundColor;
+          formattedEventObj.typeShort = "Quiz";
+          formattedEventObj.styleObj = eventStylingObj.quiz;
+
+          if (formattedEventObj.fullData.GradeItemId) {
+            //Search through the data from alldata to find the corresponding grade item.
+            let currentGradeItem =
+              alldata.GradeItems.Objects.filter(
+                (gradeItem) =>
+                  gradeItem.Id === formattedEventObj.fullData.GradeItemId
+              )[0] || undefined;
+            //If we have found the grade item, add details to formattedEventObj
+            if (currentGradeItem) {
+              formattedEventObj.eventDetails = [];
+
+              if (currentGradeItem.WeightCalc) {
+                formattedEventObj.eventDetails.push(
+                  `<dt>Grade Weight</dt> <dd>${parseFloat(
+                    currentGradeItem.WeightCalc
+                  ).toFixed(2)}%</dd>`
+                );
+              }
+
+              let fullQuizData = alldata.QuizzesAll.Objects.filter(
+                (quiz) => quiz.Id === formattedEventObj.fullData.Id
+              )[0];
+              if (isInstructor) {
+                //Instructor specific information.
+                if (currentGradeItem.Statistics.Average) {
+                  formattedEventObj.eventDetails.push(
+                    `<dt>Grade Average</dt> <dd>${
+                      Math.ceil(currentGradeItem.Statistics.Average) + "%"
+                    }</dd>`
+                  );
+                }
+
+                if (fullQuizData.Attempts.Objects) {
+                  formattedEventObj.eventDetails.push(
+                    `<dt>Total Attempts</dt> <dd>${fullQuizData.Attempts.Objects.length}</dd>`
+                  );
+                }
+              } else {
+                if (studentroles.indexOf(alldata.CurrentRole) > -1) {
+                  //Student
+                  //TODO Fix this to actually work. Student "Has Submitted" status.
+                  if (fullQuizData.Attempts) {
+                    formattedEventObj.eventDetails.push(
+                      `<dt>Completed</dt> <dd>Yes</dd>`
+                    );
+                  } else {
+                    formattedEventObj.eventDetails.push(
+                      `<dt>Completed</dt> <dd>No</dd>`
+                    );
+                  }
+
+                  if (currentGradeItem.Values.Objects) {
+                    if (currentGradeItem.Values.Objects.length > 0) {
+                      formattedEventObj.eventDetails.push(
+                        `<dt>Grade</dt> <dd>${currentGradeItem.Values.Objects[0].DisplayedGrade}</dd>`
+                      );
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          if (!formattedEventObj.start) {
+            formattedEventObj.start = formattedEventObj.end;
+            formattedEventObj.formattedTime = `${formatDate(
+              "h:mm A",
+              new Date(formattedEventObj.end)
+            )}`;
+            formattedEventObj.formattedType = "Quiz closes";
+          } else if (!formattedEventObj.end) {
+            formattedEventObj.end = formattedEventObj.start;
+            formattedEventObj.formattedTime = `${formatDate(
+              "h:mm A",
+              new Date(formattedEventObj.start)
+            )}`;
+            formattedEventObj.formattedType = "Quiz opens";
+          } else if (
+            formattedEventObj.start.getFullYear() ===
+              formattedEventObj.end.getFullYear() &&
+            formattedEventObj.start.getMonth() ===
+              formattedEventObj.end.getMonth() &&
+            formattedEventObj.start.getDate() ===
+              formattedEventObj.end.getDate()
+          ) {
+            // The two dates are on the same day.
+          } else {
+            // The two dates are not on the same day.
+            let quizStart = { ...formattedEventObj };
+            let quizEnd = { ...formattedEventObj };
+
+            quizStart.end = quizStart.start;
+            quizStart.formattedTime = `${formatDate(
+              "h:mm A",
+              new Date(quizStart.start)
+            )}`;
+            quizStart.formattedType = "Quiz opens";
+            quizStart.id = generateUniqueId();
+            quizEnd.start = quizEnd.end;
+            quizEnd.formattedTime = `${formatDate(
+              "h:mm A",
+              new Date(quizEnd.end)
+            )}`;
+            quizEnd.formattedType = "Quiz closes";
+            quizEnd.id = generateUniqueId();
+            formattedEventObj = [quizStart, quizEnd];
+          }
+
+          break;
+        case "CalendarEvent":
+          formattedEventObj.formattedType = "Calendar Event";
+          formattedEventObj.typeShort = formattedEventObj.formattedType;
+          formattedEventObj.color =
+            eventStylingObj.calendarEvent.backgroundColor;
+          formattedEventObj.styleObj = eventStylingObj.calendarEvent;
+          //TODO Add logic for all day events.
+          break;
+        case "DiscussionTopic":
+        case "DiscussionForum":
+          formattedEventObj.formattedType = "Discussion Topic";
+          formattedEventObj.typeShort = formattedEventObj.formattedType;
+          formattedEventObj.color = eventStylingObj.discussion.backgroundColor;
+          formattedEventObj.styleObj = eventStylingObj.discussion;
+
+          //Check for restrictions
+          //If this event has a start date, check the availability type.
+          //If the type is NOT "Visible with submission restricted before start", and it is currently before the start date, disable the button.
+          if (eventObj.StartDate) {
+            if (
+              eventObj.Data.StartDateAvailabilityType !== "1" &&
+              eventObj.StartDate > currentTime
+            ) {
+              formattedEventObj.disableURL = true;
+            }
+          }
+
+          //The same as above, but for the end date.
+          if (eventObj.EndDate) {
+            if (
+              eventObj.Data.EndDateAvailabilityType !== "1" &&
+              eventObj.EndDate < currentTime
+            ) {
+              formattedEventObj.disableURL = true;
+            }
+          }
+
+          //If there is no start date, set the start date to the end date, and create event about discussion closing.
+          if (!formattedEventObj.start) {
+            formattedEventObj.start = formattedEventObj.end;
+            formattedEventObj.formattedTime = `${formatDate(
+              "h:mm A",
+              new Date(formattedEventObj.end)
+            )}`;
+            formattedEventObj.formattedType = "Discussion closes";
+
+            //If there is no end date, set the end date to the start date, and create event about discussion opening.
+          } else if (!formattedEventObj.end) {
+            formattedEventObj.end = formattedEventObj.start;
+            formattedEventObj.formattedTime = `${formatDate(
+              "h:mm A",
+              new Date(formattedEventObj.start)
+            )}`;
+            formattedEventObj.formattedType = "Discussion opens";
+          } else {
+            //There is both a start time and end time.
+
+            if (
+              formattedEventObj.start.getFullYear() ===
+                formattedEventObj.end.getFullYear() &&
+              formattedEventObj.start.getMonth() ===
+                formattedEventObj.end.getMonth() &&
+              formattedEventObj.start.getDate() ===
+                formattedEventObj.end.getDate()
+            ) {
+              // The two dates are on the same day. Make a simple event.
+            } else {
+              // The two dates are not on the same day. Create two separate events, one for opening and one for closing.
+              let discussionStart = {
+                ...formattedEventObj,
+              };
+              let discussionEnd = {
+                ...formattedEventObj,
+              };
+
+              discussionStart.end = discussionStart.start;
+              discussionStart.formattedTime = `${formatDate(
+                "h:mm A",
+                new Date(discussionStart.start)
+              )}`;
+              discussionStart.formattedType = "Discussion opens";
+              discussionStart.id = generateUniqueId();
+              discussionEnd.start = discussionEnd.end;
+              discussionEnd.formattedTime = `${formatDate(
+                "h:mm A",
+                new Date(discussionEnd.end)
+              )}`;
+              discussionEnd.formattedType = "Discussion closes";
+              discussionEnd.id = generateUniqueId();
+              formattedEventObj = [discussionStart, discussionEnd];
+            }
+          }
+
+          break;
+        case "ContentTopic":
+          formattedEventObj.color = eventStylingObj.content.backgroundColor;
+          formattedEventObj.styleObj = eventStylingObj.content;
+          formattedEventObj.formattedType = "Content Topic";
+          formattedEventObj.typeShort = formattedEventObj.formattedType;
+
+          if (!formattedEventObj.start) {
+            formattedEventObj.start = formattedEventObj.end;
+          }
+
+          if (!formattedEventObj.end) {
+            formattedEventObj.end = formattedEventObj.start;
+          }
+              
+            if (
+              formattedEventObj.start.getFullYear() ===
+                formattedEventObj.end.getFullYear() &&
+              formattedEventObj.start.getMonth() ===
+                formattedEventObj.end.getMonth() &&
+              formattedEventObj.start.getDate() ===
+                formattedEventObj.end.getDate()
+            ) {
+              // The two dates are on the same day. Make a simple event.
+            } else {
+              // The two dates are not on the same day. Create two separate events, one for opening and one for closing.
+              let contentTopicStart = {
+                ...formattedEventObj,
+              };
+              let contentTopicEnd = {
+                ...formattedEventObj,
+              };
+
+              contentTopicStart.end = contentTopicStart.start;
+              contentTopicStart.formattedTime = `${formatDate(
+                "h:mm A",
+                new Date(contentTopicStart.start)
+              )}`;
+              contentTopicStart.formattedType = "Content opens";
+              contentTopicStart.id = generateUniqueId();
+              contentTopicEnd.start = contentTopicEnd.end;
+              contentTopicEnd.formattedTime = `${formatDate(
+                "h:mm A",
+                new Date(contentTopicEnd.end)
+              )}`;
+              contentTopicEnd.formattedType = "Content closes";
+              contentTopicEnd.id = generateUniqueId();
+              formattedEventObj = [contentTopicStart, contentTopicEnd];
+            }              
+
+          break;
+        case "ContentModule":
+          formattedEventObj.color = eventStylingObj.content.backgroundColor;
+          formattedEventObj.styleObj = eventStylingObj.content;
+          formattedEventObj.formattedType = "Content Module";
+          formattedEventObj.typeShort = formattedEventObj.formattedType;
+
+          if (!formattedEventObj.start) {
+            formattedEventObj.start = formattedEventObj.end;
+          }
+
+          if (!formattedEventObj.end) {
+            formattedEventObj.end = formattedEventObj.start;
+          }
+
+          break;
+        case "ChecklistItem":
+          var dueDate = undefined;
+          if (eventObj.DueDate) {
+            dueDate = eventObj.DueDate;
+          } else if (eventObj.EndDate) {
+            dueDate = eventObj.EndDate;
+          } else {
+            //Not sure what to do here.
+          }
+          formattedEventObj.end = dueDate;
+
+          formattedEventObj.color = eventStylingObj.checklist.backgroundColor;
+          formattedEventObj.styleObj = eventStylingObj.checklist;
+          formattedEventObj.formattedType = "Checklist Item";
+          formattedEventObj.typeShort = formattedEventObj.formattedType;
+
+          if (!formattedEventObj.start) {
+            formattedEventObj.start = formattedEventObj.end;
+          }
+
+          if (!formattedEventObj.end) {
+            formattedEventObj.end = formattedEventObj.start;
+          }
+          formattedEventObj.formattedTime =
+            "Due at " + formatDate("h:mm A", new Date(dueDate));
+
+          break;
+        case "GradeItem":
+          formattedEventObj.color = eventStylingObj.grade.backgroundColor;
+          formattedEventObj.styleObj = eventStylingObj.grade;
+          formattedEventObj.formattedType = "Grade Item";
+          formattedEventObj.typeShort = formattedEventObj.formattedType;
+
+          if (!formattedEventObj.start) {
+            formattedEventObj.start = formattedEventObj.end;
+          }
+
+          if (!formattedEventObj.end) {
+            formattedEventObj.end = formattedEventObj.start;
+          }
+
+          break;
+      }
+
+      //if IsVisible is false, disable the event link.
+      if (!eventObj.IsVisible || eventObj.URL === "") {
+        formattedEventObj.disableURL = true;
+      }
+
+      //If the current user's role is NOT found in the studentroles array, re-enable all URLs.
+      if (studentroles.indexOf(alldata.CurrentRole) === -1) {
+        formattedEventObj.disableURL = false;
+      }
+
+      return formattedEventObj;
+    })
+    .flat();
+
+  let populatePopupContent = function (event) {
+    var eventTime = event.formattedTime;
+    var button = {};
+
+    //We'll use this function to check to make sure other event style tags are removed.
+    function removeClassIfPresent(element, className) {
+      if (element.classList.contains(className)) {
+        element.classList.remove(className);
+      }
+    }
+    //If it has any classes we know are from the styleObj, remove them.
+    Object.values(eventStylingObj).forEach((obj) => {
+      removeClassIfPresent(header, obj.className);
+    });
+
+    currentEvent = event;
+    header.classList.add(currentEvent.styleObj.className);
+    header.style.backgroundColor = currentEvent.color;
+    title.innerHTML = event.title;
+    time.innerHTML = eventTime;
+
+    type.innerHTML = event.formattedType;
+  };
+
+  let courseStartDate = alldata.CourseOffering.StartDate;
+  let courseEndDate = alldata.CourseOffering.EndDate;
+
+  if (courseStartDate === null) {
+    courseStartDate = undefined;
+  }
+
+  if (courseEndDate === null) {
+    courseEndDate = undefined;
+  }
+
+  const calendarOptions = {
+    view: {
+      calendar: {
+        type: "month",
+        scroll: "vertical",
+      },
+    },
+    scroll: "vertical",
+    firstDay: 1,
+    theme: "ios",
+    themeVariant: "light",
+    selectedDate: currentTime > courseEndDate ? currentTime : courseStartDate,
+    data: calendarWidgetData,
+    max: courseEndDate,
+    min: courseStartDate,
+    colors: [
+      {
+        background: "#ECECEC",
+        recurring: { repeat: "weekly", weekDays: "SU" },
+      },
+      {
+        background: "#ECECEC",
+        recurring: { repeat: "weekly", weekDays: "SA" },
+      },
+    ],
+    clickToCreate: false,
+    dragToCreate: false,
+    showEventTooltip: false,
+    onEventHoverIn: function (args, inst) {
+      containerFluidBounds = document
+        .querySelector(".container-fluid")
+        .getBoundingClientRect();
+      if (containerFluidBounds.width <= mobileNavBreakpoint) {
+        return;
+      }
+
+      args.event.isStudent = false;
+      if (inst.props.className.includes("calendar-student")) {
+        args.event.isStudent = true;
+      }
+
+      populatePopupContent(args.event);
+
+      clearTimeout(timer);
+      timer = null;
+
+      tooltip.setOptions({
+        anchor: args.domEvent.target,
+      });
+      tooltip.open();
+    },
+    onEventHoverOut: function (args) {
+      containerFluidBounds = document
+        .querySelector(".container-fluid")
+        .getBoundingClientRect();
+      if (containerFluidBounds.width <= mobileNavBreakpoint) {
+        return;
+      }
+
+      if (!timer) {
+        timer = setTimeout(function () {
+          tooltip.close();
+        }, 200);
+      }
+    },
+    onEventClick: function (event, inst) {
+      containerFluidBounds = document
+        .querySelector(".container-fluid")
+        .getBoundingClientRect();
+
+      if (containerFluidBounds.width <= mobileNavBreakpoint) {
+        if (
+          event.domEvent.target.querySelector(".cc-button") ===
+          document.activeElement
+        ) {
+          window.parent.location = event.event.url;
+        } else if (event.domEvent.target.classList.contains("cc-button")) {
+          window.parent.location = event.event.url;
+        } else {
+          $("#" + event.event.id).collapse("toggle");
+          $("#" + event.event.id).on("shown.bs.collapse", function () {
+            //frameHeight();
+          });
+        }
+      } else {
+        var x =
+          event.domEvent.clientX - calendarZone.getBoundingClientRect().left;
+
+        let popoverInst = undefined;
+        if (inst.props.className.includes("calendar-student")) {
+          popoverInst = calendarPopoverInst.student;
+        } else {
+          popoverInst = calendarPopoverInst.instructor;
+        }
+        popoverInst.setContent(event.event);
+        tooltip.close();
+
+        if (
+          event.domEvent.target.classList.contains("mbsc-calendar-label-text")
+        ) {
+          popoverInst.open(x, event.domEvent.target.parentElement);
+        } else {
+          popoverInst.open(x, event.domEvent.target);
+        }
+      }
+    },
+    renderEventContent: function (data) {
+      var event = data;
+      var eventTime = event.start + " - " + event.end;
+
+      return `<div class="cc-calendar-mobile-title-box">${event.title}</div>
+            <div class="cc-calendar-mobile-collapse collapse" id="${event.id}">
+            <div class="cc-calendar-mobile-type-container">
+                <p>${event.original.formattedType}<p>
+            </div>
+            <div class="cc-calendar-mobile-details-container">${
+              event.original.eventDetails
+                ? event.original.eventDetails.reduce(
+                    (accumulator, current) => accumulator + current,
+                    ""
+                  )
+                : ""
+            }</div>
+            <button class="cc-button">View More</button>
+            </div>
+            `;
+    },
+    responsive: {
+      custom: {
+        // Custom breakpoint based on mobile nav bar breakpoint
+        breakpoint: mobileNavBreakpoint,
+        view: {
+          calendar: {
+            labels: true,
+            scroll: "vertical",
+            type: "month",
+            outerDays: true,
+          },
+        },
+      },
+      xsmall: {
+        view: {
+          calendar: {
+            type: "week",
+          },
+          agenda: {
+            type: "week",
+          },
+        },
+      },
+    },
+  };
+
+  let mobiScrollCalendarObjInstructor = mobiscroll.eventcalendar(
+    "#calendar-instructor",
+    calendarOptions
+  );
+
+  let mobiScrollCalendarObjStudent = mobiscroll.eventcalendar(
+    "#calendar-student",
+    calendarOptions
+  );
+
+  var tooltip = mobiscroll.popup("#cc-calendar-tooltip-popup", {
+    display: "anchored",
+    touchUi: false,
+    showOverlay: false,
+    contentPadding: false,
+    closeOnOverlayClick: false,
+    focusOnClose: false,
+    width: 350,
+    onInit: function () {
+      tooltip.addEventListener("mouseenter", function (e) {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+      });
+
+      tooltip.addEventListener("mouseleave", function () {
+        timer = setTimeout(function () {
+          tooltip.close();
+        }, 200);
+      });
+    },
+    onClosed: function () {
+      function removeNonTooltipClasses(element) {
+        var classes = element.classList;
+        var classesToRemove = [];
+
+        for (var i = 0; i < classes.length; i++) {
+          var className = classes[i];
+
+          if (className !== "md-tooltip-header") {
+            classesToRemove.push(className);
+          }
+        }
+
+        for (var j = 0; j < classesToRemove.length; j++) {
+          element.classList.remove(classesToRemove[j]);
+        }
+      }
+
+      removeNonTooltipClasses(header);
+    },
+  });
+
+  viewButton.addEventListener("click", function (event) {
+    event.preventDefault();
+    tooltip.close();
+
+    var x = event.clientX - calendarZone.getBoundingClientRect().left;
+
+    let popoverInst = undefined;
+    if (currentEvent.isStudent) {
+      popoverInst = calendarPopoverInst.student;
+    } else {
+      popoverInst = calendarPopoverInst.instructor;
+    }
+    popoverInst.setContent(currentEvent);
+    popoverInst.open(x, tooltip.props.anchor.parentElement);
+  });
+
+  //Array of all calendar instances.
+  let calendarPopoverInst = [];
+
+  // Function to update the calendars
+  function updateCalendars(highlightStart, highlightEnd) {
+    //if (mobiScrollCalendarObjInstructor._calendarType === 'month') { //TODO Run this only for month calendar.
+    if (true) {
+      const desktopColours = {
+        colors: [
+          {
+            start: highlightStart,
+            end: highlightEnd,
+            background: "#ecf6f8",
+            allDay: true,
+          },
+          {
+            background: "#ECECEC",
+            recurring: { repeat: "weekly", weekDays: "SU" },
+          },
+          {
+            background: "#ECECEC",
+            recurring: { repeat: "weekly", weekDays: "SA" },
+          },
+        ],
+      };
+
+      mobiScrollCalendarObjInstructor.setOptions(desktopColours);
+      mobiScrollCalendarObjInstructor.navigate(highlightStart);
+      mobiScrollCalendarObjStudent.setOptions(desktopColours);
+      mobiScrollCalendarObjStudent.navigate(highlightStart);
+    } else {
+      const mobileColours = {
+        colors: [
+          {
+            background: "#ECECEC",
+            recurring: { repeat: "weekly", weekDays: "SU" },
+          },
+          {
+            background: "#ECECEC",
+            recurring: { repeat: "weekly", weekDays: "SA" },
+          },
+        ],
+      };
+
+      mobiScrollCalendarObjInstructor.setOptions(mobileColours);
+      mobiScrollCalendarObjStudent.setOptions(mobileColours);
+    }
+  }
+
+  function parseDataDateAttribute(dateElement) {
+    // Get the element with the class '.thisweek-end'
+
+    // Check if the element exists and has the 'data-date' attribute
+    if (dateElement && dateElement.hasAttribute("data-date")) {
+      // Get the 'data-date' attribute value as a string
+      const dateString = dateElement.getAttribute("data-date");
+
+      // Parse the dateString into a Date object
+      const dateObject = new Date(dateString);
+
+      // Check if the parsing was successful
+      if (!isNaN(dateObject.getTime())) {
+        return dateObject;
+      } else {
+        console.error("Invalid date string:", dateString);
+      }
+    } else {
+      console.error(
+        'Element with class ".thisweek-end" or data-date attribute not found'
+      );
+    }
+
+    return null; // Return null if parsing fails or element not found
+  }
+
+  // Function to handle changes in the element's content
+  function handleContentChange(mutationsList, observer) {
+    for (const mutation of mutationsList) {
+      if (
+        mutation.type === "attributes" &&
+        mutation.target === thisweekEndElement
+      ) {
+        // Parse the new date when the text content changes
+        let startDate = parseDataDateAttribute(
+          document.querySelector(".thisweek-start")
+        );
+        let endDate = parseDataDateAttribute(
+          document.querySelector(".thisweek-end")
+        );
+        updateCalendars(startDate, endDate);
+      }
+    }
+  }
+
+  let initHightlight = function () {
+    let startDate = parseDataDateAttribute(
+      document.querySelector(".thisweek-start")
+    );
+    let endDate = parseDataDateAttribute(
+      document.querySelector(".thisweek-end")
+    );
+    updateCalendars(startDate, endDate);
+  };
+
+  // Set up a MutationObserver to watch for changes in .thisweek-end attribute
+  const thisweekEndElement = document.querySelector(".thisweek-end");
+
+  const observer = new MutationObserver(handleContentChange);
+  observer.observe(thisweekEndElement, {
+    characterData: true,
+    attributes: true,
+  });
+
+  //Loop through calendarzone instances. Mobiscroll is given a single ID to initiate, and in this case the ID returns two elements. Mobiscroll handles this fine, initiating two separate instances of the calendar, one for instructor and one for students. I will try to mimic this behaviour here, producing an object with two separate popover instances I can reference.
+  document.querySelectorAll(".calendarzone").forEach((el) => {
+    var calendarZone = el;
+    var Popover = (function () {
+      var popover;
+      var isRightSide = true;
+      var isOpen = false;
+      let focusedElement = undefined;
+
+      //Because I'm using classes on the title container to change the colour and icon, this function cleans up any additional classes I might have added.
+      function removeNonPopoverClasses(element) {
+        var classes = element.classList;
+        var classesToRemove = [];
+
+        for (var i = 0; i < classes.length; i++) {
+          var className = classes[i];
+
+          if (className !== "popover-title-container") {
+            classesToRemove.push(className);
+          }
+        }
+
+        for (var j = 0; j < classesToRemove.length; j++) {
+          element.classList.remove(classesToRemove[j]);
+        }
+      }
+
+      //This function generated the nodes, assigns necessary values and event handlers, and inserts it into the DOM as a sibling to the calendar.
+      function createPopover() {
+        //Popover container
+        popover = document.createElement("div");
+        popover.classList.add("calendar-popover");
+        popover.setAttribute("tabindex", "0");
+
+        //Popover title span
+        const titleText = document.createElement("span");
+        titleText.classList.add("popover-title-text");
+
+        //Popover close button
+        const closeButton = document.createElement("button");
+        closeButton.classList.add("popover-close-button");
+        closeButton.addEventListener("click", function () {
+          document.removeEventListener("keydown", handleEscapeKeyPress);
+          document.removeEventListener("click", handleOutsideClick);
+          Popover.close();
+        });
+
+        //Title container
+        const titleContainer = document.createElement("div");
+        titleContainer.classList.add("popover-title-container");
+
+        //Add title span and close button to title container
+        titleContainer.appendChild(titleText);
+        titleContainer.appendChild(closeButton);
+
+        //Type container
+        const typeContainer = document.createElement("div");
+        typeContainer.classList.add("popover-type-container");
+
+        //Time container
+        const timeContainer = document.createElement("div");
+        timeContainer.classList.add("popover-time-container");
+
+        //Details container
+        const detailsContainer = document.createElement("dl");
+        detailsContainer.classList.add("popover-details-container");
+
+        //View more button
+        const viewMoreButton = document.createElement("button");
+        viewMoreButton.classList.add("cc-button");
+        viewMoreButton.innerHTML = "View More";
+
+        //Add to popover element
+        popover.appendChild(titleContainer);
+        popover.appendChild(typeContainer);
+        popover.appendChild(timeContainer);
+        popover.appendChild(detailsContainer);
+        popover.appendChild(viewMoreButton);
+
+        //Add components to DOMComponents object for later manipulation.
+        popover.DOMComponents = {};
+        popover.DOMComponents.popover = popover;
+        popover.DOMComponents.titleText = titleText;
+        popover.DOMComponents.titleContainer = titleContainer;
+        popover.DOMComponents.typeContainer = typeContainer;
+        popover.DOMComponents.timeContainer = timeContainer;
+        popover.DOMComponents.detailsContainer = detailsContainer;
+        popover.DOMComponents.viewMoreButton = viewMoreButton;
+
+        calendarZone.appendChild(popover);
+      }
+
+      //This function closes the popup when the user click anywhere that's not within the popover or another event. It also cleans up the it's own event. This event is only bound when a popup opens.
+      function handleOutsideClick(event) {
+        if (popover !== null) {
+          if (
+            !popover.contains(event.target) &&
+            !event.target.classList.contains("mbsc-calendar-label-text") &&
+            event.target.id !== "tooltip-event-view"
+          ) {
+            document.removeEventListener("keydown", handleEscapeKeyPress);
+            document.removeEventListener("click", handleOutsideClick);
+            Popover.close();
+          }
+        }
+      }
+
+      //This function closes the popup when the user presses the escape key. It also cleans up the it's own event. This event is only bound when a popup opens.
+      function handleEscapeKeyPress(event) {
+        if (event.key === "Escape") {
+          document.removeEventListener("keydown", handleEscapeKeyPress);
+          document.removeEventListener("click", handleOutsideClick);
+          Popover.close();
+        }
+      }
+
+      return {
+        open: async function (x, currentFocus) {
+          //I want to store the location of the user's focus when they open a popover so I can get that as the focus once it is closed. I first check if they're opening the popover via the button on the tooltip, and if so I use the tooltip's anchor. Otherwise I just take the active element.
+          previousFocusedElement = currentFocus;
+
+          if (isOpen) {
+            //Popover is already open, no animation necessary.
+            return;
+          }
+          isRightSide = x > calendarZone.offsetWidth / 2;
+
+          if (!popover) {
+            createPopover();
+          }
+
+          popover.style.right = isRightSide ? "0" : "auto";
+          popover.style.left = isRightSide ? "auto" : "0";
+          popover.style.transform = isRightSide
+            ? "translateX(100%)"
+            : "translateX(-100%)";
+
+          setTimeout(() => {
+            popover.style.transition = "transform 0.3s ease-in-out";
+            popover.style.transform = "translateX(0)";
+          }, 0);
+
+          document.addEventListener("keydown", handleEscapeKeyPress);
+
+          setTimeout(() => {
+            document.addEventListener("click", handleOutsideClick);
+          }, 0);
+          isOpen = true;
+        },
+        setContent: function (eventObj) {
+          if (!popover) createPopover();
+
+          //Set title text
+          popover.DOMComponents.titleText.innerHTML = eventObj.title;
+
+          //Set type text
+          popover.DOMComponents.typeContainer.innerHTML =
+            eventObj.formattedType;
+
+          //Generate a formatted string that fits the <long month name> <day>, <year> <br> <time>
+
+          var eventTimeLong;
+          if (
+            eventObj.start.getDate() === eventObj.end.getDate() &&
+            eventObj.start.getMonth() === eventObj.end.getMonth() &&
+            eventObj.start.getYear() === eventObj.end.getYear()
+          ) {
+            eventTimeLong = `${eventObj.end.toLocaleString("default", {
+              month: "long",
+            })} ${eventObj.end.getDate()}, ${eventObj.end.getFullYear()} <br> ${
+              eventObj.formattedTime
+            }`;
+          } else {
+            eventTimeLong = `${eventObj.start.toLocaleString("default", {
+              month: "long",
+            })} ${eventObj.start.getDate()}, ${eventObj.start.getFullYear()}, ${formatDate(
+              "h:mm A",
+              new Date(eventObj.start)
+            )} <br> ${eventObj.end.toLocaleString("default", {
+              month: "long",
+            })} ${eventObj.end.getDate()}, ${eventObj.end.getFullYear()}, ${formatDate(
+              "h:mm A",
+              new Date(eventObj.end)
+            )}`;
+          }
+
+          popover.DOMComponents.timeContainer.innerHTML = eventTimeLong;
+
+          //Remove any classes from previous instances of the popover.
+          removeNonPopoverClasses(popover.DOMComponents.titleContainer);
+          popover.DOMComponents.titleContainer.classList.add(
+            eventObj.styleObj.className
+          );
+
+          //Add link to view more button.
+
+          if (eventObj.disableURL) {
+            popover.DOMComponents.viewMoreButton.disabled = true;
+          } else {
+            popover.DOMComponents.viewMoreButton.disabled = false;
+            popover.DOMComponents.viewMoreButton.innerHTML = `Go to ${eventObj.typeShort}`;
+
+            // We can't just keep adding new event listeners to this button without removing the old ones, because if the PopOver isn't closed before another is opened then every "Go to" will open all previous pages as well. :)
+            /*
+                        popover.DOMComponents.viewMoreButton.addEventListener('click', () => {
+                            window.open(eventObj.url, '_blank');
+                        });    
+                        */
+
+            popover.DOMComponents.viewMoreButton.setAttribute(
+              `onClick`,
+              `popoverGoToClick("` + eventObj.url + `")`
+            );
+          }
+
+          popover.DOMComponents.detailsContainer.innerHTML =
+            eventObj.eventDetails
+              ? eventObj.eventDetails.reduce(
+                  (accumulator, current) => accumulator + current,
+                  ""
+                )
+              : "";
+          //Set focus to the title of the popover.
+          popover.DOMComponents.popover.focus();
+        },
+        close: function () {
+          if (!popover) return;
+
+          popover.style.transform = isRightSide
+            ? "translateX(100%)"
+            : "translateX(-100%)";
+          setTimeout(function () {
+            calendarZone.removeChild(popover);
+            popover = null;
+          }, 300);
+          isOpen = false;
+          //Return focus to element captured when the popover was opened.
+          previousFocusedElement.focus();
+        },
+        isOpen: false,
+        previousFocusedElement: undefined,
+      };
+    })();
+
+    calendarPopoverInst.push(Popover);
+  });
+
+  //Let's convert our array of popover objects and instead assign them as properties on calendarPopoverInst.
+  calendarPopoverInst = ((calendarPopoverInst) => {
+    var popoverObject = {};
+    popoverObject.instructor = calendarPopoverInst[0];
+    popoverObject.student = calendarPopoverInst[1];
+    return popoverObject;
+  })(calendarPopoverInst);
+  initHightlight();
+};
+
+function popoverGoToClick(eventurl) {
+  window.open(eventurl, "_blank");
+}

@@ -1,0 +1,3158 @@
+// JavaScript Document
+
+function isValidDate(d) {
+    return d instanceof Date && !isNaN(d);
+}
+
+
+function getEndDate(type, item) {
+    //console.log(type);
+    //console.log(item);
+    
+    var datereturn = {
+        date: null,
+        label: ""
+    };
+    
+    if(type === "Discussions") {
+        if(item.UnlockEndDate !== null) {
+            datereturn.date = new Date(item.UnlockEndDate);
+        }
+        else {
+            if(item.EndDate !== null) {
+                datereturn.date = new Date(item.EndDate);
+            }
+        }
+        datereturn.label = "Ends";
+    }
+    else if(type === "Quizzes") {
+        if(item.DueDate !== null) {
+            datereturn.date = new Date(item.DueDate);
+            datereturn.label = "Due";
+        }
+        else {
+            if(item.EndDate !== null) {
+                datereturn.date = new Date(item.EndDate);
+                datereturn.label = "Ends";
+            }
+        }
+    }
+    else if(type === "Assignments") {
+        if(item.DueDate !== null) {
+            datereturn.date = new Date(item.DueDate);
+            datereturn.label = "Due";
+        }
+        else {
+            if(item.Availability !== null) {
+                if(item.Availability.EndDate !== null) {
+                    datereturn.date = new Date(item.Availability.EndDate);
+                    datereturn.label = "Ends";
+                }
+            }
+        }
+    }
+    
+    return datereturn;
+    
+}
+
+
+function processDateAssess() {
+    
+    if(observeroles.indexOf(alldata.CurrentRole) === -1) {
+        var tdate = new Date();
+
+        for(var s=0; s<alldata.Classlist.Objects.length; s++) {
+            var checkdate = false;
+
+            if(studentroles.indexOf(alldata.CurrentRole) > -1) {
+                if(alldata.Classlist.Objects[s].Identifier === alldata.WhoAmI.Identifier) {
+                    checkdate = true;
+                }
+            }
+            else {
+                checkdate = true;
+            }
+
+            if(checkdate) {
+                alldata.Classlist.Objects[s].LateAssess = [];
+                alldata.Classlist.Objects[s].Overdue = {
+                    GradeZero:0,
+                    Quizzes:0,
+                    Assignments:0,
+                    Other:0,
+                    Total:0
+                }
+                for(var g=0; g<alldata.GradeItems.Objects.length; g++) {
+                    var thisgrade = alldata.GradeItems.Objects[g];
+                    //console.log(thisgrade);
+                    if(thisgrade.EndDate !== undefined) {
+                        if(thisgrade.EndDate !== null) {
+                            var edate = new Date(thisgrade.EndDate);
+                            //if(edate < tdate) {
+                                var currentlyzero = true;
+                                if(studentroles.indexOf(alldata.CurrentRole) > -1) {
+                                    if(thisgrade.Values.Objects.length > 0) {
+                                        if(thisgrade.Values.Objects[0].PointsNumerator !== 0) {
+                                            currentlyzero = false;
+                                        }
+                                        else {
+                                            alldata.Classlist.Objects[s].Overdue.GradeZero++;
+                                        }
+                                    }
+                                }
+                                else {
+                                    //console.log(JSON.parse(JSON.stringify(thisgrade.Values)));
+                                    for(var v=0; v<thisgrade.Values.Objects.length; v++) {
+                                        if(thisgrade.Values.Objects[v].User.Identifier === alldata.Classlist.Objects[s].Identifier) {
+                                            //console.log(thisgrade.Values.Objects[v].GradeValue);
+                                            if(thisgrade.Values.Objects[v].GradeValue !== null) {
+                                                if(thisgrade.Values.Objects[v].GradeValue.PointsNumerator !== 0) {
+                                                    currentlyzero = false;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if(currentlyzero) {
+                                    if(thisgrade.AssociatedTool !== null) {
+                                        if(thisgrade.AssociatedTool.DisplayName === "Quizzes") {
+                                            for(var q=0; q<alldata.QuizzesAll.Objects.length; q++) {
+                                                if(alldata.QuizzesAll.Objects[q].QuizId === thisgrade.AssociatedTool.ToolItemId) {
+                                                    var thisquiz = alldata.QuizzesAll.Objects[q];
+                                                    var attemptfound = false;
+                                                    if(thisquiz.Attempts !== undefined) {
+                                                        for(var qa=0; qa<thisquiz.Attempts.Objects.length; qa++) {
+                                                            if(thisquiz.Attempts.Objects[qa].UserId === parseInt(alldata.Classlist.Objects[s].Identifier)) {
+                                                                attemptfound = true;
+                                                            }
+                                                        }
+                                                    }
+                                                    if(!attemptfound) {
+                                                        if(edate < tdate) {
+                                                            alldata.Classlist.Objects[s].LateAssess.push(thisgrade.Id);
+                                                            alldata.Classlist.Objects[s].Overdue.Quizzes++;
+                                                            alldata.Classlist.Objects[s].Overdue.Total++;       
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        else if(thisgrade.AssociatedTool.DisplayName === "Assignments") {
+                                            //console.log(alldata.AssignmentsAll);
+                                            for(var a=0; a<alldata.AssignmentsAll.Objects.length; a++) {
+                                                if(alldata.AssignmentsAll.Objects[a].Id === thisgrade.AssociatedTool.ToolItemId) {
+                                                    var thisassign = alldata.AssignmentsAll.Objects[a];
+                                                    var attemptfound = false;
+
+                                                    //console.log(thisassign);
+                                                    if(thisassign.Submissions !== undefined) {
+                                                        if(thisassign.Submissions.length > 0) {
+                                                            if(studentroles.indexOf(alldata.CurrentRole) > -1) {
+                                                                // Submission found earlier from ECPlus.
+                                                                attemptfound = true;
+                                                            }
+                                                            else {
+                                                                for(var as=0; as<thisassign.Submissions.length; as++) {
+                                                                    if(parseInt(thisassign.DropboxType) === 1) {
+                                                                        //console.log("group");
+                                                                        for(var gc=0; gc<alldata.GroupsAll.Objects.length; gc++) {
+                                                                            for(var gd=0; gd<alldata.GroupsAll.Objects[gc].GroupsData.length; gd++) {
+                                                                                var thisgroup = alldata.GroupsAll.Objects[gc].GroupsData[gd];
+                                                                                if(thisassign.Submissions[as].Entity.EntityId === thisgroup.GroupId) {
+                                                                                    for(var ge=0; ge<thisgroup.Enrollments.length; ge++) {
+                                                                                        if(thisgroup.Enrollments[ge] === parseInt(alldata.Classlist.Objects[s].Identifier)) {
+                                                                                            if(thisassign.Submissions[as].Submissions.length > 0) {
+                                                                                                attemptfound = true;
+                                                                                            }
+                                                                                            else {
+                                                                                                if(thisassign.Submissions[as].Feedback !== null) {
+                                                                                                    if(thisassign.Submissions[as].Feedback.Score !== null) {
+                                                                                                        if(thisassign.Submissions[as].Feedback.Score !== 0) {
+                                                                                                            attemptfound = true;
+                                                                                                        }                                                                    
+                                                                                                    }                                       
+                                                                                                }     
+                                                                                            }  
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }                                                        
+                                                                    }
+                                                                    if(parseInt(thisassign.DropboxType) === 2) {
+                                                                        if(thisassign.Submissions[as].Entity.EntityId === parseInt(alldata.Classlist.Objects[s].Identifier)) {
+                                                                            //console.log(thisassign.Submissions[as]);
+                                                                            if(thisassign.Submissions[as].Submissions.length > 0) {
+                                                                                attemptfound = true;
+                                                                            }
+                                                                            else {
+                                                                                if(thisassign.Submissions[as].Feedback !== null) {
+                                                                                    if(thisassign.Submissions[as].Feedback.Score !== null) {
+                                                                                        if(thisassign.Submissions[as].Feedback.Score !== 0) {
+                                                                                            attemptfound = true;
+                                                                                        }                                                                    
+                                                                                    }                                       
+                                                                                }     
+                                                                            }                                           
+                                                                        }
+                                                                        //console.log(attemptfound);
+                                                                    }
+                                                                }                                                            
+                                                            }
+                                                        }
+                                                    }
+                                                    if(!attemptfound) {
+                                                        if(edate < tdate) {
+                                                            alldata.Classlist.Objects[s].LateAssess.push(thisgrade.Id);
+                                                            alldata.Classlist.Objects[s].Overdue.Assignments++;
+                                                            alldata.Classlist.Objects[s].Overdue.Total++;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    else {
+                                        if(studentroles.indexOf(alldata.CurrentRole) > -1) {
+                                            //console.log(alldata.Classlist.Objects[s]);
+                                            //console.log(thisgrade);
+                                            if(thisgrade.Values.Objects.length > 0) {
+                                                if(edate < tdate) {
+                                                    alldata.Classlist.Objects[s].LateAssess.push(thisgrade.Id);
+                                                    alldata.Classlist.Objects[s].Overdue.Other++;
+                                                    alldata.Classlist.Objects[s].Overdue.Total++;
+                                                }
+                                            }
+                                        }
+                                        else {
+                                            var nonzerofound = false;
+                                            if(thisgrade.Values.Objects.length > 0) {
+                                                for(var v2=0; v2<thisgrade.Values.Objects.length; v2++) {
+                                                    if(thisgrade.Values.Objects[v2].GradeValue !== null) {
+                                                        if(thisgrade.Values.Objects[v2].GradeValue.PointsNumerator !== 0) {
+                                                            nonzerofound = true;
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                                if(nonzerofound) {
+                                                    var attemptfound = false;
+                                                    for(var uv=0; uv<alldata.Classlist.Objects[s].Values.length; uv++) {
+                                                        if(parseInt(alldata.Classlist.Objects[s].Values[uv].GradeObjectIdentifier) === thisgrade.Id) {
+                                                            attemptfound = true;
+                                                        }
+                                                    }
+                                                    if(!attemptfound) {
+                                                        if(edate < tdate) {
+                                                            alldata.Classlist.Objects[s].LateAssess.push(thisgrade.Id);
+                                                            alldata.Classlist.Objects[s].Overdue.Other++;
+                                                            alldata.Classlist.Objects[s].Overdue.Total++;
+                                                        }
+                                                    }
+                                                }
+                                            }                                        
+                                        }
+                                    }
+                                }
+                            //}    
+                        }
+                    }
+                }
+            }
+        }        
+    }
+}
+
+
+function processProgress() {
+	
+	for (var p = 0; p < alldata.ContentViews.Objects.length; p++) {
+		for (var u = 0; u < alldata.Classlist.Objects.length; u++) {
+			if (parseInt(alldata.Classlist.Objects[u].Identifier) === alldata.ContentViews.Objects[p].UserId) {
+				if (alldata.Classlist.Objects[u].TotalTime === undefined) {
+					alldata.Classlist.Objects[u].TotalTime = alldata.ContentViews.Objects[p].TotalTime;
+				} else {
+					alldata.Classlist.Objects[u].TotalTime += alldata.ContentViews.Objects[p].TotalTime;
+				}
+
+				if(alldata.ContentViews.Objects[p].Visited) {
+					if (alldata.Classlist.Objects[u].TopicsViewed === undefined) {
+						alldata.Classlist.Objects[u].TopicsViewed = 1;
+					} else {
+						alldata.Classlist.Objects[u].TopicsViewed++;
+					}
+				}
+			}
+		}
+	}
+}
+
+var coursegradesdone = false;
+function processGrades() {
+    
+    var tdate = new Date();    
+    var gradeidlist = [];
+    var toolidlist = [];    
+    
+    var pointstotal = 0;
+    if (alldata.GradeSetup.GradingSystem === "Points") {
+        var catdroptotal = 0;
+        var catdroplist = [];
+        for(var gc=0; gc<alldata.GradeCategories.length; gc++) {
+            var numdroptotal = alldata.GradeCategories[gc].NumberOfHighestToDrop + alldata.GradeCategories[gc].NumberOfLowestToDrop;
+            if(numdroptotal > 0) {
+                catdroplist.push(alldata.GradeCategories[gc].Id);
+                catdroptotal += (numdroptotal*alldata.GradeCategories[gc].MaxPoints);
+            }
+        }        
+        for(var g=0; g<alldata.GradeItems.Objects.length; g++) {
+            pointstotal += alldata.GradeItems.Objects[g].MaxPoints;
+            if(alldata.GradeItems.Objects[g].CategoryId !== null) {
+                if(catdroplist.indexOf(alldata.GradeItems.Objects[g].CategoryId) > -1) {
+                    alldata.GradeItems.Objects[g].WeightDrop = true;
+                }
+            }
+        }
+
+        pointstotal = pointstotal - catdroptotal;
+    }
+    
+    var thispassval = 55;
+    var thispassfound = false;
+    if(alldata.Outline !== undefined) {
+        if(alldata.Outline !== null) {
+            if(alldata.Outline.length > 0) {
+                if(alldata.Outline[0].MinimumGrade !== undefined) {
+                    if(!isNaN(alldata.Outline[0].MinimumGrade)) {
+                        thispassfound = true;
+                        if(alldata.Outline[0].MinimumGrade > thispassval) {
+                            thispassval = alldata.Outline[0].MinimumGrade;
+                        }       
+                    }
+                }
+            }
+        }
+    }
+    
+    for(var g=0; g<alldata.GradeItems.Objects.length; g++) {
+        var thisgrade = alldata.GradeItems.Objects[g];      
+        var numevals = 0;
+        //numevals2 a different way of counting num scored, depends on student values being pulled earlier to determine 0 vs. ungraded.
+        var numevals2 = 0;        
+        
+        if((studentroles.indexOf(alldata.CurrentRole) === -1) && (observeroles.indexOf(alldata.CurrentRole) === -1)) {
+            if(thisgrade.Values !== undefined) {
+                if((thisgrade.GradeType === "Numeric") || (thisgrade.GradeType === "PassFail") || (thisgrade.GradeType === "SelectBox")) {
+
+                    var numeratotal = 0;
+                    for(var gv=0; gv<thisgrade.Values.Objects.length; gv++) {
+                        var thisval = thisgrade.Values.Objects[gv];
+                        if(thisval.GradeValue !== null) {
+                            //console.log(thisval.GradeValue);
+                            numevals++;
+                            if(thisval.GradeValue.PointsNumerator > 0) {
+                                numeratotal += thisval.GradeValue.PointsNumerator;
+                                numevals2++
+                            }
+                            else {                                
+                                if(thisval.GradeValue.IsZero) {
+                                    numevals2++;
+                                }
+                            }
+                        }
+                    }                
+
+                    if(thisgrade.Statistics !== undefined) {
+                        if(thisgrade.Statistics !== null) {
+                            if(thisgrade.Statistics.Average !== null) {                
+                                //console.log(numeratotal);
+                                var thismeans = ((numeratotal / numevals) / thisgrade.MaxPoints) * 100;
+                                //console.log(thismeans);
+                                if(thismeans !== thisgrade.Statistics.Average) {
+                                    var newnumevals = Math.round((numeratotal / (thisgrade.MaxPoints * thisgrade.Statistics.Average)) * 100);
+                                    if(newnumevals <= alldata.Classlist.Objects.length) {
+                                        numevals = newnumevals;
+                                    }
+                                }
+                            }
+                        }
+                    }                
+                }
+
+                //console.log(numevals);
+                //console.log(numevals2);
+                thisgrade.NumEvals = numevals;            
+
+                var numvalues = 0;
+                var numfails = 0;
+                var numzero = 0;
+                var numfailsnonzero = 0;
+                var totalnumerator = 0;
+
+                thisgrade.LastGraded = null;           
+
+                if(thisgrade.Values.Objects !== undefined) {
+                    for(var v=0; v<thisgrade.Values.Objects.length; v++) {
+
+                        //console.log(thisgrade.Values.Objects[v].GradeValue);
+                        if(thisgrade.Values.Objects[v].GradeValue !== null) {
+
+                            totalnumerator += thisgrade.Values.Objects[v].GradeValue.PointsNumerator;
+                            if(thisgrade.Values.Objects[v].GradeValue.PointsNumerator !== 0) {
+                                currentlyzero = false;
+                                numvalues++;
+                                var thispercent = ((thisgrade.Values.Objects[v].GradeValue.PointsNumerator / thisgrade.Values.Objects[v].GradeValue.PointsDenominator) * 100);
+
+                                if(thispercent < thispassval) {
+                                    numfails++;
+                                    numfailsnonzero++;
+                                }                        
+                            }
+                            else {
+                                var zerofound = false;
+                                for(var s2=0; s2<alldata.Classlist.Objects.length; s2++) {
+                                    if(alldata.Classlist.Objects[s2].Identifier === thisgrade.Values.Objects[v].Identifier) {
+                                        var thisuser = alldata.Classlist.Objects[s2];
+                                        for(var v2=0; v2<thisuser.Values.length; v2++) {
+                                            if(thisuser.Values[v2].GradeObjectIdentifier === thisgrade.Values.Objects[v].GradeValue.GradeObjectIdentifier) {
+                                                thisgrade.Values.Objects[v].GradeValue.IsZero = true;
+                                                zerofound = true;
+                                                numvalues++;
+                                                numfails++;                                        
+                                            }
+                                        }
+                                    }
+                                }
+                                if(!zerofound) {
+                                    thisgrade.Values.Objects[v].GradeValue.IsZero = false;
+                                }
+                                else {
+                                    if(thisgrade.GradeType === "PassFail") {
+                                        numfailsnonzero++
+                                    }
+                                    else {
+                                        numzero++; 
+                                    }
+                                }
+                            }
+
+                            var ignoreungraded = false;
+                            if(thisgrade.Values.Objects[v].GradeValue.PointsNumerator === 0) {
+                                if(!thisgrade.Values.Objects[v].GradeValue.IsZero) {
+                                    ignoreungraded = true;
+                                }
+                            }
+
+                            if(!ignoreungraded) {
+                                if(thisgrade.Values.Objects[v].GradeValue.LastModified !== null) {
+                                    var thisdate = new Date(thisgrade.Values.Objects[v].GradeValue.LastModified);
+                                    if(thisgrade.LastGraded !== null) {
+                                        if(thisdate > thisgrade.LastGraded) {
+                                            thisgrade.LastGraded = thisdate;
+                                        }
+                                    }
+                                    else {
+                                        thisgrade.LastGraded = thisdate;
+                                    }
+                                }
+                            }                        
+                        }
+                    }                 
+                }
+
+                //console.log(thisgrade.NumEvals);
+                //console.log(numvalues);
+
+                if(thisgrade.NumEvals > numvalues) {
+                    numfails += (thisgrade.NumEvals - numvalues);
+                    numzero++;
+                }
+
+                if(thisgrade.NumEvals > 0) {
+                    if(thisgrade.Statistics !== undefined) {
+                        if(thisgrade.Statistics !== null) {
+                            var thisfailrate = (numfails / thisgrade.NumEvals) * 100;
+                            thisgrade.Statistics.FailRate = thisfailrate;
+                            thisgrade.Statistics.FailNum = numfails;
+
+                            thisgrade.Statistics.Zero = {
+                                ZeroCount: numzero,
+                                FailNum: numfailsnonzero,
+                                FailRate: (numfailsnonzero / (thisgrade.NumEvals - numzero) * 100),
+                                Average: (totalnumerator / ((thisgrade.NumEvals - numzero) * thisgrade.MaxPoints) * 100)
+                            }
+
+                            /*
+                            console.log(thisgrade);
+                            console.log(numzero);
+                            console.log(numfailsnonzero);
+                            console.log("Total Non Zero: " + (thisgrade.NumEvals - numzero));
+                            console.log("Total Numerator: " + totalnumerator);
+                            console.log("Avg Non Zero: " + (totalnumerator / ((thisgrade.NumEvals - numzero) * thisgrade.MaxPoints) * 100));
+                            */
+                        }
+                    }
+                }
+                else {
+                    if(thisgrade.Statistics !== undefined) {
+                        if(thisgrade.Statistics !== null) {
+                            thisgrade.Statistics.FailRate = null;
+                            thisgrade.Statistics.FailNum = null;
+                            thisgrade.Statistics.Zero = {
+                                ZeroCount: null,
+                                FailNum: null,
+                                FailRate: null,
+                                Average: null
+                            }
+                        }
+                    }
+                }                 
+            }
+        }       
+        
+        if((thisgrade.GradeType === "Numeric") || (thisgrade.GradeType === "PassFail") || (thisgrade.GradeType === "SelectBox")) {
+            
+            gradeidlist.push(thisgrade.Id);
+            
+            if(thisgrade.AssociatedTool !== null) {
+                toolidlist.push(thisgrade.AssociatedTool.ToolItemId);
+
+                for (var ti = 0; ti < d2l_tools.Items.length; ti++) {
+                    if (thisgrade.AssociatedTool.ToolId === parseInt(d2l_tools.Items[ti].ToolId)) {
+                        var thistool = d2l_tools.Items[ti];
+                        thisgrade.AssociatedTool.DisplayName = thistool.DisplayName;
+                        if(thistool.DisplayName === "External Learning Tools") {
+                            thisgrade.AssociatedTool.DisplayName = "External";
+                        }
+                    }
+                }
+                
+                var thisdate = null;
+                var thislink = '';
+                
+                if(thisgrade.AssociatedTool.DisplayName !== undefined) {
+                    if(thisgrade.AssociatedTool.DisplayName === "Quizzes") {
+                        
+                        thislink = '/d2l/lms/quizzing/admin/mark/quiz_mark_users.d2l?qi='+thisgrade.AssociatedTool.ToolItemId+'&ou='+orgUnitId;
+                        
+                        for(var q=0; q<alldata.QuizzesAll.Objects.length; q++) {
+                            var thisquiz = alldata.QuizzesAll.Objects[q];
+                            if(thisquiz.QuizId === thisgrade.AssociatedTool.ToolItemId) {
+                                thisdate = getEndDate(thisgrade.AssociatedTool.DisplayName, thisquiz).date;
+                            }
+                        }
+                    }
+                    else if(thisgrade.AssociatedTool.DisplayName === "Assignments") {
+                        
+                        thislink = '/d2l/lms/dropbox/admin/mark/folder_submissions_users.d2l?db='+thisgrade.AssociatedTool.ToolItemId+'&ou='+orgUnitId;
+                        
+                        for(var a=0; a<alldata.AssignmentsAll.Objects.length; a++) {
+                            var thisassign = alldata.AssignmentsAll.Objects[a];
+                            if(thisassign.Id === thisgrade.AssociatedTool.ToolItemId) {
+                                thisdate = getEndDate(thisgrade.AssociatedTool.DisplayName, thisassign).date;
+                            }
+                        }
+                    }
+                    else if(thisgrade.AssociatedTool.DisplayName === "Discussions") {
+                        
+                        thislink = '/d2l/lms/discussions/admin/assess_topic_user.d2l?ou='+orgUnitId+'&topicId='+thisgrade.AssociatedTool.ToolItemId;
+                            
+                        for(var d=0; d<alldata.DiscussionsAll.Objects.length; d++) {
+                            for(var t=0; t<alldata.DiscussionsAll.Objects[d].Topics.length; t++) {
+                                var thisdiscuss = alldata.DiscussionsAll.Objects[d].Topics[t];
+                                if(thisdiscuss.TopicId === thisgrade.AssociatedTool.ToolItemId) {
+                                    thisdate = getEndDate(thisgrade.AssociatedTool.DisplayName, thisdiscuss).date;
+                                }
+                            }
+                        }
+                    }
+                    else {
+                    }
+                }
+                else {
+                }
+                
+                thisgrade.Tool = {
+                    Link: thislink,
+                };
+                if(thisdate !== null) {
+                    thisgrade.EndDate = thisdate;
+                }
+                else {
+                    if(thisgrade.EndDate === undefined) {
+                        thisgrade.EndDate = null;
+                    }
+                }
+            }
+            else {
+            }
+
+            var thisweight = thisgrade.Weight
+            if (alldata.GradeSetup.GradingSystem === "Points") {
+                thisweight = (thisgrade.MaxPoints / pointstotal) * 100;
+            }
+            else {
+                if(thisgrade.CategoryId !== 0) {
+                    for(var gc=0; gc<alldata.GradeCategories.length; gc++) {
+                        if(alldata.GradeCategories[gc].Id === thisgrade.CategoryId) {
+
+                            if (alldata.GradeSetup.GradingSystem === "Weighted") {
+                                var thiscat = alldata.GradeCategories[gc];
+                                if(thiscat.WeightDistributionType !== 1) {
+                                    var totalcat = 100;
+                                    if(thiscat.WeightDistributionType === 2) {
+                                        totalcat = 0;
+                                        for(var g2=0; g2<thiscat.Grades.length; g2++) {
+                                            totalcat += thiscat.Grades[g2].Weight;
+                                        }
+                                    }                         
+                                    thisweight = (thisgrade.Weight / totalcat) * thiscat.Weight;   
+                                }
+                                else {
+                                    // Some items may be dropped. If so, increase overall weight.
+
+                                    if(!thisgrade.IsBonus) {
+                                        if((thiscat.NumberOfHighestToDrop > 0) || (thiscat.NumberOfLowestToDrop > 0)){
+                                            //console.log(thiscat);
+                                            var numnonbonus = 0;
+                                            for(var gci=0; gci<thiscat.Grades.length; gci++) {
+                                                if(!thiscat.Grades[gci].IsBonus) {
+                                                    numnonbonus++;
+                                                }
+                                            }
+                                            var numforfinal = numnonbonus - thiscat.NumberOfHighestToDrop - thiscat.NumberOfLowestToDrop;
+
+                                            thisweight = (1 / numforfinal) * thiscat.Weight;
+                                            thisgrade.WeightDrop = true;
+
+                                        }
+                                    }
+                                    else {
+                                        thisweight = (thisgrade.Weight / 100) * thiscat.Weight;  
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            thisgrade.WeightCalc = thisweight;
+
+        }
+    }
+    
+    var nodatecount = 0;
+    for(var g=0; g<alldata.GradeItems.Objects.length; g++) {
+        var thisgrade = alldata.GradeItems.Objects[g];
+        
+        if((thisgrade.GradeType === "Numeric") || (thisgrade.GradeType === "PassFail") || (thisgrade.GradeType === "SelectBox")) {        
+            var datefound = false;
+
+            if(thisgrade.EndDate !== undefined) {
+                if(thisgrade.EndDate !== null) {
+                    datefound = true;
+                }
+            }
+            if(!datefound) {
+                nodatecount++;
+            }
+        }
+    }
+    
+    //console.log(nodatecount);
+    //console.log(assess_list);
+    
+    coursegradesdone = true;
+    updateWidgetDataAuto();
+    
+}
+
+
+function sortByKey(array, key) {
+	return array.sort(function (a, b) {
+		var x = a[key];
+		var y = b[key];
+		return ((x < y) ? -1 : ((x > y) ? 1 : 0));
+	});
+};
+
+
+function sortByKey2(array, key1, key2) {
+	return array.sort(function (a, b) {
+		var x = a[key1][key2];
+		var y = b[key1][key2];
+		return ((x < y) ? -1 : ((x > y) ? 1 : 0));
+	});
+};
+
+
+function setFutureCustom() {
+	
+	var whatif_setval = $('#whatif_setany').val();
+	if(whatif_setval !== "") {
+		setFutureValues('Calculator',parseInt(whatif_setval),true);
+	}
+	else {
+
+	}
+	
+}
+
+
+function setFutureValues(attr, val, updateinputs, uindex) {
+
+	if (uindex === undefined) {
+		uindex = whatif_userindex;
+	}
+
+	for (var c = 0; c < alldata.Classlist.Objects[uindex][attr].Categories.length; c++) {
+		for (var g = 0; g < alldata.Classlist.Objects[uindex][attr].Categories[c].Grades.length; g++) {
+			if (!alldata.Classlist.Objects[uindex][attr].Categories[c].Grades[g].Earned) {
+				alldata.Classlist.Objects[uindex][attr].Categories[c].Grades[g].PointsNumerator = (val / 100) * alldata.Classlist.Objects[uindex][attr].Categories[c].Grades[g].PointsDenominator;
+
+				if (updateinputs) {
+					$('#GradeInput-' + alldata.Classlist.Objects[uindex][attr].Categories[c].Grades[g].Id).val(alldata.Classlist.Objects[uindex][attr].Categories[c].Grades[g].PointsNumerator);
+					$('input[link-to=GradeInput-' + alldata.Classlist.Objects[uindex][attr].Categories[c].Grades[g].Id + ']').val(alldata.Classlist.Objects[uindex][attr].Categories[c].Grades[g].PointsNumerator);
+				}
+
+			}
+		}
+
+		dropFromCategory(attr, uindex, c);
+		recalculateWhatIf(attr, uindex, c);
+
+	}
+	for (var o = 0; o < alldata.Classlist.Objects[uindex][attr].Uncategorized.Grades.length; o++) {
+		if (!alldata.Classlist.Objects[uindex][attr].Uncategorized.Grades[o].Earned) {
+			alldata.Classlist.Objects[uindex][attr].Uncategorized.Grades[o].PointsNumerator = (val / 100) * alldata.Classlist.Objects[uindex][attr].Uncategorized.Grades[o].PointsDenominator;
+
+			if (updateinputs) {
+				$('#GradeInput-' + alldata.Classlist.Objects[uindex][attr].Uncategorized.Grades[o].Id).val(alldata.Classlist.Objects[uindex][attr].Uncategorized.Grades[o].PointsNumerator);
+				$('input[link-to=GradeInput-' + alldata.Classlist.Objects[uindex][attr].Uncategorized.Grades[o].Id + ']').val(alldata.Classlist.Objects[uindex][attr].Uncategorized.Grades[o].PointsNumerator);
+			}
+		}
+	}
+
+	alldata.Classlist.Objects[uindex][attr].Uncategorized.UngradedZero.Numerator = 0;
+	for (var o = 0; o < alldata.Classlist.Objects[uindex][attr].Uncategorized.Grades.length; o++) {
+
+		var userearned;
+		if (alldata.GradeSetup.GradingSystem === "Weighted") {
+			userearned = ((alldata.Classlist.Objects[uindex][attr].Uncategorized.Grades[o].PointsNumerator / alldata.Classlist.Objects[uindex][attr].Uncategorized.Grades[o].PointsDenominator) * alldata.Classlist.Objects[uindex][attr].Uncategorized.Grades[o].Weight);
+			alldata.Classlist.Objects[uindex][attr].Uncategorized.UngradedZero.Numerator += userearned;
+
+		} else if (alldata.GradeSetup.GradingSystem === "Points") {
+			userearned = alldata.Classlist.Objects[uindex][attr].Uncategorized.Grades[o].PointsNumerator;
+			if (!alldata.Classlist.Objects[uindex][attr].Uncategorized.Grades[o].ExcludeFromFinalGradeCalculation) {
+				alldata.Classlist.Objects[uindex][attr].Uncategorized.UngradedZero.Numerator += userearned;
+			}
+		}
+	}
+
+	//console.log(alldata.Classlist.Objects[uindex]);
+	//console.log(updateinputs);
+
+	if (updateinputs) {
+		whatIfInputs();
+	}
+
+}
+
+
+function dropFromCategory(attr, u, c) {
+
+	if ((alldata.Classlist.Objects[u][attr].Categories[c].WeightDistributionType === 1) || alldata.Classlist.Objects[u][attr].Categories[c].AutoPoints) {
+		if (alldata.Classlist.Objects[u][attr].Categories[c].NumberOfLowestToDrop > 0) {
+			var dropindex = [];
+
+			for (var g = 0; g < alldata.Classlist.Objects[u][attr].Categories[c].Grades.length; g++) {
+				alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsDropped = false;
+				var gradeval = {
+					index: g,
+					value: (alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].PointsNumerator / alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].PointsDenominator)
+				}
+				dropindex.push(gradeval);
+			}
+
+			dropindex = sortByKey(dropindex, "value");
+			var numdropped = 0;
+
+			for (var i = 0; i < dropindex.length; i++) {
+				if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[dropindex[i].index].IsBonus) {
+
+                    var setdropped = false;
+                    if (alldata.GradeSetup.GradingSystem === "Points") {
+                        if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[dropindex[i].index].ExcludeFromFinalGradeCalculation) {
+                            setdropped = true;   
+                        }
+                    }
+                    else {
+                        setdropped = true;
+                    }
+                    
+					if (setdropped) {
+						alldata.Classlist.Objects[u][attr].Categories[c].Grades[dropindex[i].index].IsDropped = true;
+						alldata.Classlist.Objects[u][attr].Categories[c].Grades[dropindex[i].index].Weight = 0;
+						numdropped++;
+					}
+				}
+
+				if (numdropped === alldata.Classlist.Objects[u][attr].Categories[c].NumberOfLowestToDrop) {
+					break;
+				}
+			}
+		}
+
+		if (alldata.GradeSetup.GradingSystem === "Weighted") {
+			var nondroppednonbonus = 0;
+			for (var g = 0; g < alldata.Classlist.Objects[u][attr].Categories[c].Grades.length; g++) {
+				if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsDropped && !alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsBonus) {
+					nondroppednonbonus++;
+				}
+			}
+
+			for (var g = 0; g < alldata.Classlist.Objects[u][attr].Categories[c].Grades.length; g++) {
+				if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsDropped && !alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsBonus) {
+					alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].Weight = (100 / nondroppednonbonus);
+				}
+			}
+		}
+	}
+}
+
+
+function recalculateValues(attr, u, c) {
+
+	alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop = {
+		Numerator: 0,
+		Denominator: 0
+	};
+	alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero = {
+		Numerator: 0,
+		Denominator: 0
+	};
+
+	if (alldata.GradeSetup.GradingSystem === "Weighted") {
+
+		for (var g = 0; g < alldata.Classlist.Objects[u][attr].Categories[c].Grades.length; g++) {
+
+			if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsDropped) {
+
+				if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsBonus) {
+					alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero.Denominator += alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].Weight;
+				}
+
+				if (alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].Earned) {
+
+					var userearned = (alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].PointsNumerator / alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].PointsDenominator) * alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].Weight;
+
+					alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Numerator += userearned;
+					alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero.Numerator += userearned;
+
+					if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsBonus) {
+						alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Denominator += alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].Weight;
+					}
+				}
+			}
+		}
+	} else if (alldata.GradeSetup.GradingSystem === "Points") {
+		for (var g = 0; g < alldata.Classlist.Objects[u][attr].Categories[c].Grades.length; g++) {
+
+			if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].ExcludeFromFinalGradeCalculation) {
+				if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsDropped) {
+					if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsBonus) {
+						alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero.Denominator += alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].PointsDenominator;
+					}
+
+					if (alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].Earned) {
+
+						var userearned = alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].PointsNumerator;
+
+						alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Numerator += userearned;
+						alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero.Numerator += userearned;
+
+						if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsBonus) {
+							alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Denominator += alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].PointsDenominator;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+
+function recalculateWhatIf(attr, u, c) {
+
+	alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop = {
+		Numerator: 0,
+		Denominator: 0
+	};
+	alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero = {
+		Numerator: 0,
+		Denominator: 0
+	};
+
+	if (alldata.GradeSetup.GradingSystem === "Weighted") {
+
+		for (var g = 0; g < alldata.Classlist.Objects[u][attr].Categories[c].Grades.length; g++) {
+
+			if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsDropped) {
+
+				if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsBonus) {
+					alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero.Denominator += alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].Weight;
+				}
+
+				var userearned = (alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].PointsNumerator / alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].PointsDenominator) * alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].Weight;
+
+				alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Numerator += userearned;
+				alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero.Numerator += userearned;
+
+				if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsBonus) {
+					alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Denominator += alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].Weight;
+				}
+
+			}
+		}
+	} else if (alldata.GradeSetup.GradingSystem === "Points") {
+		for (var g = 0; g < alldata.Classlist.Objects[u][attr].Categories[c].Grades.length; g++) {
+
+			if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].ExcludeFromFinalGradeCalculation) {
+				if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsDropped) {
+					if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsBonus) {
+						alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero.Denominator += alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].PointsDenominator;
+					}
+
+					var userearned = alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].PointsNumerator;
+
+					alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Numerator += userearned;
+					alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero.Numerator += userearned;
+
+					if (!alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].IsBonus) {
+						alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Denominator += alldata.Classlist.Objects[u][attr].Categories[c].Grades[g].PointsDenominator;
+					}
+
+				}
+			}
+		}
+	}
+}
+
+
+function calculatePoints(attr, u) {
+
+	var pointsearned_drop = 0;
+	var pointsearned_zero = 0;
+	var pointsassigned = 0;
+	var pointstotal = 0;
+
+	for (var c = 0; c < alldata.Classlist.Objects[u][attr].Categories.length; c++) {
+
+		if (!alldata.Classlist.Objects[u][attr].Categories[c].ExcludeFromFinalGrade) {
+			pointstotal += alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero.Denominator;
+			pointsearned_zero += alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero.Numerator;
+
+			if (alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Numerator > 0) {
+				pointsearned_drop += alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Numerator;
+				pointsassigned += alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Denominator;
+			}
+		}
+	}
+
+	pointsearned_drop += alldata.Classlist.Objects[u][attr].Uncategorized.UngradedDrop.Numerator;
+	pointsearned_zero += alldata.Classlist.Objects[u][attr].Uncategorized.UngradedZero.Numerator;
+	pointsassigned += alldata.Classlist.Objects[u][attr].Uncategorized.UngradedDrop.Denominator;
+	pointstotal += alldata.Classlist.Objects[u][attr].Uncategorized.UngradedZero.Denominator;
+
+	alldata.Classlist.Objects[u][attr].NumeratorDrop = pointsearned_drop;
+	alldata.Classlist.Objects[u][attr].NumeratorZero = pointsearned_zero;
+	alldata.Classlist.Objects[u][attr].DenominatorDrop = pointsassigned;
+	alldata.Classlist.Objects[u][attr].DenominatorZero = pointstotal;
+	alldata.Classlist.Objects[u][attr].CoursePercent = (pointsassigned / pointstotal) * 100;
+
+}
+
+
+function calculateWeights(attr, u) {
+
+	var weightearned_drop = 0;
+	var weightearned_zero = 0;
+	var weightassigned = 0;
+	var weighttotal = 0;
+	var weighttotal_earned = 0;
+
+	for (var c = 0; c < alldata.Classlist.Objects[u][attr].Categories.length; c++) {
+
+		weighttotal += alldata.Classlist.Objects[u][attr].Categories[c].Weight;
+
+		if (alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Denominator !== 0) {
+			
+			weighttotal_earned += (alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Denominator / alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero.Denominator) * alldata.Classlist.Objects[u][attr].Categories[c].Weight;
+
+			weightearned_drop += (alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Numerator / alldata.Classlist.Objects[u][attr].Categories[c].UngradedDrop.Denominator) * alldata.Classlist.Objects[u][attr].Categories[c].Weight;
+
+			weightearned_zero += (alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero.Numerator / alldata.Classlist.Objects[u][attr].Categories[c].UngradedZero.Denominator) * alldata.Classlist.Objects[u][attr].Categories[c].Weight;
+
+			weightassigned += alldata.Classlist.Objects[u][attr].Categories[c].Weight;
+
+		} else {
+            
+		}
+	}
+
+	weightearned_drop += alldata.Classlist.Objects[u][attr].Uncategorized.UngradedDrop.Numerator;
+	weightearned_zero += alldata.Classlist.Objects[u][attr].Uncategorized.UngradedZero.Numerator;
+	weightassigned += alldata.Classlist.Objects[u][attr].Uncategorized.UngradedDrop.Denominator;
+	weighttotal += alldata.Classlist.Objects[u][attr].Uncategorized.UngradedZero.Denominator;
+	weighttotal_earned += alldata.Classlist.Objects[u][attr].Uncategorized.UngradedDrop.Denominator;
+
+	alldata.Classlist.Objects[u][attr].NumeratorDrop = weightearned_drop;
+	alldata.Classlist.Objects[u][attr].NumeratorZero = weightearned_zero;
+	alldata.Classlist.Objects[u][attr].DenominatorDrop = weightassigned;
+	alldata.Classlist.Objects[u][attr].DenominatorZero = weighttotal;
+	alldata.Classlist.Objects[u][attr].CoursePercent = weighttotal_earned;
+
+}
+
+
+
+function buildGrades() {
+    
+    alldata.GradesAll = {
+        Categories: [],
+        Uncategorized: []
+    }
+    
+    if(alldata.GradeItems !== undefined) {
+        for (var a = 0; a < alldata.GradeItems.Objects.length; a++) {
+            if (alldata.GradeItems.Objects[a].CategoryId === 0) {
+                alldata.GradesAll.Uncategorized.push(alldata.GradeItems.Objects[a]);
+            }
+        }
+    }
+
+    if(alldata.GradeSetup !== undefined) {
+        if (alldata.GradeSetup.GradingSystem === "Weighted") {
+            for (var c = 0; c < alldata.GradeCategories.length; c++) {
+                var ctotalweight = 0;
+
+                if (alldata.GradeCategories[c].WeightDistributionType === 1) {
+                    var nonbonus = 0;
+                    for (var g = 0; g < alldata.GradeCategories[c].Grades.length; g++) {
+                        if (!alldata.GradeCategories[c].Grades[g].IsBonus) {
+                            nonbonus++;
+                        }
+                    }
+                    var gradedist = 100 / nonbonus;
+                    for (var g = 0; g < alldata.GradeCategories[c].Grades.length; g++) {
+                        if (!alldata.GradeCategories[c].Grades[g].IsBonus) {
+                            alldata.GradeCategories[c].Grades[g].Weight = gradedist;
+                        }
+                    }
+
+                    ctotalweight = 100;
+                } else {
+                    for (var g = 0; g < alldata.GradeCategories[c].Grades.length; g++) {
+                        ctotalweight += alldata.GradeCategories[c].Grades[g].Weight;
+                    }
+                }
+
+                alldata.GradeCategories[c].GradesTotalWeight = ctotalweight;
+
+            }
+        } else if (alldata.GradeSetup.GradingSystem === "Points") {
+            for (var c = 0; c < alldata.GradeCategories.length; c++) {
+                var ctotalpoints = 0;
+
+                for (var g = 0; g < alldata.GradeCategories[c].Grades.length; g++) {
+                    ctotalpoints += alldata.GradeCategories[c].Grades[g].MaxPoints;
+                }
+
+                alldata.GradeCategories[c].GradesTotalPoints = ctotalpoints;
+
+            }
+        }
+    }
+    
+    if(alldata.GradeCategories !== undefined) {
+        alldata.GradesAll.Categories = JSON.parse(JSON.stringify(alldata.GradeCategories));
+    }
+    
+    /*
+    for(var gi=0; gi<alldata.GradeItems.Objects.length; gi++) {
+        var thisgradeitem = alldata.GradeItems.Objects[gi];
+        for(var giv=0; giv<thisgradeitem.Values.Objects.length; giv++) {
+            var thisgradeitemvalue = thisgradeitem.Values.Objects[giv];
+            
+            for(var cl=0; cl<alldata.Classlist.Objects.length; cl++) {
+                var thisuser = alldata.Classlist.Objects[cl];
+                if(thisgradeitemvalue.User.Identifier === thisuser.Identifier) {
+                    if(thisuser.Values === undefined) {
+                        thisuser.Values = [thisgradeitemvalue.GradeValue];
+                    }
+                    else {
+                        thisuser.Values.push(thisgradeitemvalue.GradeValue);
+                    }
+                }
+            }
+        }
+    }
+    */
+    
+    for(var cl=0; cl<alldata.Classlist.Objects.length; cl++) {
+        buildValues(cl)
+    }
+
+}
+
+
+function buildValues(u) {
+    if(alldata.GradeSetup !== undefined) {
+        if (alldata.GradeSetup.GradingSystem === "Weighted") {
+
+            alldata.Classlist.Objects[u].Calculated = {
+                NumeratorDrop: 0,
+                NumeratorZero: 0,
+                DenominatorDrop: 0,
+                DenominatorZero: 0,
+                CoursePercent: 0,
+                Categories: [],
+                Uncategorized: {
+                    UngradedDrop: {
+                        Numerator: 0,
+                        Denominator: 0
+                    },
+                    UngradedZero: {
+                        Numerator: 0,
+                        Denominator: 0
+                    },
+                    Grades: []
+                }
+            }
+
+            alldata.Classlist.Objects[u].Categories = JSON.parse(JSON.stringify(alldata.GradesAll.Categories));
+            alldata.Classlist.Objects[u].Uncategorized = JSON.parse(JSON.stringify(alldata.GradesAll.Uncategorized));
+
+            if(alldata.Classlist.Objects[u].Values !== undefined) {
+                for (var v = 0; v < alldata.Classlist.Objects[u].Values.length; v++) {
+                    var valfound = false;
+                    for (var c = 0; c < alldata.Classlist.Objects[u].Categories.length; c++) {
+
+                        if (alldata.Classlist.Objects[u].Categories[c].Id === parseInt(alldata.Classlist.Objects[u].Values[v].GradeObjectIdentifier)) {
+                            alldata.Classlist.Objects[u].Categories[c].PointsNumerator = alldata.Classlist.Objects[u].Values[v].PointsNumerator;
+                            alldata.Classlist.Objects[u].Categories[c].PointsDenominator = alldata.Classlist.Objects[u].Values[v].PointsDenominator;
+                            alldata.Classlist.Objects[u].Categories[c].WeightedNumerator = alldata.Classlist.Objects[u].Values[v].WeightedNumerator;
+                            alldata.Classlist.Objects[u].Categories[c].WeightedDenominator = alldata.Classlist.Objects[u].Values[v].WeightedDenominator;
+                            alldata.Classlist.Objects[u].Categories[c].DisplayedGrade = alldata.Classlist.Objects[u].Values[v].DisplayedGrade;
+                            alldata.Classlist.Objects[u].Categories[c].LastModified = alldata.Classlist.Objects[u].Values[v].LastModified;
+                        }
+
+                        if (valfound) {
+                            break;
+                        }
+
+                        for (var g = 0; g < alldata.Classlist.Objects[u].Categories[c].Grades.length; g++) {
+
+                            if (valfound) {
+                                break;
+                            }
+
+                            if (alldata.Classlist.Objects[u].Categories[c].Grades[g].Id === parseInt(alldata.Classlist.Objects[u].Values[v].GradeObjectIdentifier)) {
+                                valfound = true;
+                                alldata.Classlist.Objects[u].Categories[c].Grades[g].PointsNumerator = alldata.Classlist.Objects[u].Values[v].PointsNumerator;
+                                alldata.Classlist.Objects[u].Categories[c].Grades[g].PointsDenominator = alldata.Classlist.Objects[u].Values[v].PointsDenominator;
+                                alldata.Classlist.Objects[u].Categories[c].Grades[g].WeightedNumerator = alldata.Classlist.Objects[u].Values[v].WeightedNumerator;
+                                alldata.Classlist.Objects[u].Categories[c].Grades[g].WeightedDenominator = alldata.Classlist.Objects[u].Values[v].WeightedDenominator;
+                                alldata.Classlist.Objects[u].Categories[c].Grades[g].DisplayedGrade = alldata.Classlist.Objects[u].Values[v].DisplayedGrade;
+                                alldata.Classlist.Objects[u].Categories[c].Grades[g].LastModified = alldata.Classlist.Objects[u].Values[v].LastModified;
+                            }
+                        }
+                    }
+
+                    if (!valfound) {
+                        for (var o = 0; o < alldata.Classlist.Objects[u].Uncategorized.length; o++) {
+                            if (alldata.Classlist.Objects[u].Uncategorized[o].Id === parseInt(alldata.Classlist.Objects[u].Values[v].GradeObjectIdentifier)) {
+                                valfound = true;
+                                alldata.Classlist.Objects[u].Uncategorized[o].PointsNumerator = alldata.Classlist.Objects[u].Values[v].PointsNumerator;
+                                alldata.Classlist.Objects[u].Uncategorized[o].PointsDenominator = alldata.Classlist.Objects[u].Values[v].PointsDenominator;
+                                alldata.Classlist.Objects[u].Uncategorized[o].WeightedNumerator = alldata.Classlist.Objects[u].Values[v].WeightedNumerator;
+                                alldata.Classlist.Objects[u].Uncategorized[o].WeightedDenominator = alldata.Classlist.Objects[u].Values[v].WeightedDenominator;
+                                alldata.Classlist.Objects[u].Uncategorized[o].DisplayedGrade = alldata.Classlist.Objects[u].Values[v].DisplayedGrade;
+                                alldata.Classlist.Objects[u].Uncategorized[o].LastModified = alldata.Classlist.Objects[u].Values[v].LastModified;
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (var c = 0; c < alldata.Classlist.Objects[u].Categories.length; c++) {
+
+                var newcatobj = {
+                    Id: alldata.Classlist.Objects[u].Categories[c].Id,
+                    Name: alldata.Classlist.Objects[u].Categories[c].Name,
+                    CanExceedMax: alldata.Classlist.Objects[u].Categories[c].CanExceedMax,
+                    ExcludeFromFinalGrade: alldata.Classlist.Objects[u].Categories[c].ExcludeFromFinalGrade,
+                    Weight: alldata.Classlist.Objects[u].Categories[c].Weight,
+                    WeightDistributionType: alldata.Classlist.Objects[u].Categories[c].WeightDistributionType,
+                    AutoPoints: alldata.Classlist.Objects[u].Categories[c].AutoPoints,
+                    NumberOfHighestToDrop: alldata.Classlist.Objects[u].Categories[c].NumberOfHighestToDrop,
+                    NumberOfLowestToDrop: alldata.Classlist.Objects[u].Categories[c].NumberOfLowestToDrop,
+                    UngradedDrop: {
+                        Numerator: 0,
+                        Denominator: 0
+                    },
+                    UngradedZero: {
+                        Numerator: 0,
+                        Denominator: 0
+                    },
+                    Grades: []
+                }
+
+                for (var g = 0; g < alldata.Classlist.Objects[u].Categories[c].Grades.length; g++) {
+
+                    if (alldata.Classlist.Objects[u].Categories[c].Grades[g].GradeType === "Numeric" || alldata.Classlist.Objects[u].Categories[c].Grades[g].GradeType === "SelectBox" || alldata.Classlist.Objects[u].Categories[c].Grades[g].GradeType === "PassFail") {
+                        if (!alldata.Classlist.Objects[u].Categories[c].Grades[g].IsBonus) {
+                            newcatobj.UngradedZero.Denominator += alldata.Classlist.Objects[u].Categories[c].Grades[g].Weight;
+                        }
+
+                        var pointsnum;
+                        var pointsden;
+                        var earned = false;
+
+                        if (alldata.Classlist.Objects[u].Categories[c].Grades[g].DisplayedGrade !== undefined) {
+
+                            var userearned = (alldata.Classlist.Objects[u].Categories[c].Grades[g].PointsNumerator / alldata.Classlist.Objects[u].Categories[c].Grades[g].PointsDenominator) * alldata.Classlist.Objects[u].Categories[c].Grades[g].Weight;
+
+                            newcatobj.UngradedDrop.Numerator += userearned;
+                            newcatobj.UngradedZero.Numerator += userearned;
+
+                            if (!alldata.Classlist.Objects[u].Categories[c].Grades[g].IsBonus) {
+                                newcatobj.UngradedDrop.Denominator += alldata.Classlist.Objects[u].Categories[c].Grades[g].Weight;
+                            }
+
+                            pointsnum = alldata.Classlist.Objects[u].Categories[c].Grades[g].PointsNumerator;
+                            pointsden = alldata.Classlist.Objects[u].Categories[c].Grades[g].PointsDenominator;
+                            earned = true;
+
+                        } else {
+                            pointsnum = 0;
+                            pointsden = alldata.Classlist.Objects[u].Categories[c].Grades[g].MaxPoints;
+
+                        }
+
+                        var newgradeobj = {
+                            Id: alldata.Classlist.Objects[u].Categories[c].Grades[g].Id,
+                            Name: alldata.Classlist.Objects[u].Categories[c].Grades[g].Name,
+                            IsBonus: alldata.Classlist.Objects[u].Categories[c].Grades[g].IsBonus,
+                            IsHidden: alldata.Classlist.Objects[u].Categories[c].Grades[g].IsHidden,
+                            PointsNumerator: pointsnum,
+                            PointsDenominator: pointsden,
+                            Weight: alldata.Classlist.Objects[u].Categories[c].Grades[g].Weight,
+                            IsDropped: false,
+                            Earned: earned,
+                            LastModified: alldata.Classlist.Objects[u].Categories[c].Grades[g].LastModified
+                        }
+
+                        newcatobj.Grades.push(newgradeobj);
+                    }
+                }
+
+                if (!newcatobj.CanExceedMax) {
+
+                    if (newcatobj.UngradedZero.Numerator > newcatobj.UngradedZero.Denominator) {
+                        newcatobj.UngradedZero.Numerator = newcatobj.UngradedZero.Denominator;
+                    }
+
+                    if (newcatobj.UngradedDrop.Numerator > newcatobj.UngradedDrop.Denominator) {
+                        newcatobj.UngradedDrop.Numerator = newcatobj.UngradedDrop.Denominator;
+                    }
+
+                }
+
+                alldata.Classlist.Objects[u].Calculated.Categories.push(newcatobj);
+
+            }
+
+            for (var c = 0; c < alldata.Classlist.Objects[u].Calculated.Categories.length; c++) {
+                if (alldata.Classlist.Objects[u].Calculated.Categories[c].NumberOfLowestToDrop > 0) {
+                    dropFromCategory("Calculated", u, c);
+                    recalculateValues("Calculated", u, c);
+                }
+            }
+
+            for (var o = 0; o < alldata.Classlist.Objects[u].Uncategorized.length; o++) {
+
+                if (alldata.Classlist.Objects[u].Uncategorized[o].GradeType === "Numeric" || alldata.Classlist.Objects[u].Uncategorized[o].GradeType === "SelectBox" || alldata.Classlist.Objects[u].Uncategorized[o].GradeType === "PassFail") {
+                    if (!alldata.Classlist.Objects[u].Uncategorized[o].IsBonus) {
+                        alldata.Classlist.Objects[u].Calculated.Uncategorized.UngradedZero.Denominator += alldata.Classlist.Objects[u].Uncategorized[o].Weight;
+                    }
+
+                    var pointsnum;
+                    var pointsden;
+                    var earned = false;
+
+                    if (alldata.Classlist.Objects[u].Uncategorized[o].DisplayedGrade !== undefined) {
+                        var userearned = (alldata.Classlist.Objects[u].Uncategorized[o].PointsNumerator / alldata.Classlist.Objects[u].Uncategorized[o].PointsDenominator) * alldata.Classlist.Objects[u].Uncategorized[o].Weight;
+
+                        alldata.Classlist.Objects[u].Calculated.Uncategorized.UngradedDrop.Numerator += userearned;
+                        alldata.Classlist.Objects[u].Calculated.Uncategorized.UngradedZero.Numerator += userearned;
+
+                        if (!alldata.Classlist.Objects[u].Uncategorized[o].IsBonus) {
+                            alldata.Classlist.Objects[u].Calculated.Uncategorized.UngradedDrop.Denominator += alldata.Classlist.Objects[u].Uncategorized[o].Weight;
+                        }
+
+                        pointsnum = alldata.Classlist.Objects[u].Uncategorized[o].PointsNumerator;
+                        pointsden = alldata.Classlist.Objects[u].Uncategorized[o].PointsDenominator;
+                        earned = true;
+
+                    } else {
+                        pointsnum = 0;
+                        pointsden = alldata.Classlist.Objects[u].Uncategorized[o].MaxPoints;
+                    }
+
+                    var newgradeobj = {
+                        Id: alldata.Classlist.Objects[u].Uncategorized[o].Id,
+                        Name: alldata.Classlist.Objects[u].Uncategorized[o].Name,
+                        IsBonus: alldata.Classlist.Objects[u].Uncategorized[o].IsBonus,
+                        IsHidden: alldata.Classlist.Objects[u].Uncategorized[o].IsHidden,
+                        PointsNumerator: pointsnum,
+                        PointsDenominator: pointsden,
+                        Weight: alldata.Classlist.Objects[u].Uncategorized[o].Weight,
+                        IsDropped: false,
+                        Earned: earned,
+                        LastModified: alldata.Classlist.Objects[u].Uncategorized[o].LastModified
+                    }
+
+                    alldata.Classlist.Objects[u].Calculated.Uncategorized.Grades.push(newgradeobj);
+                }
+            }
+
+            alldata.Classlist.Objects[u].Calculate100 = JSON.parse(JSON.stringify(alldata.Classlist.Objects[u].Calculated));
+            setFutureValues('Calculate100', 100, false, u);
+            calculateWeights('Calculate100', u);
+            calculateWeights('Calculated', u);
+
+
+        } else if (alldata.GradeSetup.GradingSystem === "Points") {
+
+            alldata.Classlist.Objects[u].Calculated = {
+                NumeratorDrop: 0,
+                NumeratorZero: 0,
+                DenominatorDrop: 0,
+                DenominatorZero: 0,
+                CoursePercent: 0,
+                Categories: [],
+                Uncategorized: {
+                    UngradedDrop: {
+                        Numerator: 0,
+                        Denominator: 0
+                    },
+                    UngradedZero: {
+                        Numerator: 0,
+                        Denominator: 0
+                    },
+                    Grades: []
+                }
+            }
+
+            alldata.Classlist.Objects[u].Categories = JSON.parse(JSON.stringify(alldata.GradesAll.Categories));
+            alldata.Classlist.Objects[u].Uncategorized = JSON.parse(JSON.stringify(alldata.GradesAll.Uncategorized));
+
+            if(alldata.Classlist.Objects[u].Values !== undefined) {
+                for (var v = 0; v < alldata.Classlist.Objects[u].Values.length; v++) {
+                    var valfound = false;
+                    for (var c = 0; c < alldata.Classlist.Objects[u].Categories.length; c++) {
+
+                        if (alldata.Classlist.Objects[u].Categories[c].Id === parseInt(alldata.Classlist.Objects[u].Values[v].GradeObjectIdentifier)) {
+                            alldata.Classlist.Objects[u].Categories[c].PointsNumerator = alldata.Classlist.Objects[u].Values[v].PointsNumerator;
+                            alldata.Classlist.Objects[u].Categories[c].PointsDenominator = alldata.Classlist.Objects[u].Values[v].PointsDenominator;
+                            alldata.Classlist.Objects[u].Categories[c].WeightedNumerator = alldata.Classlist.Objects[u].Values[v].WeightedNumerator;
+                            alldata.Classlist.Objects[u].Categories[c].WeightedDenominator = alldata.Classlist.Objects[u].Values[v].WeightedDenominator;
+                            alldata.Classlist.Objects[u].Categories[c].DisplayedGrade = alldata.Classlist.Objects[u].Values[v].DisplayedGrade;
+                            alldata.Classlist.Objects[u].Categories[c].LastModified = alldata.Classlist.Objects[u].Values[v].LastModified;
+                        }
+
+                        if (valfound) {
+                            break;
+                        }
+
+                        for (var g = 0; g < alldata.Classlist.Objects[u].Categories[c].Grades.length; g++) {
+
+                            if (valfound) {
+                                break;
+                            }
+
+                            if (alldata.Classlist.Objects[u].Categories[c].Grades[g].Id === parseInt(alldata.Classlist.Objects[u].Values[v].GradeObjectIdentifier)) {
+                                valfound = true;
+                                alldata.Classlist.Objects[u].Categories[c].Grades[g].PointsNumerator = alldata.Classlist.Objects[u].Values[v].PointsNumerator;
+                                alldata.Classlist.Objects[u].Categories[c].Grades[g].PointsDenominator = alldata.Classlist.Objects[u].Values[v].PointsDenominator;
+                                alldata.Classlist.Objects[u].Categories[c].Grades[g].WeightedNumerator = alldata.Classlist.Objects[u].Values[v].WeightedNumerator;
+                                alldata.Classlist.Objects[u].Categories[c].Grades[g].WeightedDenominator = alldata.Classlist.Objects[u].Values[v].WeightedDenominator;
+                                alldata.Classlist.Objects[u].Categories[c].Grades[g].DisplayedGrade = alldata.Classlist.Objects[u].Values[v].DisplayedGrade;
+                                alldata.Classlist.Objects[u].Categories[c].Grades[g].LastModified = alldata.Classlist.Objects[u].Values[v].LastModified;
+                            }
+                        }
+                    }
+
+                    if (!valfound) {
+                        for (var o = 0; o < alldata.Classlist.Objects[u].Uncategorized.length; o++) {
+                            if (alldata.Classlist.Objects[u].Uncategorized[o].Id === parseInt(alldata.Classlist.Objects[u].Values[v].GradeObjectIdentifier)) {
+                                valfound = true;
+                                alldata.Classlist.Objects[u].Uncategorized[o].PointsNumerator = alldata.Classlist.Objects[u].Values[v].PointsNumerator;
+                                alldata.Classlist.Objects[u].Uncategorized[o].PointsDenominator = alldata.Classlist.Objects[u].Values[v].PointsDenominator;
+                                alldata.Classlist.Objects[u].Uncategorized[o].WeightedNumerator = alldata.Classlist.Objects[u].Values[v].WeightedNumerator;
+                                alldata.Classlist.Objects[u].Uncategorized[o].WeightedDenominator = alldata.Classlist.Objects[u].Values[v].WeightedDenominator;
+                                alldata.Classlist.Objects[u].Uncategorized[o].DisplayedGrade = alldata.Classlist.Objects[u].Values[v].DisplayedGrade;
+                                alldata.Classlist.Objects[u].Uncategorized[o].LastModified = alldata.Classlist.Objects[u].Values[v].LastModified;
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (var c = 0; c < alldata.Classlist.Objects[u].Categories.length; c++) {
+
+                var newcatobj = {
+                    Id: alldata.Classlist.Objects[u].Categories[c].Id,
+                    Name: alldata.Classlist.Objects[u].Categories[c].Name,
+                    CanExceedMax: alldata.Classlist.Objects[u].Categories[c].CanExceedMax,
+                    ExcludeFromFinalGrade: alldata.Classlist.Objects[u].Categories[c].ExcludeFromFinalGrade,
+                    Weight: alldata.Classlist.Objects[u].Categories[c].Weight,
+                    WeightDistributionType: alldata.Classlist.Objects[u].Categories[c].WeightDistributionType,
+                    AutoPoints: alldata.Classlist.Objects[u].Categories[c].AutoPoints,
+                    NumberOfHighestToDrop: alldata.Classlist.Objects[u].Categories[c].NumberOfHighestToDrop,
+                    NumberOfLowestToDrop: alldata.Classlist.Objects[u].Categories[c].NumberOfLowestToDrop,
+                    ExcludeFromFinalGrade: alldata.Classlist.Objects[u].Categories[c].ExcludeFromFinalGrade,
+                    UngradedDrop: {
+                        Numerator: 0,
+                        Denominator: 0
+                    },
+                    UngradedZero: {
+                        Numerator: 0,
+                        Denominator: 0
+                    },
+                    Grades: []
+                }
+
+
+                for (var g = 0; g < alldata.Classlist.Objects[u].Categories[c].Grades.length; g++) {
+
+                    if (alldata.Classlist.Objects[u].Categories[c].Grades[g].GradeType === "Numeric" || alldata.Classlist.Objects[u].Categories[c].Grades[g].GradeType === "SelectBox" || alldata.Classlist.Objects[u].Categories[c].Grades[g].GradeType === "PassFail") {
+                        if (!alldata.Classlist.Objects[u].Categories[c].Grades[g].ExcludeFromFinalGradeCalculation && !alldata.Classlist.Objects[u].Categories[c].Grades[g].IsBonus) {
+                            newcatobj.UngradedZero.Denominator += alldata.Classlist.Objects[u].Categories[c].Grades[g].MaxPoints;
+                        }
+
+                        var pointsnum;
+                        var pointsden;
+                        var earned = false;
+
+                        if (alldata.Classlist.Objects[u].Categories[c].Grades[g].DisplayedGrade !== undefined) {
+
+                            var userearned = alldata.Classlist.Objects[u].Categories[c].Grades[g].PointsNumerator;
+
+                            if (!alldata.Classlist.Objects[u].Categories[c].Grades[g].ExcludeFromFinalGradeCalculation) {
+                                newcatobj.UngradedDrop.Numerator += userearned;
+                                newcatobj.UngradedZero.Numerator += userearned;
+
+                                if (!alldata.Classlist.Objects[u].Categories[c].Grades[g].IsBonus) {
+                                    newcatobj.UngradedDrop.Denominator += alldata.Classlist.Objects[u].Categories[c].Grades[g].MaxPoints;
+                                }
+
+                            }
+
+                            pointsnum = alldata.Classlist.Objects[u].Categories[c].Grades[g].PointsNumerator;
+                            pointsden = alldata.Classlist.Objects[u].Categories[c].Grades[g].PointsDenominator;
+                            earned = true;
+
+                        } else {
+                            pointsnum = 0;
+                            pointsden = alldata.Classlist.Objects[u].Categories[c].Grades[g].MaxPoints;
+
+                        }
+
+                        var newgradeobj = {
+                            Id: alldata.Classlist.Objects[u].Categories[c].Grades[g].Id,
+                            Name: alldata.Classlist.Objects[u].Categories[c].Grades[g].Name,
+                            IsBonus: alldata.Classlist.Objects[u].Categories[c].Grades[g].IsBonus,
+                            IsHidden: alldata.Classlist.Objects[u].Categories[c].Grades[g].IsHidden,
+                            PointsNumerator: pointsnum,
+                            PointsDenominator: pointsden,
+                            Weight: alldata.Classlist.Objects[u].Categories[c].Grades[g].Weight,
+                            IsDropped: false,
+                            ExcludeFromFinalGradeCalculation: alldata.Classlist.Objects[u].Categories[c].Grades[g].ExcludeFromFinalGradeCalculation,
+                            Earned: earned,
+                            LastModified: alldata.Classlist.Objects[u].Categories[c].Grades[g].LastModified
+                        }
+
+                        newcatobj.Grades.push(newgradeobj);
+                    }
+
+                }
+
+                if (!newcatobj.CanExceedMax) {
+
+                    if (newcatobj.UngradedZero.Numerator > newcatobj.UngradedZero.Denominator) {
+                        newcatobj.UngradedZero.Numerator = newcatobj.UngradedZero.Denominator;
+                    }
+
+                    if (newcatobj.UngradedDrop.Numerator > newcatobj.UngradedDrop.Denominator) {
+                        newcatobj.UngradedDrop.Numerator = newcatobj.UngradedDrop.Denominator;
+                    }
+
+                }
+                alldata.Classlist.Objects[u].Calculated.Categories.push(newcatobj);
+
+            }
+
+            for (var c = 0; c < alldata.Classlist.Objects[u].Calculated.Categories.length; c++) {
+                if (alldata.Classlist.Objects[u].Calculated.Categories[c].NumberOfLowestToDrop > 0) {
+                    dropFromCategory("Calculated", u, c);
+                    recalculateValues("Calculated", u, c);
+                }
+            }
+
+            for (var o = 0; o < alldata.Classlist.Objects[u].Uncategorized.length; o++) {
+
+                if (alldata.Classlist.Objects[u].Uncategorized[o].GradeType === "Numeric" || alldata.Classlist.Objects[u].Uncategorized[o].GradeType === "SelectBox" || alldata.Classlist.Objects[u].Uncategorized[o].GradeType === "PassFail") {
+                    if (!alldata.Classlist.Objects[u].Uncategorized[o].ExcludeFromFinalGradeCalculation && !alldata.Classlist.Objects[u].Uncategorized[o].IsBonus) {
+                        alldata.Classlist.Objects[u].Calculated.Uncategorized.UngradedZero.Denominator += alldata.Classlist.Objects[u].Uncategorized[o].MaxPoints;
+                    }
+
+                    var pointsnum;
+                    var pointsden;
+                    var earned = false;
+
+                    if (alldata.Classlist.Objects[u].Uncategorized[o].DisplayedGrade !== undefined) {
+                        var userearned = alldata.Classlist.Objects[u].Uncategorized[o].PointsNumerator;
+
+                        if (!alldata.Classlist.Objects[u].Uncategorized[o].ExcludeFromFinalGradeCalculation) {
+                            alldata.Classlist.Objects[u].Calculated.Uncategorized.UngradedDrop.Numerator += userearned;
+                            alldata.Classlist.Objects[u].Calculated.Uncategorized.UngradedZero.Numerator += userearned;
+
+                            if (!alldata.Classlist.Objects[u].Uncategorized[o].IsBonus) {
+                                alldata.Classlist.Objects[u].Calculated.Uncategorized.UngradedDrop.Denominator += alldata.Classlist.Objects[u].Uncategorized[o].MaxPoints;
+                            }
+
+                        }
+
+                        pointsnum = alldata.Classlist.Objects[u].Uncategorized[o].PointsNumerator;
+                        pointsden = alldata.Classlist.Objects[u].Uncategorized[o].PointsDenominator;
+                        earned = true;
+
+                    } else {
+                        pointsnum = 0;
+                        pointsden = alldata.Classlist.Objects[u].Uncategorized[o].MaxPoints;
+                    }
+
+                    var newgradeobj = {
+                        Id: alldata.Classlist.Objects[u].Uncategorized[o].Id,
+                        Name: alldata.Classlist.Objects[u].Uncategorized[o].Name,
+                        IsBonus: alldata.Classlist.Objects[u].Uncategorized[o].IsBonus,
+                        IsHidden: alldata.Classlist.Objects[u].Uncategorized[o].IsHidden,
+                        PointsNumerator: pointsnum,
+                        PointsDenominator: pointsden,
+                        Weight: alldata.Classlist.Objects[u].Uncategorized[o].Weight,
+                        IsDropped: false,
+                        ExcludeFromFinalGradeCalculation: alldata.Classlist.Objects[u].Uncategorized[o].ExcludeFromFinalGradeCalculation,
+                        Earned: earned,
+                        LastModified: alldata.Classlist.Objects[u].Uncategorized[o].LastModified
+                    }
+
+                    alldata.Classlist.Objects[u].Calculated.Uncategorized.Grades.push(newgradeobj);
+                }
+            }
+
+            alldata.Classlist.Objects[u].Calculate100 = JSON.parse(JSON.stringify(alldata.Classlist.Objects[u].Calculated));
+            setFutureValues('Calculate100', 100, false, u);
+            calculatePoints('Calculate100', u);
+            calculatePoints('Calculated', u);
+
+        }
+        else {
+            // This is a Formula grade tool.
+            //console.log("Formula");
+
+        }
+    }
+}
+
+
+function calculateStudents() {
+
+    if(observeroles.indexOf(alldata.CurrentRole) === -1) {
+        if (alldata.GradeSetup.GradingSystem === "Weighted") {
+            for (var u = 0; u < alldata.Classlist.Objects.length; u++) {
+
+                var currentaverage = 0;
+                var currentearned = 0;
+
+                var weightearned_drop = alldata.Classlist.Objects[u].Calculated.NumeratorDrop;
+                var weightearned_zero = alldata.Classlist.Objects[u].Calculated.NumeratorZero;
+                var weightassigned = alldata.Classlist.Objects[u].Calculated.DenominatorDrop;
+                var weighttotal = alldata.Classlist.Objects[u].Calculated.DenominatorZero;
+
+                if (weightassigned !== 0) {
+                    currentaverage = (weightearned_drop / weightassigned) * 100;
+                }
+                if (weighttotal !== 0) {
+                    currentearned = (weightearned_zero / weighttotal) * 100;
+                }
+
+                if (currentaverage > 100) {
+                    currentaverage = 100;
+                }
+                if (currentearned > 100) {
+                    currentearned = 100;
+                }
+
+                var currentearned_max = 0;
+                var weightearned_zero_max = alldata.Classlist.Objects[u].Calculate100.NumeratorZero;
+                var weighttotal_max = alldata.Classlist.Objects[u].Calculate100.DenominatorZero;
+
+                if (weighttotal_max !== 0) {
+                    currentearned_max = (weightearned_zero_max / weighttotal_max) * 100;
+                }
+
+                if (currentearned_max > 100) {
+                    currentearned_max = 100;
+                }
+
+                alldata.Classlist.Objects[u].Calculated.CurrentEarned = currentearned;
+                alldata.Classlist.Objects[u].Calculated.CurrentAverage = currentaverage;
+                alldata.Classlist.Objects[u].Calculate100.CurrentEarned = currentearned_max;
+
+            }
+        } else if (alldata.GradeSetup.GradingSystem === "Points") {
+            for (var u = 0; u < alldata.Classlist.Objects.length; u++) {
+
+                var currentaverage = 0;
+                var currentearned = 0;
+
+                var pointsearned_drop = alldata.Classlist.Objects[u].Calculated.NumeratorDrop;
+                var pointsearned_zero = alldata.Classlist.Objects[u].Calculated.NumeratorZero;
+                var pointsassigned = alldata.Classlist.Objects[u].Calculated.DenominatorDrop;
+                var pointstotal = alldata.Classlist.Objects[u].Calculated.DenominatorZero;
+
+                if (pointsassigned !== 0) {
+                    currentaverage = (pointsearned_drop / pointsassigned) * 100;
+                }
+                if (pointstotal !== 0) {
+                    currentearned = (pointsearned_zero / pointstotal) * 100;
+                }
+
+                if (currentaverage > 100) {
+                    currentaverage = 100;
+                }
+                if (currentearned > 100) {
+                    currentearned = 100;
+                }
+
+                var currentearned_max = 0;
+                var pointsearned_zero_max = alldata.Classlist.Objects[u].Calculate100.NumeratorZero;
+                var pointstotal_max = alldata.Classlist.Objects[u].Calculate100.DenominatorZero;
+
+                if (pointstotal_max !== 0) {
+                    currentearned_max = (pointsearned_zero_max / pointstotal_max) * 100;
+                }
+
+                if (currentearned_max > 100) {
+                    currentearned_max = 100;
+                }
+
+                alldata.Classlist.Objects[u].Calculated.CurrentEarned = currentearned;
+                alldata.Classlist.Objects[u].Calculated.CurrentAverage = currentaverage;
+                alldata.Classlist.Objects[u].Calculate100.CurrentEarned = currentearned_max;
+
+            }
+        }          
+    }
+}
+
+
+function openSummary_StuAtRisk() {
+    
+	var atrisklisthtml = '';
+    atrisklisthtml += '<p><a href="/d2l/le/content/6606/fullscreen/8123011/View?oid='+orgUnitId+'&rolename='+alldata.CurrentRole+'" target="_blank">View the full Students At-Risk Report in a new window <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>.</p><hr>'; 
+	
+	if(atrisk_list.AllItems.length > 0) {
+		for(var a=0; a<atrisk_list.AllItems.length; a++) {
+
+			var uindex = -1;
+			for(var u=0; u<alldata.Classlist.Objects.length; u++) {
+				if(alldata.Classlist.Objects[u].Identifier === atrisk_list.AllItems[a]) {
+					uindex = u;
+				}
+			}
+
+			//console.log(alldata.Classlist.Objects[uindex]);
+            if(uindex > -1) {
+                var thisuser = alldata.Classlist.Objects[uindex];
+                var atriskstu = '';
+
+                atriskstu += '<div class="table-responsive-sm">';
+                atriskstu += '<table class="table table-bordered"><tbody><tr class="danger">';
+                if(alldata.Classlist.Objects[uindex].Email !== null) {
+                    atriskstu += '<td style="width:32px; text-align:center"><a href="mailto:'+alldata.Classlist.Objects[uindex].Email+'" title="Send Email" target="_blank"><i class="fa fa-envelope" aria-hidden="true"></i></a></td>';
+                }
+                else {
+                    atriskstu += '<td style="width:32px; text-align:center"><i class="fa fa-envelope" aria-hidden="true"></i></td>';
+                }
+
+                atriskstu += '<td>' + thisuser.FirstName + ' ' + thisuser.LastName + ' (' + thisuser.OrgDefinedId + ') </td>';
+                atriskstu += '</tr>';
+
+                for(var a1=0; a1<atrisk_list.AccessLast.length; a1++) {
+                    if(atrisk_list.AccessLast[a1].Identifier === thisuser.Identifier) {
+                        atriskstu += '<tr><td colspan="2"><i class="fa fa-exclamation-circle" aria-hidden="true"></i> <a href="/d2l/le/userprogress/'+alldata.Classlist.Objects[uindex].Identifier+'/'+orgUnitId+'/CourseAccess/Details?searchString=&sortField=LastName&classListFilterKey=all&sortDirection=0" target="_blank" title="View Course Last Accessed Details">Course was last accessed: ';
+                        if(alldata.Classlist.Objects[uindex].LastAccessed !== null) {
+                            atriskstu += new Date(alldata.Classlist.Objects[uindex].LastAccessed).toISOString().substring(0, 10);
+                        }
+                        else {
+                            atriskstu += "Never";
+                        }
+                        atriskstu += ' <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span>';
+                        atriskstu += '</a></td></tr>';
+                    }
+                }
+                for(var a1=0; a1<atrisk_list.GradeAvgNow.length; a1++) {
+                    if(atrisk_list.GradeAvgNow[a1].Identifier === thisuser.Identifier) {
+                        atriskstu += '<tr><td colspan="2"><i class="fa fa-exclamation-circle" aria-hidden="true"></i> <a href="/d2l/le/classprogress/userprogress/'+alldata.Classlist.Objects[uindex].Identifier+'/'+orgUnitId+'/Grades/Details?searchString=&sortField=LastName&classListFilterKey=all&sortDirection=0" target="_blank" title="Current Grade Details">Current average grade value is: '+alldata.Classlist.Objects[uindex].Calculated.CurrentAverage.toFixed(2)+'% <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a></td></tr>';
+                    }
+                }
+                for(var a1=0; a1<atrisk_list.GradeValueMax.length; a1++) {
+                    if(atrisk_list.GradeValueMax[a1].Identifier === thisuser.Identifier) {
+                        atriskstu += '<tr><td colspan="2"><i class="fa fa-exclamation-circle" aria-hidden="true"></i> <a href="/d2l/le/content/6606/fullscreen/8123012/View?oid=' + orgUnitId + '&uid='+alldata.Classlist.Objects[uindex].Identifier+'" target="_blank" title="Achievable Grade Details">Maximum achievable grade value is: '+alldata.Classlist.Objects[uindex].Calculate100.CurrentEarned.toFixed(2)+'% <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a></td></tr>';
+                    }
+                }
+                for(var a1=0; a1<atrisk_list.ContentViewed.length; a1++) {
+                    if(atrisk_list.ContentViewed[a1].Identifier === thisuser.Identifier) {
+
+                        var contentpercent = (alldata.Classlist.Objects[uindex].Progress.CompletedItems / alldata.Classlist.Objects[uindex].Progress.RequiredItems) * 100;
+
+                        atriskstu += '<tr><td colspan="2"><i class="fa fa-exclamation-circle" aria-hidden="true"></i> <a href="/d2l/le/userprogress/'+alldata.Classlist.Objects[uindex].Identifier+'/'+orgUnitId+'/Content/Details?searchString=&sortDirection=0&sortField=LastName&classListFilterKey=all" target="_blank" title="View Content Progress Details">Content viewed: '+alldata.Classlist.Objects[uindex].Progress.CompletedItems+' / '+alldata.Classlist.Objects[uindex].Progress.RequiredItems+' ('+contentpercent.toFixed(2)+'%) <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a></td></tr>';
+                    }
+                }
+                for(var a1=0; a1<atrisk_list.LateAssess.length; a1++) {
+                    if(atrisk_list.LateAssess[a1].Identifier === thisuser.Identifier) {
+
+                        atriskstu += '<tr><td colspan="2"><i class="fa fa-exclamation-circle" aria-hidden="true"></i> Late assessments: ' + alldata.Classlist.Objects[uindex].LateAssess.length + '</td></tr>';                    
+                    }
+                }
+
+                atriskstu += '</tbody></table>';
+                atriskstu += '</div>';
+                atrisklisthtml += atriskstu;                
+            }
+
+		}
+	}
+	else {
+		atrisklisthtml += '<p>There are currently no students considered at risk based on your criteria.</p>';
+	}
+	
+	$('#snapshotAtRiskStudents .modal-body').html(atrisklisthtml);    
+    $('#snapshotAtRiskStudents').modal('toggle');  
+}
+
+function openSummary_AssessAnalysis() {
+    
+	var assesslisthtml = '';
+    assesslisthtml += '<p><a href="/d2l/le/content/6606/fullscreen/14134468/View?oid='+orgUnitId+'&rolename='+alldata.CurrentRole+'" target="_blank">View the full Assessment Analysis Report in a new window <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>.</p><hr>'
+    
+	if(assess_list.AllItems.length > 0) {
+        
+        for(var i=0; i<assess_list.AllItems.length; i++) {
+            
+            for(var g=0; g<alldata.GradeItems.Objects.length; g++) {
+                if(alldata.GradeItems.Objects[g].Id === assess_list.AllItems[i]) {
+                    var thisgrade = alldata.GradeItems.Objects[g];
+                    //console.log(thisgrade);
+                    var assessflag = '';
+                    assessflag += '<div class="table-responsive-sm">';
+                    assessflag += '<table class="table table-bordered"><tbody>';
+                    assessflag += '<tr class="danger">';
+                    assessflag += '<td style="width:50%">';
+                    assessflag += '<strong>'+thisgrade.Name+'</strong>';
+                    assessflag += '</td>';
+                    assessflag += '<td style="width:50%">';
+                    if(thisgrade.AssociatedTool !== null) {
+                        if(thisgrade.Tool !== undefined) {
+                            if(thisgrade.Tool.Link !== "") {
+                                assessflag += 'Tool: <a href="'+thisgrade.Tool.Link+'" target="_blank">'+thisgrade.AssociatedTool.DisplayName+' <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>';
+                            }
+                        }
+                    }
+                    else {
+                        assessflag += 'Tool: <a href="/d2l/lms/grades/admin/enter/grade_item_edit.d2l?objectId='+thisgrade.Id+'&ou='+orgUnitId+'" target="_blank">Grades <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>';
+                    }
+                    assessflag += '</td>';
+                    assessflag += '</tr>';
+                    assessflag += '<tr class="danger">';
+                    assessflag += '<td style="width:50%">Overall Weight: '+(Math.round(thisgrade.WeightCalc * 100) / 100)+'%</td>';
+                    var scoredpercent = ((thisgrade.NumEvals / alldata.Classlist.Objects.length)*100);
+                    assessflag += '<td style="width:50%">Scores Published: ' + thisgrade.NumEvals + ' / ' + alldata.Classlist.Objects.length + ' (' +(Math.round(scoredpercent * 100) / 100)+'%)</td>';
+                    assessflag += '</tr>';
+                    
+                    assessflag += '<tr>';
+                    if((assess_list.AverageMin.indexOf(thisgrade.Id) > -1) || (assess_list.AverageMax.indexOf(thisgrade.Id) > -1)) {
+                        assessflag += '<td colspan="2"><i class="fa fa-exclamation-circle" aria-hidden="true"></i> This grade item has an <a href="/d2l/lms/grades/admin/enter/grade_statistics.d2l?objectId='+thisgrade.Id+'&gradesArea=2&ou='+orgUnitId+'" target="_blank">average score of '+(Math.round(thisgrade.Statistics.Average * 100) / 100)+'% <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>';
+
+                        if(assess_list.AverageMin.indexOf(thisgrade.Id) > -1) {
+                            assessflag += ', <strong>which is less than the desired minimum ('+alldata.CustomSettings.Dashboard.Assessment.AverageMin+'%)</strong>.</td>';
+                        }
+                        if(assess_list.AverageMax.indexOf(thisgrade.Id) > -1) {
+                            assessflag += ', <strong>which is more than the desired maximum ('+alldata.CustomSettings.Dashboard.Assessment.AverageMax+'%)</strong>.</td>';
+                        }
+                    }
+                    assessflag += '</tr>';
+                    
+                    assessflag += '<tr>';
+                    if(assess_list.FailRate.indexOf(thisgrade.Id) > -1) {
+                        assessflag += '<td colspan="2"><i class="fa fa-exclamation-circle" aria-hidden="true"></i> This grade item has a fail rate of '+(Math.round(thisgrade.Statistics.FailRate * 100) / 100)+'%, which is <strong>more than the desired maximum ('+alldata.CustomSettings.Dashboard.Assessment.FailRate+'%)</strong>.</tr>';
+                    }
+                    
+                    if(assess_list.UngradedNow.indexOf(thisgrade.Id) > -1) {
+                        assessflag += '<td colspan="2"><i class="fa fa-exclamation-circle" aria-hidden="true"></i> This grade item has an end date of '+thisgrade.EndDate.toLocaleDateString()+' and '+thisgrade.NumEvals+' student scores have been published. Ideally all <strong>grades values should be released to students less than ' + alldata.CustomSettings.Dashboard.GradeDates.DayCountMax + ' days after the assessment end date</strong>.';
+                    }
+                    assessflag += '</tr>';
+                    
+                    assessflag += '</tbody></table>';
+                    assessflag += '</div>';
+                    assesslisthtml += assessflag;
+                }
+            }
+
+        }
+                
+	}
+	else {
+		assesslisthtml += '<p>There are currently no grade items flagged based on your criteria.</p>';
+	}
+	
+	$('#snapshotFlaggedAssessments .modal-body').html(assesslisthtml);    
+    $('#snapshotFlaggedAssessments').modal('toggle');  
+}
+
+function openReport_StuAtRisk() {
+    window.open('/d2l/le/content/6606/fullscreen/8123011/View?oid='+orgUnitId+'&rolename='+alldata.CurrentRole, '_blank'); 
+}
+
+
+function openReport_AssessAnalysis() {
+    window.open('/d2l/le/content/6606/fullscreen/14134468/View?oid='+orgUnitId+'&rolename='+alldata.CurrentRole, '_blank'); 
+}
+
+
+function openReport_EnrollChanges() {
+    
+	var newenrollshtml = '';
+    var newenrollfound = 0;
+    var withdrawalhtml = '';
+	
+	if(alldata.Enrollment.Additions.length > 0) {
+		for(var a=0; a<alldata.Enrollment.Additions.length; a++) {
+
+			var uindex = -1;
+			for(var u=0; u<alldata.Classlist.Objects.length; u++) {
+                //console.log(parseInt(alldata.Classlist.Objects[u].Identifier));
+                //console.log(alldata.Enrollment.Additions[a].UserId);
+				if(parseInt(alldata.Classlist.Objects[u].Identifier) === alldata.Enrollment.Additions[a].UserId) {
+					uindex = u;
+                    break;
+				}
+			}
+
+            //console.log(uindex);
+			//console.log(alldata.Classlist.Objects[uindex]);
+            
+            if(uindex > -1) {
+                newenrollfound++
+
+                var newenrollstu = '';
+                newenrollstu += '<div class="table-responsive-sm">';
+                newenrollstu += '<table class="table table-bordered"><tbody><tr class="danger">';
+                if(alldata.Classlist.Objects[uindex].Email !== null) {
+                    newenrollstu += '<td style="width:32px; text-align:center"><a href="mailto:'+alldata.Classlist.Objects[uindex].Email+'" title="Send Email" target="_blank"><i class="fa fa-envelope" aria-hidden="true"></i></a></td>';
+                }
+                else {
+                    newenrollstu += '<td style="width:32px; text-align:center"><i class="fa fa-envelope" aria-hidden="true"></i></td>';
+                }
+
+                newenrollstu += '<td>' + alldata.Classlist.Objects[uindex].FirstName + ' ' + alldata.Classlist.Objects[uindex].LastName + ' (' + alldata.Classlist.Objects[uindex].OrgDefinedId + ') </td>';
+                newenrollstu += '</tr>';
+                
+                newenrollstu += '<tr><td colspan="2"><strong>This student was enrolled on: '+new Date(alldata.Enrollment.Additions[a].LogDate).toLocaleDateString()+'</strong></td></tr>';
+                
+                newenrollstu += '</tbody></table>';
+                newenrollstu += '</div>';
+                newenrollshtml += newenrollstu;
+            }
+		}
+        
+        if(newenrollfound === 0) {
+            newenrollshtml += '<p>There are currently no recent student additions to the classlist.</p>';
+        }
+	}
+	else {
+		newenrollshtml += '<p>There are currently no recent student additions to the classlist.</p>';
+	}  
+    
+	if(alldata.Enrollment.Withdrawals.length > 0) {
+		for(var w=0; w<alldata.Enrollment.Withdrawals.length; w++) {            
+
+                var withdrawalstu = '';
+                withdrawalstu += '<div class="table-responsive-sm">';
+                withdrawalstu += '<table class="table table-bordered"><tbody><tr class="danger">';
+                withdrawalstu += '<td style="width:32px; text-align:center"> <i class="fa fa-sign-out" aria-hidden="true"></i></td>';
+
+
+                withdrawalstu += '<td>' + alldata.Enrollment.Withdrawals[w].FirstName + ' ' + alldata.Enrollment.Withdrawals[w].LastName + '</td>';
+                withdrawalstu += '</tr>';
+
+                withdrawalstu += '<tr><td colspan="2"><strong>This student was withdrawn on: '+new Date(alldata.Enrollment.Withdrawals[w].LogDate).toLocaleDateString()+'</strong></td></tr>';
+
+                withdrawalstu += '</tbody></table>';
+                withdrawalstu += '</div>';
+                withdrawalhtml += withdrawalstu;
+        }
+    }
+	else {
+		withdrawalhtml += '<p>There are currently no recent student withdrawals from the classlist.</p>';
+	}  
+    
+	$('#snapshotNewEnrolls .modal-body #pills-additions').html(newenrollshtml);  
+	$('#snapshotNewEnrolls .modal-body #pills-withdrawals').html(withdrawalhtml);  
+	$('#snapshotNewEnrolls').modal('toggle');    
+    
+}
+
+
+function openReport_StuActivity() {
+    
+    var stuactivityhtml = '';
+    
+    stuactivityhtml += '<p>Unapproved <a href="/d2l/le/'+orgUnitId+'/discussions/List" target="_blank">Discussions <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>: '+alldata.UpdatesAll.UnapprovedDiscussions+'</p>';
+    stuactivityhtml += '<p>Ungraded <a href="/d2l/lms/quizzing/admin/quizzes_manage.d2l?ou='+orgUnitId+'" target="_blank">Quizzes <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>: '+alldata.UpdatesAll.UngradedQuizzes+'</p>';
+    stuactivityhtml += '<p>Unread <a href="/d2l/lms/dropbox/admin/folders_manage.d2l?ou='+orgUnitId+'" target="_blank">Assignment Submissions <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>: '+alldata.UpdatesAll.UnreadAssignmentSubmissions+'</p>';
+    
+	$('#snapshotStudentActivity .modal-body').html(stuactivityhtml);    
+	$('#snapshotStudentActivity').modal('toggle');        
+    
+}
+
+
+function checkLastAccessed() {
+
+    var checkfirst;
+    var checklast;
+    var okayfirst = false;
+    var okaylast = false;
+
+    if(alldata.CourseOffering.StartDate !== null) {
+        checkfirst = new Date(alldata.CourseOffering.StartDate);
+    }
+    else {
+        okayfirst = true;
+    }
+
+    if(alldata.CourseOffering.EndDate !== null) {
+        checklast = new Date(alldata.CourseOffering.EndDate);
+    }
+    else {
+        okaylast = true;
+    }
+
+    var daystoadd = 5;
+    if(alldata.CustomSettings !== null) {
+        if(alldata.CustomSettings.Dashboard !== null) {
+            if(alldata.CustomSettings.Dashboard.AtRisk !== undefined) {
+                if(alldata.CustomSettings.Dashboard.AtRisk.AccessLast !== undefined) {
+                    daystoadd = alldata.CustomSettings.Dashboard.AtRisk.AccessLast;
+                }
+            }
+        }
+    }
+
+    //console.log(checkfirst);
+    if(checkfirst !== undefined) {
+        checkfirst = checkfirst.addDays(daystoadd);
+
+        var tdate = new Date();
+        if(tdate > checkfirst) {
+            okayfirst = true;
+        }
+
+        if(tdate < checklast) {
+            okaylast = true;
+        }
+    }
+
+
+    //console.log(checkfirst);
+    //console.log(checklast);
+    //console.log(okayfirst);
+    //console.log(okaylast);
+
+    if(okayfirst && okaylast) {
+        if(alldata.Classlist.Objects.length > 0) {
+            var noaccessnum = 0;
+            var tdate = new Date();
+
+            for(var u=0; u < alldata.Classlist.Objects.length; u++) {
+
+                var useradded = false;
+                if(alldata.Classlist.Objects[u].LastAccessed === null) {
+                    noaccessnum++;
+                    atrisk_list.AccessLast.push(alldata.Classlist.Objects[u]);
+                    useradded = true;
+                }
+                else {
+                    var ladate = new Date(alldata.Classlist.Objects[u].LastAccessed);
+                    numdays = daysBetween(tdate, ladate);
+                    if(numdays > daystoadd) {
+                        noaccessnum++;
+                        atrisk_list.AccessLast.push(alldata.Classlist.Objects[u]);
+                        useradded = true;
+                    }
+                }
+                if(useradded) {
+                    if(atrisk_list.AllItems.indexOf(alldata.Classlist.Objects[u].Identifier) === -1) {
+                        atrisk_list.AllItems.push(alldata.Classlist.Objects[u].Identifier);
+                    }
+                }
+            }
+            
+            var noaccesstext = "<strong>"+noaccessnum;
+            if(noaccessnum === 1) {
+                noaccesstext += " student</strong> has "
+            }
+            else {
+                noaccesstext += " students</strong> have ";
+            }
+            $('#snapshot-noaccesslist').html(noaccesstext);
+            $("#widget_data_accesslast").text(alldata.CustomSettings.Dashboard.AtRisk.AccessLast);     
+            
+            $('#snapshot-instructor-accesslast').addClass('display');
+            
+        }
+    }
+}
+
+function checkContentViewed() {
+    
+    var percentcheck = 10;
+    if(alldata.CustomSettings !== null) {
+        if(alldata.CustomSettings.Dashboard !== null) {
+            if(alldata.CustomSettings.Dashboard.AtRisk !== undefined) {
+                if(alldata.CustomSettings.Dashboard.AtRisk.ContentViewed !== undefined) {
+                    percentcheck = alldata.CustomSettings.Dashboard.AtRisk.ContentViewed;
+                }
+            }
+        }
+    }
+    
+    if(alldata.Classlist.Objects.length > 0) {
+        var contentviewnum = 0;
+        var contotal_percent = 0;
+        var contotal_time = 0;
+
+        for(var u=0; u < alldata.Classlist.Objects.length; u++) {
+
+            if(alldata.Classlist.Objects[u].Progress !== undefined) {
+                if(alldata.Classlist.Objects[u].Progress.RequiredItems > 0) {
+                    contotal_percent += (alldata.Classlist.Objects[u].Progress.CompletedItems / alldata.Classlist.Objects[u].Progress.RequiredItems) * 100;
+                }
+            }
+
+            if(alldata.Classlist.Objects[u].TotalTime !== undefined) {
+                contotal_time += alldata.Classlist.Objects[u].TotalTime;
+            }
+
+        }
+
+        var conavg_percent = (contotal_percent / alldata.Classlist.Objects.length);
+        var conavg_time = (contotal_time / alldata.Classlist.Objects.length);
+
+        var conavg_time_format = dhm(conavg_time*1000);
+
+        for(var u=0; u < alldata.Classlist.Objects.length; u++) {
+            var constu_percent = 0;
+
+            if(alldata.Classlist.Objects[u].Progress !== undefined) {
+                constu_percent = (alldata.Classlist.Objects[u].Progress.CompletedItems / alldata.Classlist.Objects[u].Progress.RequiredItems) * 100;
+            }
+
+            //console.log(conavg_percent);
+            //console.log(constu_percent);
+            if((conavg_percent - constu_percent) >= percentcheck) {
+                contentviewnum++;
+                atrisk_list.ContentViewed.push(alldata.Classlist.Objects[u]);
+                if(atrisk_list.AllItems.indexOf(alldata.Classlist.Objects[u].Identifier) === -1) {
+                    atrisk_list.AllItems.push(alldata.Classlist.Objects[u].Identifier);
+                }
+            }
+        }
+        
+        $('#snapshot-instructor-clink').attr('href','/d2l/lms/content/reports/statistics_course.d2l?ou='+ orgUnitId);
+        $('#snapshot-content-views').text(conavg_percent.toFixed(0));
+        $('#snapshot-content-time').text(conavg_time_format);
+        var contentviewtext = "<strong>"+contentviewnum;
+        if(contentviewnum === 1) {
+            contentviewtext += " student</strong> has "
+        }
+        else {
+            contentviewtext += " students</strong> have ";
+        }
+        $('#snapshot-contentlist').html(contentviewtext);
+        $('#widget_data_contentviews').text(alldata.CustomSettings.Dashboard.AtRisk.ContentViewed);
+
+        $('#snapshot-instructor-content').addClass('display');       
+        
+    }
+}
+
+
+function checkGradeLevels() {
+    
+    var GradeValueMax = 70;
+	var GradeAvgNow = 50;
+    
+    if(alldata.CustomSettings !== null) {
+        if(alldata.CustomSettings.Dashboard !== null) {
+            if(alldata.CustomSettings.Dashboard.AtRisk !== undefined) {
+                if(alldata.CustomSettings.Dashboard.AtRisk.GradeAvgNow !== undefined) {
+                    GradeAvgNow = alldata.CustomSettings.Dashboard.AtRisk.GradeAvgNow;
+                }
+                if(alldata.CustomSettings.Dashboard.AtRisk.GradeValueMax !== undefined) {
+                    GradeValueMax = alldata.CustomSettings.Dashboard.AtRisk.GradeValueMax;
+                }
+            }
+        }
+    }    
+
+    
+    if ((alldata.GradeSetup.GradingSystem === "Weighted") || (alldata.GradeSetup.GradingSystem === "Points")) {
+
+        if(alldata.Classlist.Objects.length > 0) {
+            var grademaxnum = 0;
+            var gradeavgnum = 0;
+            var gradetotal_drop = 0;
+            var gradetotal_all = 0;
+
+            for(var u=0; u < alldata.Classlist.Objects.length; u++) {
+
+                var useradded = false;
+                //console.log(alldata.Classlist.Objects[u]);
+                gradetotal_drop += alldata.Classlist.Objects[u].Calculated.CurrentAverage;
+                gradetotal_all += alldata.Classlist.Objects[u].Calculated.CurrentEarned;
+
+                var atleastonegrade = false;
+                if(alldata.Classlist.Objects[u].Values.length > 0) {
+                    for(var v=0; v<alldata.Classlist.Objects[u].Values.length; v++) {
+                        if(alldata.Classlist.Objects[u].Values[v].GradeObjectType === 1 || alldata.Classlist.Objects[u].Values[v].GradeObjectType === 2) {
+                            atleastonegrade = true;
+                        }
+                    }
+                }
+
+                if(atleastonegrade) {
+                    if(alldata.Classlist.Objects[u].Calculated.CurrentAverage <= GradeAvgNow) {
+                        gradeavgnum++;
+                        atrisk_list.GradeAvgNow.push(alldata.Classlist.Objects[u]);
+                        useradded = true;
+                    }
+                    if(alldata.Classlist.Objects[u].Calculate100.CurrentEarned <= GradeValueMax){
+                        grademaxnum++;
+                        atrisk_list.GradeValueMax.push(alldata.Classlist.Objects[u]);
+                        useradded = true;
+                    }
+                }
+                
+                if(useradded) {
+                    if(atrisk_list.AllItems.indexOf(alldata.Classlist.Objects[u].Identifier) === -1) {
+                        atrisk_list.AllItems.push(alldata.Classlist.Objects[u].Identifier);
+                    }
+                }                    
+            }
+
+            var gradeavg_drop = (gradetotal_drop / alldata.Classlist.Objects.length);
+            var gradeavg_all = (gradetotal_all / alldata.Classlist.Objects.length);
+            
+            $('#snapshot-instructor-glink').attr('href','/d2l/lms/grades/index.d2l?ou='+ orgUnitId);
+
+            $('#snapshot-gradeavg-drop').text(gradeavg_drop.toFixed(2) + '%');
+            $('#snapshot-gradeavg-all').text(gradeavg_all.toFixed(2) + '%');
+
+            var gradeavgtext = "<strong>"+gradeavgnum;
+            if(gradeavgnum === 1) {
+                gradeavgtext += " student</strong> has "
+            }
+            else {
+                gradeavgtext += " students</strong> have ";
+            }
+            $('#snapshot-avggradelist').html(gradeavgtext);
+            $("#widget_data_gradeavg").text(alldata.CustomSettings.Dashboard.AtRisk.GradeAvgNow);
+
+            var grademaxtext = "<strong>"+grademaxnum;
+            if(grademaxnum === 1) {
+                grademaxtext += " student</strong> has "
+            }
+            else {
+                grademaxtext += " students</strong> have ";
+            }
+            $('#snapshot-maxgradelist').html(grademaxtext);
+            $("#widget_data_grademax").text(alldata.CustomSettings.Dashboard.AtRisk.GradeValueMax);
+
+            $('#snapshot-instructor-grades').addClass('display');          
+            
+        }
+    }
+}
+
+
+function checkLateAssess() {
+    
+    var latecheck = 1;
+    
+    if(alldata.CustomSettings !== null) {
+        if(alldata.CustomSettings.Dashboard !== null) {
+            if(alldata.CustomSettings.Dashboard.AtRisk !== undefined) {
+                if(alldata.CustomSettings.Dashboard.AtRisk.LateAssess !== undefined) {
+                    latecheck = alldata.CustomSettings.Dashboard.AtRisk.LateAssess;
+                }
+            }
+        }
+    }
+
+    var numlate = 0;
+    
+    if(alldata.Classlist.Objects.length > 0) {
+        for(var s=0; s<alldata.Classlist.Objects.length; s++) {
+            var thisuser = alldata.Classlist.Objects[s];
+            //console.log(thisuser.LateAssess);
+
+            if(thisuser.LateAssess.length >= latecheck) {
+                atrisk_list.LateAssess.push(thisuser);
+                numlate++;
+                if(atrisk_list.AllItems.indexOf(thisuser.Identifier) === -1) {
+                    atrisk_list.AllItems.push(thisuser.Identifier);
+                }
+            }
+        }
+    
+        var latetext = "<strong>"+numlate;
+        if(numlate === 1) {
+            latetext += " student</strong> is "
+        }
+        else {
+            latetext += " students</strong> are ";
+        }
+        $('#snapshot-latelist').html(latetext);
+        $("#widget_data_lateassess").text(alldata.CustomSettings.Dashboard.AtRisk.LateAssess);            
+
+        $("#snapshot-instructor-lateassess").addClass('display');
+    }
+}
+
+
+function checkAssessResults() {
+    
+    var tdate = new Date();
+
+    var WeightMin = 2;
+    var CompleteMin = 40;
+    var AverageMin = 55;
+    var AverageMax = 90;
+    var FailRate = 20;
+    
+    var CompleteMax = 50;
+    var DayCountMax = 15;
+    
+    if(alldata.CustomSettings !== null) {
+        if(alldata.CustomSettings.Dashboard !== null) {
+            if(alldata.CustomSettings.Dashboard.Assessment !== undefined) {
+                if(alldata.CustomSettings.Dashboard.Assessment.WeightMin !== undefined) {
+                    WeightMin = alldata.CustomSettings.Dashboard.Assessment.WeightMin;
+                }
+                if(alldata.CustomSettings.Dashboard.Assessment.CompleteMin !== undefined) {
+                    CompleteMin = alldata.CustomSettings.Dashboard.Assessment.CompleteMin;
+                }
+                if(alldata.CustomSettings.Dashboard.Assessment.AverageMin !== undefined) {
+                    AverageMin = alldata.CustomSettings.Dashboard.Assessment.AverageMin;
+                }
+                if(alldata.CustomSettings.Dashboard.Assessment.AverageMax !== undefined) {
+                    AverageMax = alldata.CustomSettings.Dashboard.Assessment.AverageMax;
+                }
+                if(alldata.CustomSettings.Dashboard.Assessment.FailRate !== undefined) {
+                    FailRate = alldata.CustomSettings.Dashboard.Assessment.FailRate;
+                }
+            }
+            if(alldata.CustomSettings.Dashboard.GradeDates !== undefined) {
+                if(alldata.CustomSettings.Dashboard.GradeDates.CompleteMax !== undefined) {
+                    CompleteMax = alldata.CustomSettings.Dashboard.GradeDates.CompleteMax;
+                }
+                if(alldata.CustomSettings.Dashboard.GradeDates.DayCountMax !== undefined) {
+                    DayCountMax = alldata.CustomSettings.Dashboard.GradeDates.DayCountMax;
+                }            
+            }
+        }
+
+    }
+    
+    
+    for(var gi=0; gi<alldata.GradeItems.Objects.length; gi++) {
+        
+        var thisgrade = alldata.GradeItems.Objects[gi];
+        
+        var weightokay = false;
+        if(thisgrade.WeightCalc > WeightMin) {
+            weightokay = true;
+        }
+
+        var completepercent = ((thisgrade.NumEvals / alldata.Classlist.Objects.length)*100);
+        var completeokay = false;
+        if(completepercent > CompleteMin) {
+            completeokay = true;
+        }
+
+        //console.log(thisgrade.Name);
+        //console.log(thisgrade.Id);
+        //console.log(weightokay);
+        //console.log(completeokay);
+
+        if(weightokay && completeokay) {
+            if(thisgrade.Statistics !== undefined) {
+                if(thisgrade.Statistics !== null) {
+                    if(thisgrade.Statistics.Average !== null) {
+                        if(thisgrade.Statistics.Average <= AverageMin) {
+                            assess_list.AverageMin.push(thisgrade.Id);
+                            if(assess_list.AllItems.indexOf(thisgrade.Id) === -1) {
+                                assess_list.AllItems.push(thisgrade.Id);
+                            }
+                        }
+                        if(thisgrade.Statistics.Average >= AverageMax) {
+                            assess_list.AverageMax.push(thisgrade.Id);
+                            if(assess_list.AllItems.indexOf(thisgrade.Id) === -1) {
+                                assess_list.AllItems.push(thisgrade.Id);
+                            }
+                        }
+                    }
+                    //console.log(thisgrade.Statistics.FailRate);
+                    //console.log(FailRate);
+                    if(thisgrade.Statistics.FailRate !== null) {
+                        if(thisgrade.Statistics.FailRate >= FailRate) {
+                            assess_list.FailRate.push(thisgrade.Id);
+                            if(assess_list.AllItems.indexOf(thisgrade.Id) === -1) {
+                                assess_list.AllItems.push(thisgrade.Id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        var completelow = false;
+        if(completepercent < CompleteMax) {
+            completelow = true;
+        }
+        
+        //console.log(completelow);
+        if(completelow) {
+            if(thisgrade.EndDate !== undefined) {
+                if(thisgrade.EndDate !== null) {                    
+                    var edate = new Date(thisgrade.EndDate);
+                    if(edate < tdate) {
+                        var dbetween = daysBetween(thisgrade.EndDate, tdate);
+                        //console.log(dbetween);
+                        //console.log(DayCountMax);
+                        if(dbetween > DayCountMax) {
+                            assess_list.UngradedNow.push(thisgrade.Id);
+                            if(assess_list.AllItems.indexOf(thisgrade.Id) === -1) {
+                                assess_list.AllItems.push(thisgrade.Id);
+                            }
+                        }
+                    }                
+                }                
+            }
+        }
+    }
+}
+
+
+function validateInput(val, min, max) {
+	
+	var setval = val;
+	if((val >= min) && (val <= max)){
+		
+	}
+	else {
+		if(val < min) {
+			setval = min;
+		}
+		if(val > max) {
+			setval = max;
+		}
+	}
+	return setval;
+}
+
+
+function saveAtRiskSettings() {
+    
+    var saveobj = {
+        AtRisk: {
+            AccessLast:parseInt($('#setLastAccessed').val()),
+            ContentViewed:parseInt($('#setContentViewed').val()),
+            GradeAvgNow:parseInt($('#setGradeAvg').val()),
+            GradeValueMax:parseInt($('#setGradeMax').val()),
+            LateAssess:parseInt($('#setLateAssess').val())
+        }
+    }
+    
+    if(alldata.CustomSettings !== null) {
+        if(alldata.CustomSettings.Dashboard !== null) {
+            alldata.CustomSettings.Dashboard.AtRisk = saveobj.AtRisk;
+        }
+        else {
+            alldata.CustomSettings.Dashboard = {
+                AtRisk: saveobj.AtRisk
+            }
+        }
+    }
+    else {
+        alldata.CustomSettings = {
+            Dashboard: {
+                AtRisk: saveobj.AtRisk
+            }
+        }
+    }
+    
+    //console.log(alldata.CustomSettings);
+    putCustomWidgetData(CustomWidgetH1,"AtRisk");
+
+}
+
+
+function saveAssessSettings() {
+    var saveobj = {
+        Assessment: {
+            AverageMax:parseInt($('#setGradeValueMax').val()),
+            AverageMin:parseInt($('#setGradeValueMin').val()),
+            CompleteMin:parseInt($('#setGradeCompleteMin').val()),
+            FailRate:parseInt($('#setFailRateMax').val()),
+            WeightMin:parseInt($('#setGradeWeightMin').val())
+        },
+        GradeDates: {
+            CompleteMax:parseInt($('#setGradeCompleteMax').val()),
+            DayCountMax:parseInt($('#setGradeDateMax').val())
+        }
+    }
+    
+    if(alldata.CustomSettings !== null) {
+        if(alldata.CustomSettings.Dashboard !== null) {
+            alldata.CustomSettings.Dashboard.Assessment = saveobj.Assessment;
+            alldata.CustomSettings.Dashboard.GradeDates = saveobj.GradeDates;
+        }
+        else {
+            alldata.CustomSettings.Dashboard = {
+                Assessment: saveobj.Assessment,
+                GradeDates: saveobj.GradeDates
+            }
+        }
+    }
+    else {
+        alldata.CustomSettings = {
+            Dashboard: {
+                Assessment: saveobj.Assessment,
+                GradeDates: saveobj.GradeDates
+            }
+        }
+    }
+    
+    //console.log(alldata.CustomSettings);
+    putCustomWidgetData(CustomWidgetH1,"Assess");
+    
+}
+
+
+function initializeAtRiskSettings() {
+	//console.log(alldata.CustomSettings.Dashboard);
+	
+	//var settingsHTML = '<p>Here you can configure your preferences for the presentation of this tool.</p>';
+	var settingsHTML = '<p>These settings are unique to each of your course shells and <strong>will not be automatically applied to other sections</strong>.</p>';
+    
+	settingsHTML += '<p><strong>Course Last Accessed</strong></p>';
+	settingsHTML += '<form class="form-horizontal form-atrisk" role="form"><div class="form-group"><div class="col-sm-2"><input type="number" class="form-control input-atrisk" id="setLastAccessed" min="1" max="14" step="1"></div><label for="setLastAccessed" class="col-sm-10 control-label"># days since student last accessed this course shell (min:1 and max:14)</label></div><div class="clearfix"></div></form>';
+	settingsHTML += '<hr>';
+	settingsHTML += '<p><strong>Grade Progress</strong></p>';
+	settingsHTML += '<p>Calculations will include grade items that are not hidden from students, and which have values entered for that particular student. All grade items which have no values filled in will be ignored so we strongly recommend entering a value of “0” for late or missed assignments.</p>';
+	settingsHTML += '<p>Note that students must have at least one grade value recorded before they will be considered for any at risk criteria below.</p>';
+	settingsHTML += '<form class="form-horizontal form-atrisk" role="form"><div class="form-group"><div class="col-sm-2"><input type="number" class="form-control input-atrisk" id="setGradeAvg" min="50" max="100" step="5"></div><label for="setGradeAvg" class="col-sm-10 control-label">% current average grade drops below this value (min:50 and max:100)</label></div><div class="clearfix"></div>';
+	settingsHTML += '<div class="form-group"><div class="col-sm-2"><input type="number" class="form-control input-atrisk" id="setGradeMax" min="50" max="100" step="5"></div><label for="setGradeMax" class="col-sm-10 control-label">% max achievable final grade drops below this value (min:50 and max:100)</label></div><div class="clearfix"></div></form>';
+	settingsHTML += '<hr>';
+	settingsHTML += '<p><strong>Content Progress</strong></p>';
+	settingsHTML += '<form class="form-horizontal form-atrisk" role="form"><div class="form-group"><div class="col-sm-2"><input type="number" class="form-control input-atrisk" id="setContentViewed" min="5" max="100" step="1"></div><label for="setContentViewed" class="col-sm-10 control-label">% content viewed below the average of the full classlist (min:5 and max:100)</label></div><div class="clearfix"></div></form>';
+	settingsHTML += '<hr>';
+	settingsHTML += '<p><strong>Late Assessments</strong></p>';
+	settingsHTML += '<form class="form-horizontal form-atrisk" role="form"><div class="form-group"><div class="col-sm-2"><input type="number" class="form-control input-atrisk" id="setLateAssess" min="1" max="3" step="1"></div><label for="setLateAssess" class="col-sm-10 control-label"># late assessments based on programmed End Dates (min:1 and max:3)</label></div><div class="clearfix"></div></form>';
+	    
+    settingsHTML += '<hr>';
+    settingsHTML += '<p><button class="cc-button" onClick="saveAtRiskSettings()">Save At-Risk Student Criteria</button></p>';
+    settingsHTML += '<p id="savemsg-progress-atrisk">&nbsp;</p>';
+    
+    $('#cc-settings #pills-progress').html(settingsHTML);
+    
+    if(alldata.CustomSettings !== null) {
+        if(alldata.CustomSettings.Dashboard !== undefined) {
+            if(alldata.CustomSettings.Dashboard !== null) {
+                $('#setLastAccessed').val(alldata.CustomSettings.Dashboard.AtRisk.AccessLast);
+                $('#setGradeAvg').val(alldata.CustomSettings.Dashboard.AtRisk.GradeAvgNow);
+                $('#setGradeMax').val(alldata.CustomSettings.Dashboard.AtRisk.GradeValueMax);
+                $('#setContentViewed').val(alldata.CustomSettings.Dashboard.AtRisk.ContentViewed);
+                $('#setLateAssess').val(alldata.CustomSettings.Dashboard.AtRisk.LateAssess);
+                
+                
+            }
+        }
+    }
+    
+    $("#cc-settings #pills-progress .input-atrisk").on('change',function(){
+        var val = $(this)[0].valueAsNumber;
+        var min = parseInt($(this)[0].min);
+        var max = parseInt($(this)[0].max);
+        var setval = validateInput(val, min, max);
+        if(isNaN(setval)){
+            setval = min;
+        }
+        $(this).val(setval);
+    });        
+    
+}
+
+
+function initializeAssessSettings() {
+    
+    var settingsHTML = '<p>These settings are unique to each of your course shells and <strong>will not be automatically applied to other sections</strong>.</p>';
+    
+    settingsHTML += '<p><strong>Student Achievement Metrics</strong></p>';
+    settingsHTML += '<form class="form-horizontal form-atrisk" role="form"><div class="form-group"><div class="col-sm-2"><input type="number" class="form-control input-atrisk" id="setGradeValueMin" min="55" max="90" step="1"></div><label for="setGradeValueMin" class="col-sm-10 control-label">grade items with an overall student average % less than or equal to this value will be flagged (min:55 and max:90)</label></div><div class="clearfix"></div></form>';
+    settingsHTML += '<hr>';
+    settingsHTML += '<form class="form-horizontal form-atrisk" role="form"><div class="form-group"><div class="col-sm-2"><input type="number" class="form-control input-atrisk" id="setGradeValueMax" min="85" max="100" step="1"></div><label for="setGradeValueMax" class="col-sm-10 control-label">grade items with an overall student average % greater than or equal to this value will be flagged (min:85 and max:100)</label></div><div class="clearfix"></div></form>';
+    settingsHTML += '<hr>';
+    settingsHTML += '<form class="form-horizontal form-atrisk" role="form"><div class="form-group"><div class="col-sm-2"><input type="number" class="form-control input-atrisk" id="setFailRateMax" min="5" max="25" step="1"></div><label for="setFailRateMax" class="col-sm-10 control-label">grade items with an overall student fail rate % greater than or equal to this value will be flagged (min:5 and max:25)</label></div><div class="clearfix"></div></form>';
+    
+    settingsHTML += '<div><button type="button" class="cc-button btn-alert btn-alt btn-block" data-toggle="collapse" data-target="#assessadvanced1" aria-expanded="false" aria-controls="assessadvanced1">Advanced Options</button></div>';
+    settingsHTML += '<div id="assessadvanced1" class="collapse assessadvanced">';
+    settingsHTML += '<div class="card card-body">';
+    settingsHTML += '<form class="form-horizontal form-atrisk" role="form"><div class="form-group"><div class="col-sm-2"><input type="number" class="form-control input-atrisk" id="setGradeWeightMin" min="0" max="4" step="1"></div><label for="setGradeWeightMin" class="col-sm-10 control-label">grade items with an overall weight % less than or equal to this value will be ignored from student achievement analysis (min:0 and max:4)</label></div><div class="clearfix"></div></form>';
+    settingsHTML += '<hr>';
+    settingsHTML += '<form class="form-horizontal form-atrisk" role="form"><div class="form-group"><div class="col-sm-2"><input type="number" class="form-control input-atrisk" id="setGradeCompleteMin" min="10" max="50" step="1"></div><label for="setGradeCompleteMin" class="col-sm-10 control-label">grade items with published scores for less than or equal to this % of the classlist will be ignored from student achievement analysis (min:10 and max:50)</label></div><div class="clearfix"></div></form>';    
+    settingsHTML += '</div>';
+    settingsHTML += '</div>';
+    settingsHTML += '<hr>';
+    
+    settingsHTML += '<p><strong>Turnaround Time Metrics</strong></p>';
+    settingsHTML += '<form class="form-horizontal form-atrisk" role="form"><div class="form-group"><div class="col-sm-2"><input type="number" class="form-control input-atrisk" id="setGradeDateMax" min="0" max="15" step="1"></div><label for="setGradeDateMax" class="col-sm-10 control-label">number of days before an item becomes flagged when the required % of student scores are not published (min:0 and max:15)</label></div><div class="clearfix"></div></form>';    
+    
+    settingsHTML += '<div><button type="button" class="cc-button btn-alert btn-alt btn-block" data-toggle="collapse" data-target="#assessadvanced2" aria-expanded="false" aria-controls="assessadvanced2">Advanced Options</button></div>';
+    settingsHTML += '<div id="assessadvanced2" class="collapse assessadvanced">'; 
+    settingsHTML += '<div class="card card-body">';
+    settingsHTML += '<form class="form-horizontal form-atrisk" role="form"><div class="form-group"><div class="col-sm-2"><input type="number" class="form-control input-atrisk" id="setGradeCompleteMax" min="50" max="100" step="1"></div><label for="setGradeCompleteMax" class="col-sm-10 control-label">grade items with published scores for greater than or equal to this % of the classlist will not be flagged (min:50 and max:100)</label></div><div class="clearfix"></div></form>';    
+    settingsHTML += '</div>';
+    settingsHTML += '</div>';    
+    settingsHTML += '<hr>';
+    settingsHTML += '<p><button class="cc-button" onClick="saveAssessSettings()">Save Assessment Analysis Criteria</button></p>';
+    settingsHTML += '<p id="savemsg-progress-assess">&nbsp;</p>';
+    
+    $('#cc-settings #pills-assessment').html(settingsHTML);
+    
+    if(alldata.CustomSettings !== null) {
+        if(alldata.CustomSettings.Dashboard !== undefined) {
+            if(alldata.CustomSettings.Dashboard !== null) {
+                
+                //console.log(alldata.CustomSettings.Dashboard);
+                $('#setGradeValueMin').val(alldata.CustomSettings.Dashboard.Assessment.AverageMin);
+                $('#setGradeValueMax').val(alldata.CustomSettings.Dashboard.Assessment.AverageMax);
+                $('#setFailRateMax').val(alldata.CustomSettings.Dashboard.Assessment.FailRate);
+                $('#setGradeWeightMin').val(alldata.CustomSettings.Dashboard.Assessment.WeightMin);
+                $('#setGradeCompleteMin').val(alldata.CustomSettings.Dashboard.Assessment.CompleteMin);
+                $('#setGradeDateMax').val(alldata.CustomSettings.Dashboard.GradeDates.DayCountMax);
+                
+                $('#setGradeCompleteMax').val(alldata.CustomSettings.Dashboard.GradeDates.CompleteMax);
+            }
+        }
+    }    
+    
+    $('.collapse.assessadvanced').on('show.bs.collapse', function () {
+        frameloop = setInterval(function(){
+            //frameHeight();
+        },1);
+    });
+    $('.collapse.assessadvanced').on('shown.bs.collapse', function () {
+        clearInterval(frameloop);
+        frameloop = false;
+        //frameHeight();
+    });
+    $('.collapse.assessadvanced').on('hidden.bs.collapse', function () {
+        //frameHeight();
+    });
+
+    
+    $("#cc-settings #pills-assessment .input-atrisk").on('change',function(){
+        var val = $(this)[0].valueAsNumber;
+        var min = parseInt($(this)[0].min);
+        var max = parseInt($(this)[0].max);
+        var setval = validateInput(val, min, max);
+        if(isNaN(setval)){
+            setval = min;
+        }
+        $(this).val(setval);
+    });     
+    
+}
+
+
+function initializeProgressDisplay() {
+
+    //console.log(alldata);
+
+    $('#home-stuatrisk .badge').text(alldata.Progress.AtRisk.AllItems.length);
+    $('#dash-stuatrisk .management-count').text(alldata.Progress.AtRisk.AllItems.length);
+    $('#dash-stuatrisk .management-button').on('click',function(){
+        window.open('/d2l/le/content/6606/fullscreen/8123011/View?oid='+orgUnitId+'&rolename='+alldata.CurrentRole, '_blank'); 
+    });
+    
+    $('#home-flaggedassess .badge').text(alldata.Progress.Assess.AllItems.length);
+    $('#dash-flaggedassess .management-count').text(alldata.Progress.Assess.AllItems.length);
+    $('#dash-flaggedassess .management-button').on('click',function(){
+        window.open('/d2l/le/content/6606/fullscreen/14134468/View?oid='+orgUnitId+'&rolename='+alldata.CurrentRole, '_blank'); 
+    });
+    
+    if(alldata.Classlist.Objects.length === 0) {
+        $('#stusummary-nonefound').removeClass('d-none');
+    }
+    
+    alldata.Displayed.ProgressStudents = true;
+    alldata.Displayed.ProgressAssess = true;
+    
+    checkAllDisplayed();
+    
+}
+
+
+function buildStudentPreview() {
+    
+    var allowselect = false;
+    if(alldata.CurrentRole === "Instructor") {
+        allowselect = true;
+    }
+    else {
+        if(adminroles.indexOf(alldata.CurrentRole) > -1) {
+            allowselect = true;
+        }
+    }
+    
+    var stuselectall = '';
+    stuselectall += '<h2>Instructor Only Information</h2>';
+    stuselectall += '<p>Note that the default information displayed below is for an imaginary student, and it is not based on any of the actual content and evaluations in this course.</p>';
+
+    if(allowselect) {
+        if(alldata.Classlist.Objects.length > 0) {
+            var stuselect = '';
+            stuselect += '<div class="input-group mb-3">';
+            stuselect += '<div class="input-group-prepend mobile-hide">';
+            stuselect += '<label class="input-group-text" for="previewStudentSelect">Select Student</label>';
+            stuselect += '</div>';
+            stuselect += '<select class="custom-select" id="previewStudentSelect">';
+            stuselect += '<option value="-1" selected>Imaginary Student</option>';
+            for(var cl=0; cl<alldata.Classlist.Objects.length; cl++) {
+                stuselect += '<option value="'+alldata.Classlist.Objects[cl].Identifier+'">'+alldata.Classlist.Objects[cl].FirstName+ ' ' +alldata.Classlist.Objects[cl].LastName+ ' (' + alldata.Classlist.Objects[cl].OrgDefinedId + ')</option>';
+            }
+            stuselect += '</select>';
+            stuselect += '</div>';
+
+            stuselectall += '<p>You can use the dropdown select menu to view real dashboard data for each student in your classlist. <strong>Students are not presented with this option, and will only see their own results.</strong></p>';
+            stuselectall += stuselect;            
+            
+        }
+    }
+    
+    stuselectall += '</div>';
+    $('.ipinstructoronly').html(stuselectall);
+    $('.ipinstructoronly').removeClass('d-none');
+        
+    buildStudentDashboardPreview();
+    
+    //frameHeight();
+    
+    $("#previewStudentSelect").on('change',function() {
+        buildStudentDashboard(this.value);
+    });    
+}
+
+
+function buildStudentDashboardPreview() {
+    $('#dashboard-student-currentavg').text('74%');
+    $('#dashboard-student-totalearned').text('35%');
+
+    $('#dashboard-student-numevaluated').text(5);
+    $('#dashboard-student-percentevaluated').text('47%');
+
+    $('#dashboard-student-gradetool').prop("onclick", null).off("click");
+    $('#dashboard-student-gradetool').on('click',function(){
+        window.open('/d2l/le/userprogress/'+orgUnitId+'/classprogress/List', '_blank'); 
+    });
+
+    $('#dashboard-student-contentviewed').text('46');
+    $('#dashboard-student-contenttotal').text('110');
+
+    var contentpercent = 0;
+    contentpercent = (46 / 110) * 100;
+    
+    $('#dashboard-student-content .progress-bar').attr("style",'width:'+contentpercent.toFixed(2)+'%');
+    $('#dashboard-student-content .progress-bar').attr("aria-valuenow",contentpercent.toFixed(2));
+
+    $('#dashboard-student-content .cc-button').prop("onclick", null).off("click");
+    $('#dashboard-student-content .cc-button').on('click',function(){
+        window.open('/d2l/le/userprogress/'+orgUnitId+'/classprogress/List', '_blank'); 
+    });
+
+    $('#overdue-items-total .overdue-counter').text(2);
+    $('#overdue-items-assign .overdue-counter').text(1);
+
+    $('#overdue-items-quiz .overdue-counter').text(1);
+    $('#overdue-items-other .overdue-counter').text(0);
+
+    $('#dashboard-student-overdue .cc-button').attr('disabled','disabled');
+    
+    $('#dashboard-student-grades .invisible').removeClass('invisible');
+    $('#dashboard-student-content .invisible').removeClass('invisible');
+    $('#dashboard-student-overdue .invisible').removeClass('invisible');    
+    
+    //frameHeight();
+    
+}
+
+
+function buildStudentDashboard(userid) {
+    
+    var displaycurrentaverage = true;
+    if(alldata.CustomSettings !== undefined) {
+        if(alldata.CustomSettings !== null) {
+            if(alldata.CustomSettings.Dashboard !== undefined) {
+                if(alldata.CustomSettings.Dashboard !== null) {
+                    if(alldata.CustomSettings.Dashboard.Display !== undefined) {
+                        if(alldata.CustomSettings.Dashboard.Display !== null) {
+                            if(alldata.CustomSettings.Dashboard.Display.CurrentAverage !== undefined) {
+                                displaycurrentaverage = alldata.CustomSettings.Dashboard.Display.CurrentAverage;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    if(displaycurrentaverage) {
+        $('.student-current-average').removeClass('d-none');
+    }
+    else {
+        $('.student-current-average').addClass('d-none');
+    }
+    
+    var gradedall = 0;
+	if (alldata.GradeSetup.GradingSystem === "Weighted") {
+        
+        for(var c=0; c<alldata.GradesAll.Categories.length; c++) {
+            gradedall += alldata.GradesAll.Categories[c].Weight;
+        }
+        for(var u=0; u<alldata.GradesAll.Uncategorized.length; u++) {
+            if(!alldata.GradesAll.Uncategorized[u].IsBonus) {
+                if (alldata.GradesAll.Uncategorized[u].GradeType === "Numeric" || alldata.GradesAll.Uncategorized[u].GradeType === "SelectBox" || alldata.GradesAll.Uncategorized[u].GradeType === "PassFail") {
+                    gradedall += alldata.GradesAll.Uncategorized[u].Weight;
+                }
+            }
+        }
+    }    
+    //console.log(gradedall);
+    var uindex = -1;
+    for(var cl=0; cl<alldata.Classlist.Objects.length; cl++) {
+        var thisuser = alldata.Classlist.Objects[cl];
+        if(userid !== undefined) {
+            if(thisuser.Identifier === userid) {
+                uindex = cl;
+                break;
+            }
+        }
+        else {
+            if(thisuser.Identifier === alldata.WhoAmI.Identifier) {
+                uindex = cl;
+                break;
+            }            
+        }
+    }
+    
+    if(uindex > -1) {
+        thisuser = alldata.Classlist.Objects[uindex];
+        
+        $('#dashboard-student-currentavg').text(thisuser.Calculated.CurrentAverage.toFixed(2)+'%');
+        $('#dashboard-student-totalearned').text(thisuser.Calculated.CurrentEarned.toFixed(2)+'%');
+
+        var gradedtotal = 0;
+        var gradedzero = 0;
+        for(var v=0; v<thisuser.Values.length; v++) {
+            if(thisuser.Values[v].GradeObjectType === 1 || thisuser.Values[v].GradeObjectType === 2) {
+                gradedtotal++;
+
+                if(thisuser.Values[v].PointsNumerator === 0) {
+                    gradedzero++;
+                }
+            }
+        }
+
+        $('#dashboard-student-numevaluated').text(gradedtotal);
+        $('#dashboard-student-percentevaluated').text(parseFloat(thisuser.Calculated.CoursePercent).toFixed(2)+'%');
+
+        $('#dashboard-student-gradetool').prop("onclick", null).off("click");
+        $('#dashboard-student-gradetool').on('click',function(){
+            window.open('/d2l/le/classprogress/userprogress/'+thisuser.Identifier+'/'+orgUnitId+'/Grades/Details', '_blank'); 
+        });
+
+        $('#dashboard-student-grades .invisible').removeClass('invisible');
+
+
+        var contotal_stu = 0;
+        if(thisuser.Progress !== undefined) {
+            contotal_stu = thisuser.Progress.CompletedItems;
+        }
+        else {
+            if(thisuser.TopicsViewed > 0) {
+                contotal_stu = thisuser.TopicsViewed;
+            }
+        }
+
+        $('#dashboard-student-contentviewed').text(contotal_stu);
+        $('#dashboard-student-contenttotal').text(thisuser.Progress.RequiredItems);
+
+        var contentpercent = 0;
+        if(thisuser.Progress.RequiredItems > 0) {
+            contentpercent = (thisuser.Progress.CompletedItems / thisuser.Progress.RequiredItems) * 100;
+        }
+
+        $('#dashboard-student-content .progress-bar').attr("style",'width:'+contentpercent.toFixed(2)+'%');
+        $('#dashboard-student-content .progress-bar').attr("aria-valuenow",contentpercent.toFixed(2));
+
+        $('#dashboard-student-content .cc-button').prop("onclick", null).off("click");
+        $('#dashboard-student-content .cc-button').on('click',function(){
+            window.open('/d2l/le/userprogress/'+thisuser.Identifier+'/'+orgUnitId+'/Content/Details', '_blank'); 
+        });
+
+        $('#dashboard-student-content .invisible').removeClass('invisible');
+
+        $('#overdue-items-total .overdue-counter').text(thisuser.Overdue.Total);
+        $('#overdue-items-assign .overdue-counter').text(thisuser.Overdue.Assignments);
+
+        $('#overdue-items-quiz .overdue-counter').text(thisuser.Overdue.Quizzes);
+        $('#overdue-items-other .overdue-counter').text(thisuser.Overdue.Other);
+
+        $('#dashboard-student-overdue .cc-button').prop("onclick", null).off("click");
+        $('#dashboard-student-overdue .cc-button').on('click',function(){
+            openModal_LateAssess(thisuser.Identifier);
+        });
+        $('#dashboard-student-overdue .cc-button').removeAttr('disabled');
+        
+        $('#dashboard-student-overdue .invisible').removeClass('invisible');            
+        
+    }
+    else {
+        buildStudentDashboardPreview();
+    }
+    
+    //frameHeight();
+    
+}
+
+
+function openModal_LateAssess(uid) {
+    var thisuser;
+    for(var u=0; u<alldata.Classlist.Objects.length; u++) {
+        if(alldata.Classlist.Objects[u].Identifier === uid) {
+            thisuser = alldata.Classlist.Objects[u];
+            //console.log(thisuser);
+            break;
+        }
+    }
+    
+    var modalhtml = '';
+    modalhtml += '';
+    modalhtml += '<div class="table-responsive-sm">';
+    modalhtml += '<table class="table table-striped" id="zerogradeuser-'+thisuser.Identifier+'">';
+    modalhtml += '<thead>';
+    modalhtml += '<tr><th>Evaluation</th><th class="text-center">Weight</th><th class="text-center">Due Date</th><th class="text-center">Recorded Value</th></tr>';
+    modalhtml += '</thead>';
+    modalhtml += '<tbody>';
+    if(thisuser !== undefined) {
+        for(var l=0; l<thisuser.LateAssess.length; l++) {
+            for(var g=0; g<alldata.GradeItems.Objects.length; g++) {
+                if(alldata.GradeItems.Objects[g].Id === thisuser.LateAssess[l]) {
+                    var thisgrade = alldata.GradeItems.Objects[g];
+                    //console.log(thisgrade);
+                    
+                    var iszero = false;
+                    if(thisgrade.Values.Objects.length > 0) {
+                        //console.log(thisgrade);
+                        //console.log(thisgrade.Values.Objects[v]);
+                        iszero = false;
+                        if(thisgrade.Values.Objects[0].PointsNumerator === 0) {
+                            iszero = true;
+                        }   
+                    }
+                    
+                    modalhtml += '<tr>';
+                    modalhtml += '<td>'+thisgrade.Name+'</td>';
+                    modalhtml += '<td class="text-center">'+Math.round(thisgrade.WeightCalc * 100) / 100+'%</td>';
+                    
+                    /*
+                    if(thisgrade.WeightDrop) {
+                        modalhtml += '<td class="text-center">Yes</td>';
+                    }
+                    else {
+                        modalhtml += '<td class="text-center">No</td>';
+                    }
+                    */
+                    
+                    var edate = new Date(thisgrade.EndDate);
+                    modalhtml += '<td class="text-center">'+edate.toLocaleDateString()+'</td>';
+                    
+                    modalhtml += '<td class="text-center" id="zerograde-'+thisgrade.Id+'">';
+                    if(iszero) {
+                        modalhtml += '0';
+                    }
+                    else {
+                        modalhtml += 'Ungraded';
+                    }
+                    modalhtml += '</td>';
+                    modalhtml += '</tr>';
+                    
+                }
+            }
+        }
+    }
+    modalhtml += '</tbody>';
+    modalhtml += '</table>';
+    modalhtml += '</div>';
+    
+    $('#lateAssessModal .modal-title').html('Late Evaluations for ' + thisuser.FirstName + ' ' + thisuser.LastName);
+    $('#lateAssessModal .modal-body').html(modalhtml);
+    $('#lateAssessModal .latecheckbox').on('change', function() {
+        
+        var listchecks = [];
+        $('#lateAssessModal .latecheckbox').each(function(){    
+            if($(this).prop("checked")) {
+                listchecks.push({
+                    User:$(this).attr("data-user"),
+                    Grade:$(this).attr("data-grade")
+                })
+            }
+        });
+        
+        if(listchecks.length > 0) {
+            $('#checksetzero').removeAttr("disabled");
+            $('#checksetzero').attr("onClick","setGradeZero()");
+        }
+        else {
+            $('#checksetzero').attr("disabled","disabled");
+            $('#checksetzero').removeAttr("onClick");
+        }
+        
+    });
+    
+    /*
+    var pageh = $('body').height();
+    //console.log(pageh);
+
+    var modalh = $('#lateAssessModal .modal-content').actual('height') + 5;
+    //console.log(modalh);
+
+    var modalt = $('#stu-'+uid).offset().top;
+    //console.log(modalt);
+
+    if ((pageh - modalh) < modalt) {
+        $('#lateAssessModal .modal-dialog').css({
+            'margin-top': (pageh - modalh) + 'px'
+        });
+    } else {
+        $('#lateAssessModal .modal-dialog').css({
+            'margin-top': modalt + 'px'
+        });
+    }     
+    
+    */
+    $('#lateAssessModal').modal('toggle');
+    
+}
+
+
+function openStudentSummary() {
+    $('#snapshotStudentSummary').modal('toggle');
+}
+
+
+function viewQuizAttemptLogs() {
+    $('#modalQuizAttemptLogs').modal('toggle');
+}
+
+
+function updateQuizAttemptLogs() {
+    $('#quizattemptlogsbody').html('');
+    var thisqid = parseInt($('#quizattemptselector').val());
+    //console.log(thisqid);
+    
+    if(thisqid > -1) {
+        for(var q=0; q<alldata.QuizzesAll.Objects.length; q++) {
+            var thisq = alldata.QuizzesAll.Objects[q];
+            if(thisq.QuizId === thisqid) {
+                var attemptlinkshtml = '';
+                if(thisq.Attempts.Objects.length > 0) {
+                    attemptlinkshtml += '<table class="table table-responsive">';
+                    attemptlinkshtml += '<thead>';
+                    attemptlinkshtml += '<tr>';
+                    attemptlinkshtml += '<th>Student ID</th>';
+                    attemptlinkshtml += '<th>Student Name</th>';
+                    attemptlinkshtml += '<th>Attempt Log Link</th>';
+                    attemptlinkshtml += '</tr>';
+                    attemptlinkshtml += '</thead>';
+                    attemptlinkshtml += '<tbody>';
+                    for(var qa=0; qa<thisq.Attempts.Objects.length; qa++) {
+                        var thisqa = thisq.Attempts.Objects[qa];     
+                        if(thisqa.StudentAttempt) {
+                            attemptlinkshtml += '<tr>';
+                            attemptlinkshtml += '<td>'+thisqa.StudentId+'</td>';
+                            attemptlinkshtml += '<td>'+thisqa.StudentName+'</td>';
+                            attemptlinkshtml += '<td><a href="/d2l/lms/qc/attempt_log/qc_attempt_log.d2l?ou='+alldata.CourseOffering.Identifier+'&ctid=2&ci='+thisq.QuizId+'&ai='+thisqa.AttemptId+'&d2l_body_type=2" target="_blank">Attempt '+thisqa.AttemptNumber+' <span class="sr-only">Opens in a new tab</span></a></td>';    
+                            attemptlinkshtml += '</tr>';
+                        }
+                    }
+                    attemptlinkshtml += '</tbody>';
+                    attemptlinkshtml += '</table>';
+                }
+                else {
+                    attemptlinkshtml = '<p>There are no Student Attempts for this Quiz yet.</p>';
+                }
+                
+                $('#quizattemptlogsbody').html(attemptlinkshtml);
+                break;
+            }
+        }
+    }
+}
+
+
+function sortQuizAttemptsByStudentName( a, b ) {
+  if ( a.StudentName < b.StudentName ){
+    return -1;
+  }
+  if ( a.StudentName > b.StudentName ){
+    return 1;
+  }
+  return 0;
+}
+
+
+function sortQuizAttemptsByUserId( a, b ) {
+  if ( a.UserId < b.UserId ){
+    return -1;
+  }
+  if ( a.UserId > b.UserId ){
+    return 1;
+  }
+  return 0;
+}
+
+
+function buildQuizAttemptLogs() {
+    var qaselecthtml = '';
+    qaselecthtml += '<select class="custom-select" id="quizattemptselector">';
+    qaselecthtml += '<option value="-1" selected>Select a Quiz</option>';
+    for(var q=0; q<alldata.QuizzesAll.Objects.length; q++) {
+        var thisq= alldata.QuizzesAll.Objects[q];
+        qaselecthtml += '<option value="'+thisq.QuizId+'">'+thisq.Name;
+        if(thisq.Attempts.Objects.length === 0) {
+            qaselecthtml += ' (No Attempts)';
+        }
+        else {
+            for(var qa=0; qa<thisq.Attempts.Objects.length; qa++) {
+                var thisqa = thisq.Attempts.Objects[qa];
+                thisqa.StudentAttempt = false;
+                thisqa.StudentId = -1;
+                thisqa.StudentName = '';
+                for(var cl=0; cl<alldata.Classlist.Objects.length; cl++) {
+                    var thisuser = alldata.Classlist.Objects[cl];
+                    if(parseInt(thisuser.Identifier) === thisqa.UserId) {
+                        thisqa.StudentAttempt = true;
+                        thisqa.StudentId = thisuser.OrgDefinedId;
+                        thisqa.StudentName = thisuser.FirstName + ' ' + thisuser.LastName;
+                        break;
+                    }
+                }
+            }
+            thisq.Attempts.Objects.sort(sortQuizAttemptsByStudentName);
+        }
+        qaselecthtml += '</option>';
+    }
+    qaselecthtml += '</select>';
+    $('#quizattemptselect').html(qaselecthtml);
+    
+    $('#quizattemptselector').on('change',function(){
+        updateQuizAttemptLogs();
+    });
+    
+    $('.link-quizattempts .management-button').removeAttr('disabled');
+    
+}
+
+
+var atrisk_list;
+var assess_list;
+function buildProgressSnapshot() {
+    
+	atrisk_list = {
+		"AccessLast":[],
+		"ContentViewed":[],
+		"GradeValueMax":[],
+		"GradeAvgNow":[],
+        "LateAssess":[],
+        "AllItems": []
+	};
+    
+    assess_list = {
+        "AverageMin":[],
+        "AverageMax":[],
+        "FailRate":[],
+        "UngradedNow": [],
+        "AllItems": []
+    }
+    
+    checkLastAccessed();
+    checkContentViewed();
+    checkGradeLevels();
+    checkLateAssess();
+    
+    checkAssessResults();
+    
+    alldata.Progress = {
+        AtRisk: atrisk_list,
+        Assess: assess_list
+    }
+    
+    buildQuizAttemptLogs();
+    
+    initializeProgressDisplay();
+
+    $('#dashboard-link-stusummary').attr('href','javascript:openStudentSummary()');
+    
+}

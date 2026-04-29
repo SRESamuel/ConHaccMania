@@ -1,0 +1,627 @@
+var d2l_tools = {
+  "Items": [
+    {
+      "ToolId": "2000",
+      "DisplayName": "Assignments",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "3000",
+      "DisplayName": "Discussions",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "4000",
+      "DisplayName": "Announcements",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "9000",
+      "DisplayName": "Locker",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "10000",
+      "DisplayName": "Chat",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "11000",
+      "DisplayName": "Classlist",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "12000",
+      "DisplayName": "Glossary",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "13000",
+      "DisplayName": "Grades",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "24000",
+      "DisplayName": "Links",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "31000",
+      "DisplayName": "FAQ",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "32000",
+      "DisplayName": "Survey",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "35000",
+      "DisplayName": "Calendar",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "37000",
+      "DisplayName": "Content",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "42000",
+      "DisplayName": "User Profile",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "43000",
+      "DisplayName": "Instant Messages",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "50000",
+      "DisplayName": "Question Collections",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "51000",
+      "DisplayName": "Quizzes",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "53000",
+      "DisplayName": "Help",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "59000",
+      "DisplayName": "Broken Link Viewer",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "61000",
+      "DisplayName": "Checklist",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "64000",
+      "DisplayName": "Ecommerce",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "65000",
+      "DisplayName": "Class Progress",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "69000",
+      "DisplayName": "Self Assessments",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "83000",
+      "DisplayName": "Reporting",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "100000",
+      "DisplayName": "Import/Export/Copy Components",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "120000",
+      "DisplayName": "SIS Holding Tank",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "129500",
+      "DisplayName": "Accommodations",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "214000",
+      "DisplayName": "LOR",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "233000",
+      "DisplayName": "User Auditors",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "236000",
+      "DisplayName": "WebDAV",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "241000",
+      "DisplayName": "Self Registration",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "252000",
+      "DisplayName": "Blog",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "253000",
+      "DisplayName": "Competencies",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "254000",
+      "DisplayName": "Rubrics",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "260000",
+      "DisplayName": "ePortfolio",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "262000",
+      "DisplayName": "Intelligent Agents",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "263000",
+      "DisplayName": "Attendance",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "360500",
+      "DisplayName": "Insights",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "370000",
+      "DisplayName": "Course Builder",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "380000",
+      "DisplayName": "Accelerator",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "390000",
+      "DisplayName": "External Learning Tools",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "400000",
+      "DisplayName": "IMS Configuration",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "420000",
+      "DisplayName": "Manage Dates",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "427000",
+      "DisplayName": "Seating Chart",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "432000",
+      "DisplayName": "Audio Capture",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "433000",
+      "DisplayName": "Locations",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "435000",
+      "DisplayName": "Media Integration",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "436000",
+      "DisplayName": "Video Capture",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "437000",
+      "DisplayName": "Kaltura",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "440000",
+      "DisplayName": "Google Workspace",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "521000",
+      "DisplayName": "Office365",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "550000",
+      "DisplayName": "Online Rooms Framework",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "551000",
+      "DisplayName": "IPSIS Platform",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "551300",
+      "DisplayName": "IPSIS Section Association",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "570800",
+      "DisplayName": "Notifications",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "581000",
+      "DisplayName": "Capture",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "586100",
+      "DisplayName": "IPSIS Administration",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "600000",
+      "DisplayName": "Student Success System",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "633000",
+      "DisplayName": "Media Platform",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "663000",
+      "DisplayName": "ReadSpeaker WebReader Integration",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "670000",
+      "DisplayName": "Remote Plugins",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "681000",
+      "DisplayName": "Trusted Sites",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "689000",
+      "DisplayName": "Learning Outcomes",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "692000",
+      "DisplayName": "ReadSpeaker DocReader Integration",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "693000",
+      "DisplayName": "Bulk Course Create",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "694000",
+      "DisplayName": "Awards",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "695000",
+      "DisplayName": "Bulk Course Copy",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "696000",
+      "DisplayName": "Bulk Course Export",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "698000",
+      "DisplayName": "Advanced Data Sets",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "699000",
+      "DisplayName": "Content Service",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "703000",
+      "DisplayName": "Portfolio",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "704000",
+      "DisplayName": "Brightspace Data Sets",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "705000",
+      "DisplayName": "Brightspace for Parents",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "708000",
+      "DisplayName": "Discover",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "711000",
+      "DisplayName": "Quick Eval",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "712000",
+      "DisplayName": "Ally Integration",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "716000",
+      "DisplayName": "Google Analytics",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "717000",
+      "DisplayName": "Work To Do",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "800000",
+      "DisplayName": "Learning Paths",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "802000",
+      "DisplayName": "Integrity Advocate",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "803000",
+      "DisplayName": "Local Authentication Security",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "1000100",
+      "DisplayName": "Custom Data Export",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "1100000",
+      "DisplayName": "Custom Reporting Framework",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "1112000",
+      "DisplayName": "Course Updater",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "1200200",
+      "DisplayName": "My Org Units",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    },
+    {
+      "ToolId": "1201600",
+      "DisplayName": "Custom Course Branding",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "1212900",
+      "DisplayName": "Custom Terms and Conditions",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "1215500",
+      "DisplayName": "Urkund Integration",
+      "OrgId": "6606",
+      "Status": false,
+      "OUDefault": false
+    },
+    {
+      "ToolId": "1215700",
+      "DisplayName": "Custom Update Sproc",
+      "OrgId": "6606",
+      "Status": true,
+      "OUDefault": true
+    }
+  ]
+}

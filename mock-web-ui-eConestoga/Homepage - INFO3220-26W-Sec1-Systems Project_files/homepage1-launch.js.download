@@ -1,0 +1,1593 @@
+// JavaScript Document
+
+
+function checkCommonMerge(code) {
+    ecplusClient.courseReadiness.isCommonMerge(code).then(function (resp) {
+        if (resp.isSuccess) {
+            //console.log(resp);
+            alldata.MergeCandidate = resp;
+            guidedCopyLoad();
+        } else {
+            alldata.MergeCandidate = null;
+            guidedCopyLoad();
+        }
+    });
+}
+
+function toggleDashboardDisplay() {
+    $('#course-setup-checklist').addClass('d-none');
+    $('.course-launch-checklist').addClass('d-none');
+    
+    $('#mobile-header-check').addClass('d-none');
+    $('#mobile-header-dash').removeClass('d-none');
+
+    $('#cc-dashboard .essential-dash-section').removeClass('d-none');
+    $('.instructor-dash-summary').removeClass('d-none');
+    $('.management-container').removeClass('d-none');
+    $('#high-cap-message').addClass('d-none');
+
+    //$('#instructor-nav-check').addClass('d-none');
+    //$('#instructor-nav-dash').removeClass('d-none');
+    $('#instructor-nav-dash .nav-ico img').attr('src', 'assets/img/bar-chart-2.svg');
+    $('#instructor-nav-dash .nav-label').text('Dashboard');
+
+    /*
+    var ischeckactive = $('#instructor-nav-check .nav-link.active');
+    if(ischeckactive.length > 0) {
+        $('#instructor-nav-dash .nav-link').addClass('active');
+    } 
+    */
+}
+
+function toggleChecklistDisplay() {
+
+    $('#cc-dashboard .essential-dash-section').addClass('d-none');
+    $('.instructor-dash-summary').addClass('d-none');
+    $('.management-container').addClass('d-none');
+
+    $('.course-launch-checklist .course-setup-progress-header').addClass('d-none');
+    $('.course-launch-checklist .course-setup-progress-bar-container').addClass('d-none');
+
+    $('.course-launch-checklist .checklist-breadcrumb').removeClass('d-none');
+    $('.course-launch-checklist .course-launch-future').addClass('d-none');
+
+    if (alldata.CourseLaunch !== undefined) {
+        courseLaunchLoad();
+    } else {
+        getCustomWidgetData(CustomWidgetCL, true);
+    }
+    
+    $('a[data-target="#cc-dashboard"]')[0].click();
+    
+}
+
+function updateGuidedCopyProgress(currentstep) {
+    $('.course-setup-progress-bar-container .step').removeClass('in-progress');
+    $('.course-setup-progress-bar-container .step').removeClass('complete');
+    $('.course-setup-progress-bar-container .progress-bar-section').removeClass('in-progress');
+    $('.course-setup-progress-bar-container .progress-bar-section').removeClass('complete');
+
+    if (currentstep > 0) {
+        $('.course-setup-progress-bar-container').each(function () {
+            for (var s = 0; s < currentstep; s++) {
+                $($(this).find('.step')[s]).addClass('complete');
+            }
+            //$($('.course-setup-progress-bar-container .step')[currentstep]).addClass('in-progress');
+
+            for (var b = 0; b < (currentstep - 1); b++) {
+                $($(this).find('.progress-bar-section')[b]).addClass('complete');
+            }
+            $($(this).find('.progress-bar-section')[(currentstep - 1)]).addClass('in-progress');
+        })
+    }
+}
+
+function eCPlusCheckCopyStatusNow(isloop) {
+    ecplusClient.courseReadiness.pollCopyStatus(orgUnitId, alldata.GuidedCopy.JobToken).then(function (resp) {
+        if (resp.isSuccess) {
+
+            alldata.GuidedCopy.Result = resp.Result;
+
+            if (resp.Result.Status === "COMPLETE") {
+                clearInterval(checkqueueloop);
+                if (!courseempty) {
+                    var showcopycomplete = true;
+                    if (alldata.MessageConfirm !== undefined) {
+                        if (alldata.MessageConfirm !== null) {
+                            if (alldata.MessageConfirm.GuidedCopyDone !== undefined) {
+                                showcopycomplete = false;
+                            }
+                        }
+                    }
+                    if (showcopycomplete) {
+                        $('#course-setup-queue').addClass('d-none');
+                        if(courselaunch) {
+                            $('#guidedCopyComplete').modal('show');
+                            if(copystarted === false) {
+                                courseLaunchLoad();
+                            }
+                        }
+                        else {
+                            $('#guidedCopyCompleteLate').modal('show');
+                        }
+                    }
+                } else {
+                    guidedCopyStart();
+                }
+            } else {
+                guidedCopyInQueue();
+            }
+        } else {
+            guidedCopyInQueue();
+        }
+    });
+}
+
+var checkqueueloop;
+function eCPlusCheckCopyStatus() {
+    checkqueueloop = setInterval(function() {
+        eCPlusCheckCopyStatusNow(true);
+    }, 60000);
+    
+    eCPlusCheckCopyStatusNow();
+}
+
+function getMergeCandidateInfo() {
+    var myenrollmenturl = "/d2l/api/lp/" + alldata.APIVersions.LP.LatestVersion + "/enrollments/myenrollments/";
+    myenrollmenturl += "?orgUnitTypeId=3";
+    myenrollmenturl += "&sortBy=-OrgUnitId";
+    //console.log(myenrollmenturl);
+    $.ajax({
+        method: "GET",
+        url: myenrollmenturl,
+        dataType: 'json',
+        success: function (my_enroll_temp) {
+            //console.log(my_enroll_temp);
+
+            alldata.EnrollmentOther = my_enroll_temp;
+            guidedCopyLoad();
+
+        } //end success
+    }) //end ajax
+}
+
+function subscribeReadyToCopyGC(ouID) {
+    $('#subscribe-notification-submit-btn').attr('onClick','subscribeNotificationConfirm('+ouID+')')
+    $('#modalSubscribeReady').modal('show');
+}
+
+function subscribeReadyToCopy() {
+    $('#modalSubscribeReady').modal('show');
+}
+
+function subscribeNotificationConfirm(ouID) {
+    if(ouID === undefined) {
+        ecPlusSetNotification(alldata.CourseOffering.Identifier, -1);
+    }
+    else {
+        ecPlusSetNotification(ouID, orgUnitId);
+    }
+}
+
+function ecPlusSetNotification(ouID, termID) {
+    var subscribeOpts = { triggerId: ouID };
+    if(termID !== -1) {
+        subscribeOpts.termId = termID;
+    }
+
+    ecplusClient.subscriptions.subscribe(alldata.WhoAmI.Identifier, subscribeOpts).then(function (resp) {
+        console.log(resp);
+
+        if (resp.isSuccess) {
+            if(termID === -1) {
+
+                $('#subscribed-already-text').removeClass('d-none');
+                $('#subscribe-ready-btn button').removeAttr('onClick');
+                $('#subscribe-ready-btn').addClass('d-none');
+                $('#subscribe-ready-text').addClass('d-none');
+                subscribeReadyToCopy();
+                /*
+                $('#subscribe-ready-btn').addClass('d-none');
+                $('#subscribed-already-text').removeClass('d-none');
+                $('#modalSubscribeReady').modal('hide');
+                */
+            }
+            else {
+
+                $('#course-copy-subscribed-already-email').text(parent.userEmail);
+
+                $('#course-copy-match-confirm').addClass('d-none');
+                $('#course-copy-email-confirm').removeClass('d-none');
+
+                var newnotification = {
+                    "Id": -1,
+                    "UserId": alldata.WhoAmI.Identifier,
+                    "UserEmail": parent.userEmail,
+                    "TemplateCode": null,
+                    "Trigger": ouID,
+                    "SecondaryTrigger": termID,
+                    "UpdatedOn": null,
+                    "IsDeleted": false,
+                }
+                alldata.UserNotifications.push(newnotification);
+
+                /*
+                $('#course-copy-subscribe').addClass('d-none');
+                $('#course-copy-subscribe-found').removeClass('d-none');
+                $('#modalSubscribeReady').modal('hide');
+                */
+            }
+        }
+        else {
+
+        }
+    });
+}
+
+function navigateToECHome() {
+    window.top.location.href = "/d2l/lp/ouHome/defaultHome.d2l";
+}
+
+function removeUnderConstruction() {
+    if (alldata.ModelAttributes !== undefined) {
+        if (alldata.ModelAttributes.Result !== null) {
+            if (alldata.ModelAttributes.Result.length === 1) {
+                alldata.ModelAttributes.Result[0].CourseModelShell.CanBeCopied = true;
+            }
+        }
+    }
+    ecPlusSetModelAttributes("IsAvailableToCopy", true);
+}
+
+function ecPlusGetModelAttributes() {
+
+    var codesplit = alldata.CourseOffering.Code.split('-');
+    var delivery;
+    var deliverylength;
+    if(codesplit[(codesplit.length - 3)] === "ON") {
+        delivery = codesplit[(codesplit.length - 3)] + '-' + codesplit[(codesplit.length - 2)];
+        deliverylength = 2;
+    }
+    else {
+        delivery = codesplit[(codesplit.length - 2)];
+        deliverylength = 1;
+    }
+
+    var code, version;
+    //check whether the department code exists
+    if((codesplit.length - deliverylength) === 5) {
+        //department code exists
+        code = codesplit[2];
+        version = codesplit[3];
+    }
+    else {
+        code = codesplit[1];
+        version = codesplit[2];
+    }
+
+    ecplusClient.api.getCourseReadinessModel(code, { version: version, deliveryMode: delivery, numOfWeeks: codesplit[codesplit.length - 1] }).then(function (resp) {
+        //console.log(resp);
+
+        alldata.ModelAttributes = resp;
+        if(resp.isSuccess) {
+            alldone.ModelAttributes = true;
+
+            olcManagedLoad();
+            getCustomWidgetData(CustomWidgetUC);
+            checkCourseScores();
+        }
+    });
+}
+
+function ecPlusSetModelAttributes(attrName, attrVal) {
+    var params = { orgUnitId: alldata.CourseOffering.Identifier };
+    params[attrName] = attrVal;
+
+    ecplusClient.api.updateCourseReadinessModel(alldata.CourseOffering.Code, params).then(function (resp) {
+        //console.log(resp);
+        if (resp.isSuccess) {
+            console.log(resp);
+
+            if (attrName === "IsAvailableToCopy") {
+                if (attrVal === false) {
+                    if(alldata.CurrentRole === "Administrator") {
+                        alldata.UnderConstruction = null;
+                        deleteCustomWidgetData(CustomWidgetUC);
+                        underConstructionLoad();
+                        $('#modelUnderConstruction').modal('hide');
+                    }
+                    else {
+                        putCustomWidgetData(CustomWidgetUC, "UnderConstructionSet");
+                    }
+                } else {
+                    alldata.UnderConstruction = null;
+                    deleteCustomWidgetData(CustomWidgetUC);
+                }
+            }
+            else if (attrName === "IsOlcManaged") {
+
+            }
+        }
+    });
+}
+
+var ucDatePicker;
+
+function editUnderConstruction() {
+    ucDatePicker = mobiscroll.datepicker('#modelUnderConstructionDate', {
+        display: 'anchored',
+        touchUi: true,
+        onChange: function () {
+
+            //console.log("vali-date");
+            if (Date.parse(ucDatePicker.getVal())) {
+                $('#under-construction-submit-btn').removeAttr('disabled');
+            } else {
+                $('#under-construction-submit-btn').attr('disabled', 'disabled');
+            }
+            //check whether a valid date is selected.
+            //if valid, then allow the "Submit" button to be clicked. 
+        }
+    });
+    if (alldata.UnderConstruction !== undefined) {
+        if (alldata.UnderConstruction !== null) {
+            var setdate = new Date(alldata.UnderConstruction.ReadyDate);
+            ucDatePicker.setVal(setdate);
+        }
+    }
+
+    $('#modelUnderConstruction').modal('show');
+}
+
+function underConstructionConfirm() {
+    var getdate = new Date(ucDatePicker.getVal()).toISOString();
+    //console.log(getdate);
+
+    alldata.UnderConstruction = {
+        ReadyDate: getdate,
+        User: alldata.WhoAmI
+    }
+
+    if (alldata.ModelAttributes !== undefined) {
+        if (alldata.ModelAttributes.Result !== null) {
+            if (alldata.ModelAttributes.Result.length === 1) {
+                alldata.ModelAttributes.Result[0].CourseModelShell.CanBeCopied = false;
+            }
+        }
+    }
+    ecPlusSetModelAttributes("IsAvailableToCopy", false);
+}
+
+function underConstructionLoad() {
+
+    var ucdatefound = false;
+    if (alldata.UnderConstruction !== undefined) {
+        if (alldata.UnderConstruction !== null) {
+            ucdatefound = true;
+            var getdate = new Date(alldata.UnderConstruction.ReadyDate).toLocaleDateString('en-us', {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric"
+            });
+            //console.log(getdate);
+            $('.under-construction-notice-date').text(getdate);
+            $('.under-construction-notice-user').text(alldata.UnderConstruction.User.FirstName + ' ' + alldata.UnderConstruction.User.LastName);
+            
+            var ucchairtext = '<em class="course-copy-helptext">If your course is scheduled to start in less than two weeks, we recommend that you email your chair to discuss next steps.</em>';
+            $('.course-copy-delivery-chair').html(ucchairtext);
+
+        }
+    }
+
+    var isunderconstruction = false;
+    var modelattissue = false;
+    if (alldata.ModelAttributes !== undefined) {
+        if (alldata.ModelAttributes.Result !== null) {
+            if(alldata.ModelAttributes.Result.length > 0) {
+                if (alldata.ModelAttributes.Result.length === 1) {
+                    if (alldata.ModelAttributes.Result[0].CourseModelShell.CanBeCopied === false) {
+                        isunderconstruction = true;
+                    }
+                }
+                else {
+                    for(var m=0; m<alldata.ModelAttributes.Result.length; m++) {
+                        var thismodel = alldata.ModelAttributes.Result[m].CourseModelShell;
+                        var thismodeldep = thismodel.CourseModelCode.split("-")[1];
+                        if(alldata.CourseOffering !== null) {
+                            if(alldata.CourseOffering.Department.Code.indexOf(thismodeldep) > -1) {
+                                //console.log(thismodel);
+                                if(thismodel.CanBeCopied === false) {
+                                    isunderconstruction = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else {
+                modelattissue = true;
+            }
+        }
+        else {
+            modelattissue = true;
+        }
+    }
+    else {
+        modelattissue = true;
+    }
+
+    if(modelattissue === false) {
+        if (!isunderconstruction) {
+            $('#course-header-details').removeClass('d-none');
+            //$('.essential-elements-block').removeClass('d-none');
+            //$('.links-container-display').removeClass('d-none');
+            $('.updates-container').removeClass('d-none');
+            $('#under-construction-notice').addClass('d-none');
+            $('#under-construction-notice-student').addClass('d-none');
+
+            $('#under-construction-toggle-ready').removeClass('d-none');
+        } else {
+
+            //console.log(parent.userEmail);
+            $('#subscribeCopyReadyEmail').val(parent.userEmail);
+            $('#subscribed-already-email').text(parent.userEmail);  
+
+            //$('#course-header-details').addClass('d-none');
+            //$('.essential-elements-block').addClass('d-none');
+            //$('.links-container-display').addClass('d-none');
+            $('.updates-container').addClass('d-none');
+            $('#under-construction-toggle-ready').addClass('d-none');
+
+            if (ucdatefound) {
+                $('.under-construction-date-missing').addClass('d-none');
+                $('.under-construction-date-found').removeClass('d-none');
+            } else {
+                $('.under-construction-date-found').addClass('d-none');
+                $('.under-construction-date-missing').removeClass('d-none');
+            }
+
+            $('#under-construction-notice').removeClass('d-none');
+            $('#under-construction-notice-student').removeClass('d-none');
+        }
+    }
+    else {
+        $('#under-construction-notice').addClass('d-none');
+        $('#under-construction-notice-student').addClass('d-none');
+    }
+
+}
+
+function olcManagedLoad() {
+    if (adminroles.indexOf(alldata.CurrentRole) > -1) {
+        
+        var isolcmanaged = false;
+        
+        if(alldata.ModelAttributes !== null) {
+            if (alldata.ModelAttributes.Result !== null) {
+                if(alldata.ModelAttributes.Result.length > 0) {
+                    
+                    if (alldata.ModelAttributes.Result.length === 1) {
+                        if(alldata.ModelAttributes.Result[0].CourseModelShell.OLCManaged) {
+                            isolcmanaged = true;
+                        }
+                    }
+                    else {
+                        for(var m=0; m<alldata.ModelAttributes.Result.length; m++) {
+                            var thismodel = alldata.ModelAttributes.Result[m].CourseModelShell;
+                            var thismodeldep = thismodel.CourseModelCode.split("-")[1];
+                            if(alldata.CourseOffering !== null) {
+                                if(alldata.CourseOffering.Department.Code.indexOf(thismodeldep) > -1) {
+                                    //console.log(thismodel);
+                                    if(thismodel.OLCManaged) {
+                                        isolcmanaged = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    if(isolcmanaged) {
+                        $('.olc-managed-toggle-container #toggleSwitch').prop('checked',true);
+                        $('.olc-managed-toggle-container #toggleLabel').text('On');                        
+                    }
+
+                    $('.olc-managed-toggle-container #toggleSwitch').on('change',function(){
+                        if($('.olc-managed-toggle-container #toggleSwitch').prop('checked') === true) {
+                            $('.olc-managed-toggle-container #toggleLabel').text('On');
+
+                            ecPlusSetModelAttributes("IsOlcManaged", true);
+
+                        }
+                        else {
+                            $('.olc-managed-toggle-container #toggleLabel').text('Off');
+
+                            ecPlusSetModelAttributes("IsOlcManaged", false);
+
+                        }
+                    });                      
+                    
+                    $('.olc-managed-toggle-container').removeClass('d-none');
+                }
+            }
+        }            
+    } else {
+        
+        var isolcmanaged = false;
+        
+        if(alldata.ModelAttributes !== null) {
+            if (alldata.ModelAttributes.Result !== null) {
+                if(alldata.ModelAttributes.Result.length > 0) {
+                    if(alldata.ModelAttributes.Result[0].CourseModelShell.OLCManaged) {
+                        isolcmanaged = true;
+                    }                    
+                    else {
+                        for(var m=0; m<alldata.ModelAttributes.Result.length; m++) {
+                            var thismodel = alldata.ModelAttributes.Result[m].CourseModelShell;
+                            var thismodeldep = thismodel.CourseModelCode.split("-")[1];
+                            if(alldata.CourseOffering !== null) {
+                                if(alldata.CourseOffering.Department.Code.indexOf(thismodeldep) > -1) {
+                                    //console.log(thismodel);
+                                    if(thismodel.OLCManaged) {
+                                        isolcmanaged = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if(isolcmanaged) {
+                        $('.olc-managed-notice').removeClass('d-none');
+                    }
+                }
+            }
+        }        
+    }
+}
+
+function openChecklistNav() {
+    $('a[data-target="#cc-dashboard"]')[0].click();
+}
+
+// OntarioLearn Managed Toggle
+// Architecture: fetchOntarioLearnData() fetches and stores data in alldata.OntarioLearnData
+// Then ontarioLearnManagedLoad() renders the toggle synchronously from stored data
+
+function fetchOntarioLearnData() {
+    if (adminroles.indexOf(alldata.CurrentRole) > -1) {
+        checkCourseAncestors();
+    } else {
+        ontarioLearnManagedLoad();
+    }
+}
+
+function ontarioLearnManagedLoad() {
+    if (adminroles.indexOf(alldata.CurrentRole) > -1) {
+        if (alldata.OntarioLearnData !== undefined) {
+            var isOntarioLearnManaged = alldata.OntarioLearnData.IsManaged;
+            
+            if (isOntarioLearnManaged) {
+                $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('checked', true);
+                $('#ontariolearn-managed-toggle-container #toggleLabelOntarioLearn').text('On');
+            }
+            
+            setupOntarioLearnToggle();
+            $('#ontariolearn-managed-toggle-container').removeClass('d-none');
+        }
+    }
+}
+
+function checkCourseAncestors() {
+    var ancestorsUrl = "/d2l/api/lp/" + alldata.APIVersions.LP.LatestVersion + "/orgstructure/" + orgUnitId + "/ancestors/";
+    
+    $.ajax({
+        method: "GET",
+        url: ancestorsUrl,
+        dataType: 'json',
+        success: function (ancestors) {
+            var hasSemesterAncestor = false;
+            for (var i = 0; i < ancestors.length; i++) {
+                if (ancestors[i].Type && ancestors[i].Type.Code === "Semester") {
+                    hasSemesterAncestor = true;
+                    break;
+                }
+            }
+            
+            if (!hasSemesterAncestor) {
+                // Auto-detect domain and set appropriate OntarioLearn Service OU ID
+                var hostname = window.location.hostname;
+                if (hostname.indexOf('testconestoga.desire2learn.com') > -1) {
+                    alldata.OntarioLearnOrgUnitId = "1516937"; // Test domain
+                    fetchOntarioLearnParentStatus();
+                } else if (hostname.indexOf('conestoga.desire2learn.com') > -1) {
+                    alldata.OntarioLearnOrgUnitId = "1517974"; // Production domain
+                    fetchOntarioLearnParentStatus();
+                }
+                // If neither test nor production domain, don't show toggle
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error("Error fetching ancestors:", error);
+        }
+    });
+}
+
+function fetchOntarioLearnParentStatus() {
+    var parentsUrl = "/d2l/api/lp/" + alldata.APIVersions.LP.LatestVersion + "/orgstructure/" + orgUnitId + "/parents/";
+    
+    $.ajax({
+        method: "GET",
+        url: parentsUrl,
+        dataType: 'json',
+        success: function (parents) {
+            alldata.OntarioLearnData = {
+                IsManaged: false
+            };
+            
+            for (var i = 0; i < parents.length; i++) {
+                if (parents[i].Identifier === alldata.OntarioLearnOrgUnitId) {
+                    alldata.OntarioLearnData.IsManaged = true;
+                    break;
+                }
+            }
+            
+            ontarioLearnManagedLoad();
+        },
+        error: function(xhr, status, error) {
+            console.error("Error fetching course parents:", error);
+            ontarioLearnManagedLoad();
+        }
+    });
+}
+
+function setupOntarioLearnToggle() {
+    $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').off('change').on('change', function() {
+        var isChecked = $(this).prop('checked');
+        $(this).prop('disabled', true);
+        
+        if (isChecked) {
+            addOntarioLearnParent();
+        } else {
+            removeOntarioLearnParent();
+        }
+    });
+}
+
+function addOntarioLearnParent() {
+    var addParentUrl = "/d2l/api/lp/" + alldata.APIVersions.LP.LatestVersion + "/orgstructure/" + orgUnitId + "/parents/";
+    
+    // XSRF token required for POST requests
+    $.ajax({
+        method: "GET",
+        url: "/d2l/lp/auth/xsrf-tokens",
+        success: function(token) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", addParentUrl, true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.setRequestHeader("X-Csrf-Token", token.referrerToken);
+            
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    $('#ontariolearn-managed-toggle-container #toggleLabelOntarioLearn').text('On');
+                    $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('disabled', false);
+                } else {
+                    console.error("Error adding OntarioLearn parent:", xhr.status);
+                    $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('checked', false);
+                    $('#ontariolearn-managed-toggle-container #toggleLabelOntarioLearn').text('Off');
+                    $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('disabled', false);
+                    alert('Failed to add OntarioLearn parent. Please try again.');
+                }
+            };
+            
+            xhr.onerror = function() {
+                console.error("Network error adding OntarioLearn parent");
+                $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('checked', false);
+                $('#ontariolearn-managed-toggle-container #toggleLabelOntarioLearn').text('Off');
+                $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('disabled', false);
+                alert('Failed to add OntarioLearn parent. Please try again.');
+            };
+            
+            xhr.send('"' + alldata.OntarioLearnOrgUnitId + '"');
+        },
+        error: function() {
+            console.error("Error fetching XSRF token");
+            $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('checked', false);
+            $('#ontariolearn-managed-toggle-container #toggleLabelOntarioLearn').text('Off');
+            $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('disabled', false);
+            alert('Failed to get security token. Please try again.');
+        }
+    });
+}
+
+function removeOntarioLearnParent() {
+    var removeParentUrl = "/d2l/api/lp/" + alldata.APIVersions.LP.LatestVersion + "/orgstructure/" + orgUnitId + "/parents/" + alldata.OntarioLearnOrgUnitId;
+    
+    // XSRF token required for DELETE requests
+    $.ajax({
+        method: "GET",
+        url: "/d2l/lp/auth/xsrf-tokens",
+        success: function(token) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("DELETE", removeParentUrl, true);
+            xhr.setRequestHeader("X-Csrf-Token", token.referrerToken);
+            
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    $('#ontariolearn-managed-toggle-container #toggleLabelOntarioLearn').text('Off');
+                    $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('disabled', false);
+                } else {
+                    console.error("Error removing OntarioLearn parent:", xhr.status);
+                    $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('checked', true);
+                    $('#ontariolearn-managed-toggle-container #toggleLabelOntarioLearn').text('On');
+                    $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('disabled', false);
+                    alert('Failed to remove OntarioLearn parent. Please try again.');
+                }
+            };
+            
+            xhr.onerror = function() {
+                console.error("Network error removing OntarioLearn parent");
+                $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('checked', true);
+                $('#ontariolearn-managed-toggle-container #toggleLabelOntarioLearn').text('On');
+                $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('disabled', false);
+                alert('Failed to remove OntarioLearn parent. Please try again.');
+            };
+            
+            xhr.send();
+        },
+        error: function() {
+            console.error("Error fetching XSRF token");
+            $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('checked', true);
+            $('#ontariolearn-managed-toggle-container #toggleLabelOntarioLearn').text('On');
+            $('#ontariolearn-managed-toggle-container #toggleSwitchOntarioLearn').prop('disabled', false);
+            alert('Failed to get security token. Please try again.');
+        }
+    });
+}
+
+function eCPlusDatasetsAssign(orgid) {
+    ecplusClient.datasets.getAssignments(orgid).then(function (resp) {
+        if (resp.isSuccess) {
+            //console.log(resp);
+            alldata.GuidedCopy.Datasets.Assign = resp;
+        } else {
+            alldata.GuidedCopy.Datasets.Assign = null;
+        }
+        checkCourseLaunchReady();
+    });
+}
+
+function eCPlusDatasetsIA(orgid) {
+    ecplusClient.datasets.getIntelligentAgentNames(orgid).then(function (resp) {
+        if (resp.isSuccess) {
+            //console.log(resp);
+            alldata.GuidedCopy.Datasets.IA = resp;
+        } else {
+            alldata.GuidedCopy.Datasets.IA = null;
+        }
+        checkCourseLaunchReady();
+    });
+}
+
+var firstload = true;
+function checkCourseLaunchReady() {
+    if((alldata.GuidedCopy.Datasets.Assign !== undefined) && (alldata.GuidedCopy.Datasets.IA !== undefined)) {
+        courseLaunchCheckCourse();
+        courseLaunchInit();
+        courseLaunchCheckStatus();
+        
+        if(firstload === true) {
+            firstload = false;
+            var url = window.location.href;
+            if(url.indexOf("tab=Checklist") > -1) {
+                $('a[data-target="#cc-dashboard"]')[0].click();
+            }
+        }        
+    }
+}
+
+function courseLaunchLoad() {
+    
+    if((alldata.CourseLaunch !== undefined) && (alldata.MessageConfirm !== undefined)) {
+        
+        $('#hidden-dash-message').addClass('d-none');
+
+        //$('#instructor-nav-dash').addClass('d-none');
+        //$('#instructor-nav-check').removeClass('d-none');
+        $('#instructor-nav-dash .nav-ico img').attr('src', 'assets/img/course-checklist-icon.svg');
+        $('#instructor-nav-dash .nav-label').text('Launch Checklist');
+
+        $('#mobile-header-dash').addClass('d-none');    
+        $('#mobile-header-check').removeClass('d-none');
+        $('.course-launch-checklist').removeClass('d-none');
+
+        if (alldata.CourseLaunch !== null) {
+            for (var cl = 0; cl < alldata.CourseLaunch.Checklist.length; cl++) {
+                var thischeck = alldata.CourseLaunch.Checklist[cl];
+                if (thischeck.Complete === true) {
+                    $('.course-checklist-item.' + thischeck.ID + ' .form-check-input[type="checkbox"]').prop('checked',true);
+                    $('.course-checklist-item.' + thischeck.ID).addClass('checkcomplete');                        
+                }
+            }
+        }
+
+        if(alldata.GuidedCopy !== undefined) {
+            if(alldata.GuidedCopy !== null) {
+                alldata.GuidedCopy.Datasets = {}
+                eCPlusDatasetsAssign(alldata.GuidedCopy.Model);
+                eCPlusDatasetsIA(alldata.GuidedCopy.Model);
+            }
+            else {
+                checkCourseIntelligentAgents();
+            }
+        }
+        else {
+            getCustomWidgetData(CustomWidgetGC, true);
+        }
+    }
+
+}
+
+function guidedCopyInQueue() {
+    if (alldata.GuidedCopy.Result.Position === 0) {
+        $('.course-copy-tracker-content').addClass('d-none');
+        $('.course-copy-tracker-content-pending').removeClass('d-none');
+    } else {
+        $('.course-copy-tracker-content-pending').addClass('d-none');
+        $('.course-copy-tracker-content').removeClass('d-none');
+        $('.course-copy-tracker-position').text(alldata.GuidedCopy.Result.Position);
+    }
+
+    updateGuidedCopyProgress(1);
+    $('#course-setup-start').addClass('d-none');
+    $('#course-setup-queue').removeClass('d-none');
+
+    $('.essential-elements-block').addClass('d-none');
+    $('.course-checklist-callout-container').addClass('d-none');
+    $('.instructor-content .links-container-display').addClass('d-none');
+    $('.instructor-content .updates-container').addClass('d-none');
+
+    $('.course-readiness-block').removeClass('d-none');
+
+}
+
+function guidedCopyStart() {
+
+    var mergecandidates = [];
+    if (alldata.EnrollmentOther !== null) {
+        for (var i = 0; i < alldata.EnrollmentOther.Items.length; i++) {
+            if (alldata.EnrollmentOther.Items[i].OrgUnit.Id !== parseInt(orgUnitId)) {
+                var othercourse = alldata.EnrollmentOther.Items[i];
+                var othercoursecode = othercourse.OrgUnit.Code;
+                if (othercoursecode.indexOf(alldata.Offering.Sem) > -1) {
+                    if (othercoursecode.indexOf(alldata.Offering.Code[0]) > -1) {
+                        if (othercourse.Access.ClasslistRoleName === "Instructor") {
+                            mergecandidates.push(othercourse);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (mergecandidates.length > 0) {
+        var alreadymerged = false;
+        if(alldata.MergeComponents !== null) {
+            if(alldata.MergeComponents.SourceCourses.length > 0) {
+                alreadymerged = true;
+            }
+        }
+        if(!alreadymerged) {
+            $('.merge-controls').removeClass('d-none');
+        }
+    } else {
+        if (alldata.MergeCandidate !== undefined) {
+            if (alldata.MergeCandidate !== null) {
+                if (alldata.MergeCandidate.Result) {
+                    $('.merge-controls').removeClass('d-none');
+                }
+            }
+        }
+        /*
+        if(alldata.Readiness !== undefined) {
+            if(alldata.Readiness !== null) {
+                for(var m=0; m<alldata.Readiness.Result[0].MatchingModels.length; m++) {
+                    var thismodel = alldata.Readiness.Result[0].MatchingModels[m];
+                    if(thismodel.isCommonMerge) {
+                        $('.merge-controls').removeClass('d-none');
+                        break;
+                    }
+                }
+            }
+        }
+        */
+    }
+
+    updateGuidedCopyProgress(0);
+    var sisfound = false;
+    if(alldata.SIS !== undefined) {
+        if(alldata.SIS !== null) {
+            sisfound = true;
+        }
+    }
+    if(sisfound) {
+        $('#course-setup-start').removeClass('d-none');
+    }
+    else {
+        $('#course-setup-issue').removeClass('d-none');
+    }
+
+}
+
+function checkCourseLaunchDisplay() {
+    
+    if (alldata.CourseLaunch !== null) {
+        if (alldata.CourseLaunch.Status !== undefined) {
+            if (alldata.CourseLaunch.Status.Complete) {
+                var cldisplay = true;
+                if (alldata.MessageConfirm !== null) {
+                    if (alldata.MessageConfirm.ChecklistDone !== undefined) {
+                        cldisplay = false;
+                    }
+                }
+                if (cldisplay) {
+                    courseLaunchLoad();
+                } else {
+                    $('#cc-dashboard .essential-dash-section').removeClass('d-none');
+                    $('.instructor-dash-summary').removeClass('d-none');
+                    $('.management-container').removeClass('d-none');
+
+                    $('#hidden-dash-message').addClass('d-none');
+                    $('#high-cap-message').addClass('d-none');
+                }
+            } else {
+                courseLaunchLoad();
+            }
+        } else {
+            courseLaunchLoad();
+        }
+    } else {
+        courseLaunchLoad();
+    }
+}
+
+function guidedCopyLoad() {
+    
+    /*
+    console.log(alldata.MergeCandidate);
+    console.log(alldata.MessageConfirm);
+    console.log(alldata.GuidedCopy);
+    console.log(alldata.CourseLaunch);
+    console.log(alldata.EnrollmentOther);
+    */
+    
+    if ((alldata.MergeCandidate !== undefined) && (alldata.MessageConfirm !== undefined) && (alldata.GuidedCopy !== undefined) && (alldata.CourseLaunch !== undefined) && (alldata.EnrollmentOther !== undefined)) {
+        
+        if (courseempty) {
+            $('.essential-elements-block').addClass('d-none');
+            $('.course-checklist-callout-container').addClass('d-none');
+            $('.instructor-content .links-container-display').addClass('d-none');
+            $('.instructor-content .updates-container').addClass('d-none');
+
+            if(courselaunch) {
+                $('#hidden-dash-message').removeClass('d-none');
+            }
+            else {
+                $('.course-setup-progress-bar-container').addClass('d-none');
+            }
+            
+            $('.course-readiness-block').removeClass('d-none');
+
+            if (alldata.GuidedCopy !== null) {
+                eCPlusCheckCopyStatus();
+            } else {
+                guidedCopyStart();
+            }
+        } else {
+            if (alldata.GuidedCopy !== null) {
+                if (alldata.MessageConfirm !== undefined) {
+                    if (alldata.MessageConfirm !== null) {
+                        if (alldata.MessageConfirm.GuidedCopyDone !== undefined) {
+                            if(courselaunch) {
+                                checkCourseLaunchDisplay();
+                            }
+                        }
+                    } else {
+                        eCPlusCheckCopyStatus();
+                    }
+                } else {
+                    eCPlusCheckCopyStatus();
+                }
+            } else {
+                if(courselaunch) {
+                    checkCourseLaunchDisplay();
+                }
+            }
+            $('#pills-importset-tab').removeClass('d-none');
+        }
+    }
+}
+
+function iframeIACallback() {
+    var datacheck = $("#iagentiframe");
+    if (datacheck.length > 0) {
+        alldata.IntelligentAgents = $("#iagentiframe").contents().find('.d2l-grid-container table[type="List"]');
+        //$("#iagentiframe").remove();
+
+        courseLaunchCheckCourse();
+        courseLaunchInit();
+        courseLaunchCheckStatus();
+    }
+}
+
+function checkCourseIntelligentAgents() {
+    //console.log(topicdata);
+    var loadfilepath = '/d2l/lms/IntelligentAgents/AgentList.d2l?ou=' + orgUnitId;
+    $("#iagentiframe").attr("onload", "iframeIACallback()");
+    $("#iagentiframe").attr("src", loadfilepath);
+}
+
+function courseLaunchCheckCourse() {
+
+    //Course Launch Checklist - Instructor Info Tab
+    $('#launch-instructor-info-multi ul').html('');
+    $('#launch-instructor-info-multi').addClass('d-none');
+    $('#launch-instructor-info-single').addClass('d-none');
+    if (alldata.Instructors.Objects.length > 1) {
+        var ilist = '';
+        for (var i = 0; i < alldata.Instructors.Objects.length; i++) {
+            var thisi = alldata.Instructors.Objects[i];
+            ilist += '<li>' + thisi.FirstName + ' ' + thisi.LastName + '</li>';
+        }
+        $('#launch-instructor-info-multi ul').append(ilist);
+        $('#launch-instructor-info-multi').removeClass('d-none');
+    } else {
+        $('#launch-instructor-info-single').removeClass('d-none');
+    }
+    $('.launch-instructor-info').removeClass('d-none');
+
+    //Course Launch Checklist - Meet Your Instructor Tab
+    var top_myi = [];
+    for (var m = 0; m < alldata.Content.Modules.length; m++) {
+        top_myi = findContentTopicsAll("Title", "meet your instructor", alldata.Content.Modules[m], top_myi);
+    }
+
+    $('#launch-meet-instructor-link').html('');
+    if (top_myi.length > 0) {
+        for (var m = 0; m < top_myi.length; m++) {
+            var thistop = top_myi[m];
+            var thistoplink = '<p><a href="/d2l/le/content/' + orgUnitId + '/viewContent/' + thistop.Topic.Identifier + '/View" target="_blank">' + thistop.Topic.Title + ' <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a></p>';
+            $('#launch-meet-instructor-link').append(thistoplink);
+        }
+        $('.launch-meet-instructor').removeClass('d-none');
+    } else {
+        $('.launch-meet-instructor').addClass('d-none');
+    }
+
+    //Course Launch Checklist - Welcome Page Tab
+    var top_welcome = [];
+    for (var m = 0; m < alldata.Content.Modules.length; m++) {
+        top_welcome = findContentTopicsAll("Title", "Welcome", alldata.Content.Modules[m], top_welcome);
+    }
+    if (top_welcome.length > 0) {
+        $('#launch-welcome-page-link').html('<a href="/d2l/le/content/' + orgUnitId + '/viewContent/' + top_welcome[0].Topic.Identifier + '/View" target="_blank">' + top_welcome[0].Topic.Title + ' <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>');
+    } else {
+        $('#launch-welcome-page-link').html('No page found in your course with "Welcome" in the title.');
+    }
+    $('.launch-welcome-page').removeClass('d-none');
+
+    //Course Launch Checklist - Intelligent Agents
+    if(alldata.GuidedCopy !== null) {
+        if (alldata.GuidedCopy.Datasets !== undefined) {
+            if (alldata.GuidedCopy.Datasets.IA !== null) {
+                if (alldata.GuidedCopy.Datasets.IA.Result.length > 0) {
+                    $('.launch-intelligent-agent').removeClass('d-none');
+                }
+            }
+        }
+    }
+    else {
+        if (alldata.IntelligentAgents !== undefined) {
+            if (alldata.IntelligentAgents.length > 0) {
+                $('.launch-intelligent-agent').removeClass('d-none');
+            }
+        }        
+    }
+
+    //Course Launch Checklist - Existing Announcements
+    if (alldata.Announcements.length > 0) {
+        $('#launch-existing-announce-link').attr('href', '/d2l/lms/news/main.d2l?ou=' + orgUnitId);
+        $('.launch-existing-announce').removeClass('d-none');
+    } else {
+        $('#launch-existing-announce-link').attr('href', '');
+        $('.launch-existing-announce').addClass('d-none');
+    }
+
+    //Course Launch Checklist - Course Links
+    var linksfound = false;
+    if (alldata.CustomSettings !== null) {
+        if (alldata.CustomSettings.LinkList !== undefined) {
+            if (alldata.CustomSettings.LinkList.Items.length > 0) {
+                linksfound = true;
+            }
+        }
+    }
+    if (linksfound === true) {
+        $('.launch-custom-links').removeClass('d-none');
+    } else {
+        $('.launch-custom-links').addClass('d-none');
+    }
+
+    //Course Launch Checklist - Textbook Settings
+    var addetext;
+    if (alldata.SIS !== undefined) {
+        if (alldata.SIS !== null) {
+            if (alldata.SIS.eText) {
+                if (alldata.SIS.eTextAmount !== null) {
+                    if (alldata.SIS.eTextAmount > 0) {
+                        addetext = true;
+                    }
+                }
+            }
+        }
+    }
+    if (addetext) {
+        var elinksfound = 0;
+        for (var e = 0; e < alldata.EText.length; e++) {
+            if (alldata.EText[e].Search.length > 0) {
+                for (var s = 0; s < alldata.EText[e].Search.length; s++) {
+                    var esearch = alldata.EText[e].Search[s];
+                    var esearchhtml = '<p><a href="/d2l/le/content/' + orgUnitId + '/viewContent/' + esearch.Topic.TopicId + '/View" target="_blank">' + esearch.Topic.Title + '</a> <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></p>';
+                    $('#launch-textbook-etext-list').append(esearchhtml);
+                    elinksfound++;
+                }
+            }
+        }
+        if (elinksfound > 0) {
+            $('#launch-textbook-etext-found').removeClass('d-none');
+        } else {
+            $('#launch-textbook-etext-notfound').removeClass('d-none');
+        }
+        $('#launch-textbook-etext').removeClass('d-none');
+    }
+    $('.launch-textbook-setting').removeClass('d-none');
+    //$('.launch-etext-link').removeClass('d-none');
+
+    //Course Launch Checklist - Publisher Links
+    var publisherfound = false;
+    var publisherlist = [];
+    var publisherstring = '';
+    if (alldata.Publishers !== undefined) {
+        for (var adp = 0; adp < alldata.Publishers.length; adp++) {
+            var thispub = alldata.Publishers[adp];
+            if (thispub.active === "true") {
+                thispub.Display = [];
+                if (thispub.Found !== undefined) {
+                    for (var tpf = 0; tpf < thispub.Found.length; tpf++) {
+                        if (thispub.Found[tpf].Topics.length > 0) {
+                            publisherfound = true;
+                            thispub.Display.push({
+                                Topic: thispub.Found[tpf].Topics,
+                                Title: thispub.links[tpf].platformName
+                            })
+                        }
+                    }
+                    if (thispub.Display.length > 0) {
+                        publisherlist.push(thispub);
+                    }
+                }
+            }
+        }
+    }
+    //console.log(publisherfound);
+    if (publisherfound) {
+        //console.log(publisherlist);
+        for (var pl = 0; pl < publisherlist.length; pl++) {
+            var thispub = publisherlist[pl];
+
+            if (thispub.Display.length > 0) {
+                if (thispub.Display.length === 1) {
+                    publisherstring += '<p>This course uses <strong>' + thispub.Display[0].Title + '</strong> resources, which you should be able to access through the following link:</p>';
+                    publisherstring += '<p><strong><a href="' + thispub.Display[0].Topic[0].Topic.Url + '" target="_blank"> ' + thispub.Display[0].Topic[0].Topic.Title + ' <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a></strong></p>';
+                } else {
+                    publisherstring += '<p>This course uses <strong>' + thispub.companyName + '</strong> resources, which you should be able to access through the following links:</p>';
+                    for (var tpd = 0; tpd < thispub.Display.length; tpd++) {
+                        publisherstring += '<p><strong><a href="' + thispub.Display[tpd].Topic[0].Topic.Url + '" target="_blank"> ' + thispub.Display[tpd].Topic[0].Topic.Title + ' <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a></strong></p>';
+                    }
+                }
+            }
+
+            if (thispub.supportEmail !== "") {
+                publisherstring += '<p>If you are having trouble accessing your online <strong>' + thispub.companyName + '</strong> resources, please <a href="mailto:' + thispub.supportEmail + '">contact ' + thispub.supportName + ' <i class="far fa-envelope" aria-hidden="true"></i><span class="sr-only">Compose e-mail</span></a>.</p>';
+            } else {
+                if (thispub.supportURL !== "") {
+                    publisherstring += '<p>If you are having trouble accessing your online <strong>' + thispub.companyName + '</strong> resources, please visit the <a href="' + thispub.supportURL + '" target="_blank">' + thispub.supportName + ' website <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>.</p>';
+                }
+            }
+            if (pl < (publisherlist.length - 1)) {
+                publisherstring += '<hr>';
+            }
+        }
+
+        $('#launch-publisher-link-list').html(publisherstring);
+        $('#launch-publisher-link-list').removeClass('d-none');
+
+        $('.launch-publisher-link').removeClass('d-none');
+    }
+
+    //Course Launch Checklist - Next Meeting
+    if (alldata.CalendarZoom.Items.length > 0) {
+        $('#launch-next-meeting-online').removeClass('d-none');
+    }
+    $('.launch-next-meeting').removeClass('d-none');
+
+    //Course Launch Checklist - Assessment Dates
+    if (publisherfound) {
+        $('#launch-assess-dates-publisher').removeClass('d-none');
+    }
+    $('.launch-assess-dates').removeClass('d-none');
+
+    //Course Launch Checklist - Instructional Plan Dates
+    var ipfound = false;
+    var iptype = "";
+    var iplinks = [];
+    //console.log(alldata.InstructionalPlan);
+    if (alldata.InstructionalPlan.Topics.Dynamic.length > 0) {
+        for (var ipd = 0; ipd < alldata.InstructionalPlan.Topics.Dynamic.length; ipd++) {
+            var thistop = alldata.InstructionalPlan.Topics.Dynamic[ipd].Topic;
+            var thismod = alldata.InstructionalPlan.Topics.Dynamic[ipd].Module;
+            if ((thistop.IsHidden === false) && (thismod.IsHidden === false)) {
+                ipfound = true;
+                iptype = "dynamic";
+                var topid = thistop.TopicId;
+                thistop.Link = '/d2l/le/content/' + orgUnitId + '/viewContent/' + topid + '/View';
+                iplinks.push(thistop);
+            }
+        }
+    }
+    if (!ipfound) {
+        if (alldata.InstructionalPlan.Topics.Other.length > 0) {
+            for (var ipo = 0; ipo < alldata.InstructionalPlan.Topics.Other.length; ipo++) {
+                var thistop = alldata.InstructionalPlan.Topics.Other[ipo].Topic;
+                var thismod = alldata.InstructionalPlan.Topics.Other[ipo].Module;
+                if ((thistop.IsHidden === false) && (thismod.IsHidden === false)) {
+                    ipfound = true;
+                    iptype = "static";
+                    var topid = thistop.TopicId;
+                    thistop.Link = '/d2l/le/content/' + orgUnitId + '/viewContent/' + topid + '/View';
+                    iplinks.push(thistop);
+                }
+            }
+        }
+    }
+    //console.log(iplinks);
+    if (!ipfound) {
+        $('#launch-instructional-plan-none').removeClass('d-none');
+    } else {
+        $('#launch-instructional-plan-link').html('<p><a href="' + iplinks[0].Link + '" target="_blank">' + iplinks[0].Title + ' <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a></p>');
+        $('#launch-instructional-plan-link').removeClass('d-none');
+
+        /*
+        if(iptype === "dynamic") {
+            var dipinstructors = '';
+            for(var f=0; f<alldata.InstructionalPlan.Data.Faculty.length; f++) {
+                var thisinstructor = alldata.InstructionalPlan.Data.Faculty[f];
+                if(thisinstructor.UID === alldata.WhoAmI.Identifier) {
+                    dipinstructors += '<div>';
+                    dipinstructors += '<p>'+alldata.WhoAmI.FirstName+' '+alldata.WhoAmI.LastName+'</p>';   
+                }
+            }
+        }
+        */
+
+        $('#launch-instructional-plan-' + iptype).removeClass('d-none');
+    }
+    $('.launch-instructional-plan').removeClass('d-none');
+
+    //Course Launch Checklist - Respondus Lockdown Browser
+    var reqresp = false;
+    for (var q = 0; q < alldata.QuizzesAll.Objects.length; q++) {
+        var thisq = alldata.QuizzesAll.Objects[q];
+        if (thisq.Name.toLowerCase().indexOf("requires respondus") > -1) {
+            reqresp = true;
+            break;
+        }
+    }
+    if (reqresp) {
+        $('.launch-enable-respondus').removeClass('d-none');
+    }
+
+    //Course Launch Checklist - TurnItIn Originality Check
+    /*
+    if(alldata.GuidedCopy !== null) {
+        if (alldata.GuidedCopy.Datasets !== undefined) {
+            if (alldata.GuidedCopy.Datasets.Assign !== null) {
+                if (alldata.GuidedCopy.Datasets.Assign.Result.length > 0) {
+                    var tiifound = false;
+                    for(var ar=0; ar<alldata.GuidedCopy.Datasets.Assign.Result.length; ar++) {
+                        var thisassign = alldata.GuidedCopy.Datasets.Assign.Result[ar];
+                        if(thisassign.TurnItInEnabled) {
+                            tiifound = true;
+                            break;
+                        }
+                    }
+                    if(tiifound) {
+                        $('.launch-enable-turnitin').removeClass('d-none');
+                    }
+                }
+            }
+        }
+    }
+    */
+    //else {
+        if (alldata.AssignmentsAll.Objects.length > 0) {
+            $('.launch-enable-turnitin').removeClass('d-none');
+        }    
+    //}    
+
+    //Course Launch Checklist - TurnItIn Originality Check
+    if ((alldata.AssignmentsAll.Objects.length > 0) || (alldata.QuizzesAll.Objects.length > 0)) {
+        $('.launch-special-access').removeClass('d-none');
+    }
+
+    //$('.launch-existing-rubrics').removeClass('d-none');
+    //$('.launch-atrisk-student').removeClass('d-none');
+    //$('.launch-assess-analysis').removeClass('d-none');
+
+}
+
+function courseLaunchInit() {
+    var sdate = new Date(alldata.CourseOffering.StartDate);
+    var datestring = sdate.toLocaleDateString('en-us', {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+    });
+    $('#notice-panel-date').text(datestring);
+
+}
+
+function confirmLaunchStartDate() {
+    alldata.CourseLaunch.StartDate = {
+        Timestamp: new Date().toISOString(),
+        User: alldata.WhoAmI
+    }
+    
+    putCustomWidgetData(CustomWidgetCL,"CourseLaunchStart");
+}
+
+function confirmMessageSave(mtype) {
+
+    var confirmobj = {
+        Timestamp: new Date().toISOString(),
+        User: alldata.WhoAmI
+    }
+
+    if (alldata.MessageConfirm !== undefined) {
+        if (alldata.MessageConfirm === null) {
+            alldata.MessageConfirm = {};
+        }
+    } else {
+        alldata.MessageConfirm = {};
+    }
+    alldata.MessageConfirm[mtype] = confirmobj;
+    //console.log(alldata.MessageConfirm);
+
+    putCustomWidgetData(CustomWidgetMC, mtype);
+
+}
+
+function courseLaunchCheckStatus() {
+
+    var allchecks = [];
+    var totalcomp = 0;
+    var totalincomp = 0;
+
+    $('.course-checklist-item-container').each(function () {
+        //console.log($(this));
+
+        var checktotal = 0;
+        var checkcomp = 0;
+        var checkincomp = 0;
+        $(this).find('.course-checklist-item').each(function () {
+            if ($(this).hasClass('d-none')) {
+                // ignore item, it's hidden and should not count towards incomplete.
+            } else {
+                checktotal++;
+                var uniqueid;
+                var cl = $(this)[0].classList;
+                for (c = 0; c < cl.length; c++) {
+                    if (cl[c].toLowerCase().indexOf("launch") > -1) {
+                        uniqueid = cl[c];
+                    }
+                }
+
+                var checkobj = {
+                    ID: uniqueid,
+                    Complete: null
+                }
+                
+                //console.log($('.course-checklist-item.' + uniqueid + ' .form-check-input'));
+                //console.log($('.course-checklist-item.' + uniqueid + ' .form-check-input').prop('checked'));
+                
+                if ($('.course-checklist-item.' + uniqueid + ' .form-check-input').prop('checked') === true) {
+                    checkcomp++;
+                    totalcomp++;
+                    checkobj.Complete = true;
+                } else {
+                    checkincomp++;
+                    totalincomp++;
+                    checkobj.Complete = false;
+                }
+
+                checkobj.Label = $('.course-checklist-item.' + uniqueid + ' .form-check-input').attr('id');
+                //console.log(checkobj.Label);
+                allchecks.push(checkobj);
+            }
+        });
+
+        //console.log(checkincomp);
+        if (checkincomp > 0) {
+            $(this).find('.course-checklist-item-header').removeClass('complete');
+            //$(this).find('.course-checklist-item-header span').text('(' + checkincomp + ')');
+        } else {
+            $(this).find('.course-checklist-item-header').addClass('complete');
+            //$(this).find('.course-checklist-item-header span').text('');
+        }
+        
+        $(this).find('.course-checklist-item-header span').text('(' + checkcomp + '/' + checktotal + ')');
+
+        //console.log(checktotal);
+        if (checktotal > 0) {
+            $(this).removeClass('d-none');
+        }
+
+    });
+
+    if(alldata.CourseLaunch === null) {
+        alldata.CourseLaunch = {
+            Checklist: allchecks
+        };
+    }
+    else {
+        alldata.CourseLaunch.Checklist = allchecks;
+    }
+
+    alldata.CourseLaunch.Status = {
+        Complete: null,
+        Started: null,
+        Updated: {
+            Timestamp: new Date().toISOString(),
+            User: alldata.WhoAmI
+        }
+    }
+    if (totalcomp > 0) {
+        alldata.CourseLaunch.Status.Started = true;
+    }
+    else {
+        alldata.CourseLaunch.Status.Started = false;
+    }
+    if (totalincomp > 0) {
+        alldata.CourseLaunch.Status.Complete = false;
+    } else {
+        alldata.CourseLaunch.Status.Complete = true;
+    }
+
+    var clupdate = true;
+
+    if (courselaunch) {
+        if (alldata.MessageConfirm !== null) {
+            if (alldata.MessageConfirm.ChecklistDone !== undefined) {
+                clupdate = false;
+            }
+        }
+
+        if (alldata.CourseLaunch.Status.Complete) {
+            $('#course-setup-checklist').addClass('d-none');
+            $('#course-setup-complete').removeClass('d-none');
+
+            $('.course-setup-checklist-status').text(alldata.CourseLaunch.Checklist.length + ' out of ' + alldata.CourseLaunch.Checklist.length);
+            $('#course-setup-checklist-active').addClass('d-none');
+
+            updateGuidedCopyProgress(3);
+            
+            if(clupdate === true) {
+                $('#launchChecklistComplete').modal('show');
+            }            
+        } else {
+            if($('.course-readiness-block').hasClass('d-none')) {
+                $('.course-setup-checklist-status').text((alldata.CourseLaunch.Checklist.length - totalincomp) + ' out of ' + alldata.CourseLaunch.Checklist.length);
+                $('#course-setup-checklist-active').removeClass('d-none');                
+            }
+            else {
+                $('.course-readiness-block').addClass('d-none');
+                $('.essential-elements-block').removeClass('d-none');
+                $('.course-checklist-callout-container').removeClass('d-none');
+                $('.instructor-content .links-container-display').removeClass('d-none');
+                $('.instructor-content .updates-container').removeClass('d-none');
+            }
+
+            $('#course-setup-complete').addClass('d-none');
+            $('#course-setup-checklist').removeClass('d-none');
+            updateGuidedCopyProgress(2);
+        }
+    }
+    else {
+        if(alldata.CourseLaunch.StartDate === undefined) {
+            alldata.CourseLaunch.StartDate = {
+                Timestamp: new Date().toISOString(),
+                User: alldata.WhoAmI
+            }
+        }
+    }
+
+    //console.log(alldata.CourseLaunch);
+    putCustomWidgetData(CustomWidgetCL);
+}
+
+$('.course-checklist-item .form-check-input[type="checkbox"]').change(function () {
+
+    var thisbox = $(this);
+    var thisid = $(this).attr('id');
+    
+    if($(thisbox).prop('checked')) {
+        $('.course-checklist-item.'+thisid).addClass('checkcomplete');
+    }
+    else {
+        $('.course-checklist-item.'+thisid).removeClass('checkcomplete');
+    }
+    
+    //console.log(thisid);
+
+    /*
+    var thistab = $(this).parents('.course-checklist-item-body').find('button.nav-link[aria-controls=' + thisid + ']');
+    //console.log(thistab);
+
+    //console.log($(thisbox).data('waschecked'));
+    if ($(thisbox).data('waschecked') === true) {
+        $(thisbox).prop('checked', false);
+        $(thisbox).data('waschecked', false);
+    } else {
+        $('.radio-buttons-container .radio-container input[type="radio"]').data('waschecked', false);
+        $(thisbox).data('waschecked', true);
+    }
+
+    if ($(thisbox).prop('checked')) {
+        $(thistab).addClass('complete');
+    } else {
+        $(thistab).removeClass('complete');
+    }
+    */
+
+    courseLaunchCheckStatus();
+
+});
+
+function bulkCollapse(type) {
+    if( type === 'open') {
+        $('.course-checklist-item-collapse').collapse('show');
+    }
+    else if (type === 'close') {
+        $('.course-checklist-item-collapse').collapse('hide');
+    }
+}
+
+
+// JavaScript to handle mobile nav buttons. This is the only javascript required for the checklist to function.
+document.querySelectorAll(".mobile-nav-button").forEach((button) => {
+    button.addEventListener("click", function () {
+        const targetTab = this.dataset.target;
+        const parent = button.parentElement;
+
+        parent.querySelectorAll(".tab-pane").forEach((tabPane) => {
+            tabPane.classList.remove("show", "active");
+        });
+
+        parent.querySelectorAll(".mobile-nav-button").forEach((button) => {
+            button.classList.remove("active");
+        });
+
+        button.classList.add("active");
+        document.querySelector(targetTab).classList.add("show", "active");
+    });
+});
+
+

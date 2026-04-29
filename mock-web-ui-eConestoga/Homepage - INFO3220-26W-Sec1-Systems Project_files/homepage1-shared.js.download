@@ -1,0 +1,775 @@
+// JavaScript Document
+
+function dhm(ms){
+    days = Math.floor(ms / (24*60*60*1000));
+    daysms=ms % (24*60*60*1000);
+    hours = Math.floor((daysms)/(60*60*1000));
+    hoursms=ms % (60*60*1000);
+    minutes = Math.floor((hoursms)/(60*1000));
+    minutesms=ms % (60*1000);
+    sec = Math.floor((minutesms)/(1000));
+    return days+"d "+hours+"h "+minutes+"m "+sec+"s";
+}
+
+
+Array.prototype.indexOfObject = function arrayObjectIndexOf(property, value) {
+    for (var i = 0, len = this.length; i < len; i++) {
+        if (this[i][property] === value) return i;
+    }
+    return -1;
+}
+
+
+function insertSpaces(str) {
+    str = str
+        .replace(/(_|-)/g, ' ')
+        .trim()
+        .replace(/\w\S*/g, function (str) {
+            return str.charAt(0).toUpperCase() + str.substr(1)
+        })
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2')
+    return str;
+}
+
+
+function processProgressTOC(Module) {
+
+   var fileExtPattern = /\.[0-9a-z]+$/i;
+   var linkPieces = [];
+
+   // Create the Progress object for the module
+   Module.Progress = {
+      'Read': 0,
+      'Total': 0,
+      'Percentage': 0
+   }
+
+   // Check for submodules
+   if (Module.Modules !== undefined) {
+      for (var i = 0; i < Module.Modules.length; i++) {
+         Module.Modules[i] = processProgressTOC(Module.Modules[i]);
+         Module.Progress.Total += Module.Modules[i].Progress.Total;
+         Module.Progress.Read += Module.Modules[i].Progress.Read;
+      }
+   } else {
+      // Create an empty array for Modules if undefined so it won't cause headaches later
+      Module.Modules = [];
+   }
+
+   // Parse topics to determine type and source
+   if (Module.Topics !== undefined) {
+      for (var j = 0; j < Module.Topics.length; j++) {
+         // Increment the progress counters
+         Module.Progress.Total++;
+         if (Module.Topics[j].Unread == false) {
+            Module.Progress.Read++;
+         }
+         // TypeIdentifier = 'Link' => check for D2L tool types first
+         if ((Module.Topics[j].TypeIdentifier == 'Link') && (Module.Topics[j].Url.substr(0, 4) == '/d2l')) {
+            if (Module.Topics[j].Url.indexOf('&type=discuss&') > -1) {
+               Module.Topics[j].Type = 'Discussion';
+            } else if (Module.Topics[j].Url.indexOf('&type=dropbox&') > -1) {
+               Module.Topics[j].Type = 'Dropbox';
+            } else if (Module.Topics[j].Url.indexOf('&type=quiz&') > -1) {
+               Module.Topics[j].Type = 'Quiz';
+            } else if (Module.Topics[j].Url.indexOf('&type=checklist&') > -1) {
+               Module.Topics[j].Type = 'Checklist';
+            } else if (Module.Topics[j].Url.indexOf('&type=selfassess&') > -1) {
+               Module.Topics[j].Type = 'SelfAssessment';
+            } else if (Module.Topics[j].Url.indexOf('&type=survey&') > -1) {
+               Module.Topics[j].Type = 'Survey';
+            }
+
+            Module.Topics[j].Source = 'Internal';
+         }
+         // TypeIdentifier = 'Link' => check external link types
+         else if (Module.Topics[j].TypeIdentifier == 'Link') {
+            Module.Topics[j].Type = Module.Topics[j].Url.substr((~-Module.Topics[j].Url.lastIndexOf(".") >>> 0) + 2);
+            Module.Topics[j].Source = 'External';
+         }
+         // TypeIdentifier = 'File' => check the file extension
+         else if (Module.Topics[j].TypeIdentifier == 'File') {
+            if (Module.Topics[j].Url !== null) {
+               Module.Topics[j].Type = Module.Topics[j].Url.substr((~-Module.Topics[j].Url.lastIndexOf(".") >>> 0) + 2);
+               Module.Topics[j].Source = 'Internal';
+            }
+         } else {
+            Module.Topics[j].Type = 'unknown';
+            Module.Topics[j].Source = 'unknown';
+         }
+      }
+   } else {
+      // Create an empty array for Topics if undefined so it won't cause headaches later
+      Module.Topics = [];
+   }
+
+   // Update the progress percentage
+   Module.Progress.Percentage = (Module.Progress.Total == 0) ? 0 : Module.Progress.Read / Module.Progress.Total * 100;
+
+   return Module;
+};
+
+
+function findModulesByAtt(att, term, module, modarray) {
+    var allmods = modarray;
+
+    if (module[att] !== null) {
+
+        if (term === "notnull") {
+            var robj = {
+                Module: module
+            }
+            allmods.push(robj);
+        } else {
+            if (jQuery.type(module[att]) === "string") {
+                if (module[att].toLowerCase().indexOf(term.toLowerCase()) > -1) {
+                    var robj = {
+                        Module: module
+                    }
+                    allmods.push(robj);
+                }
+            } else {
+                if (module[att] === term) {
+                    var robj = {
+                        Module: module
+                    }
+                    allmods.push(robj);
+                }
+            }
+        }
+    }
+
+
+    if (module.Modules.length > 0) {
+        for (var s = 0; s < module.Modules.length; s++) {
+            allmods = findModulesByAtt(att, term, module.Modules[s], allmods);
+        }
+    }
+
+    return allmods;
+}
+
+
+function findModulesAll(term, results, module, parentids) {
+    
+    //console.log(module);
+    //console.log(parentids);
+    
+    if (module.Title.toLowerCase().indexOf(term.toLowerCase()) > -1) {
+        if(parentids !== undefined) {
+            module.Parents = parentids;
+        }
+        results.push(JSON.parse(JSON.stringify(module)));
+    }
+
+    if (module.Modules.length > 0) {
+        for (var s = 0; s < module.Modules.length; s++) {
+            var parentidsend;
+            if(parentids === undefined) {
+                parentidsend = [module.ModuleId];
+            }
+            else {
+                parentidsend = parentids;
+                parentidsend.push(module.ModuleId);
+            }
+            findModulesAll(term, results, module.Modules[s], parentidsend);
+        }
+    }
+
+    return results;
+
+}
+
+
+function findModuleItems(module, topicarray) {
+    var alltopics = topicarray;
+
+    if (module.Topics.length > 0) {
+        alltopics = alltopics.concat(module.Topics);
+    }
+
+    if (module.Modules.length > 0) {
+        for (var s = 0; s < module.Modules.length; s++) {
+            alltopics = findModuleItems(module.Modules[s], alltopics);
+        }
+    }
+
+    return alltopics;
+}
+
+
+function findModule(term, exact, module) {
+
+    var modulefound;
+    if (exact) {
+        if (module.Title.toLowerCase() === term.toLowerCase()) {
+            modulefound = module;
+        }
+    } else {
+        if (module.Title.toLowerCase().indexOf(term.toLowerCase()) > -1) {
+            modulefound = module;
+        }
+    }
+
+    if (modulefound === undefined) {
+        if (module.Modules.length > 0) {
+            for (var s = 0; s < module.Modules.length; s++) {
+                modulefound = findModule(term, exact, module.Modules[s]);
+                if (modulefound !== undefined) {
+                    break;
+                }
+            }
+        }
+    }
+    return modulefound;
+}
+
+
+function findContentTopicsAll(att, term, module, topicarray) {
+    var alltopics = topicarray;
+
+    if (module.Topics.length > 0) {
+        for (var t = 0; t < module.Topics.length; t++) {
+            if (module.Topics[t][att] !== null) {
+
+                if (term === "notnull") {
+                    var robj = {
+                        Module: module,
+                        Topic: module.Topics[t]
+                    }
+                    alltopics.push(robj);
+                } else {
+                    if (jQuery.type(module.Topics[t][att]) === "string") {
+                        if (module.Topics[t][att].toLowerCase().indexOf(term.toLowerCase()) > -1) {
+                            var robj = {
+                                Module: module,
+                                Topic: module.Topics[t]
+                            }
+                            alltopics.push(robj);
+                        }
+                    } else {
+                        if (module.Topics[t][att] === term) {
+                            var robj = {
+                                Module: module,
+                                Topic: module.Topics[t]
+                            }
+
+                            alltopics.push(robj);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (module.Modules.length > 0) {
+        for (var s = 0; s < module.Modules.length; s++) {
+            alltopics = findContentTopicsAll(att, term, module.Modules[s], alltopics);
+        }
+    }
+
+    return alltopics;
+
+}
+
+
+function findContentTopic(att, term, module) {
+
+    var topicfound;
+    if (module.Modules.length > 0) {
+        for (var s = 0; s < module.Modules.length; s++) {
+            topicfound = findContentTopic(att, term, module.Modules[s]);
+            if (topicfound !== undefined) {
+                break;
+            }
+        }
+    }
+
+    if (topicfound === undefined) {
+        for (var t = 0; t < module.Topics.length; t++) {
+            if (module.Topics[t][att] !== null) {
+
+                if (jQuery.type(module.Topics[t][att]) === "string") {
+                    if (module.Topics[t][att].toLowerCase().indexOf(term.toLowerCase()) > -1) {
+                        topicfound = module.Topics[t];
+                        break;
+                    }
+                } else {
+                    if (module.Topics[t][att] === term) {
+                        topicfound = module.Topics[t];
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    return topicfound;
+}
+
+
+function findModuleDates(module, modulearray) {
+    var datemodules = modulearray;
+
+    if ((module.StartDateTime !== null) || (module.EndDateTime !== null)) {
+        datemodules.push(module);
+    }
+
+    if (module.Modules.length > 0) {
+        for (var s = 0; s < module.Modules.length; s++) {
+            datemodules = findModuleDates(module.Modules[s], datemodules);
+        }
+    }
+
+    return datemodules;
+
+}
+
+
+function findContentTopicDates(module, topicarray, parents) {
+
+    var pmod = parents;
+    var datetopics = topicarray;
+    if (module.Topics.length > 0) {
+        for (var t = 0; t < module.Topics.length; t++) {
+            if ((module.Topics[t].StartDateTime !== null) || (module.Topics[t].EndDateTime !== null)) {
+
+                //if(module.Topics[t].)
+                var robj = {
+                    Parents: pmod,
+                    Topic: module.Topics[t]
+                }
+
+                datetopics.push(robj);
+
+            }
+        }
+    }
+
+    if (module.Modules.length > 0) {
+        for (var s = 0; s < module.Modules.length; s++) {
+            var psub = [...pmod];
+            psub.push(module.Modules[s]);
+            datetopics = findContentTopicDates(module.Modules[s], datetopics, psub);
+        }
+    }
+
+    return datetopics;
+
+}
+
+
+function processContentData() {
+    findInstructionalPlan();
+    ltiSearchTOC();
+}
+
+
+var etextworkbook;
+var sheetname;
+var etextmapping;
+var colname_code;
+var colname_cat1;
+var colname_cat2;
+var colname_cat3;
+var colname_other;
+var etextltilist_24S = [
+    {
+        "Title": "eText",
+        "LinkID": [16778]
+    },
+    {
+        "Title": "eText - Digital Access Code",
+        "LinkID": [18653]
+    },
+    {
+        "Title": "VitalSource - Inclusive Access",
+        "LinkID": [183129,378100]
+    }
+];
+
+
+function eTextCheck() {
+    
+    var addetext = false;
+    if(checkAddEtext()) {
+        addetext = true;
+    }
+    
+    //console.log(addetext);
+    var tstamp = new Date().getTime();
+    if(addetext) {
+        getExcelData('/shared/CustomTools/eText-Mapping/VitalSource-Mapping.xlsx?t='+tstamp);
+    }
+    else {
+        alldone.ETextMap = true;
+        checkCourseScores();
+    }
+    
+}
+
+
+function checkAddEtext() {
+    
+    thiscourse = alldata;
+    
+    //console.log(thiscourse);
+    var addetext = false;
+                  
+    if(!thiscourse.NotSection) {
+        if(thiscourse.Semester !== undefined) {
+            //console.log(thiscourse.Semester);
+            if(thiscourse.Semester.Year > 24) {    
+                if(thiscourse.SIS !== null) {
+                    if(thiscourse.SIS.eText) {
+                        if(alldata.SIS.eTextAmount !== null) {
+                            if(alldata.SIS.eTextAmount > 0) {                        
+                                addetext = true;
+                            }
+                        }
+                    }                    
+                }
+            }
+            else if(thiscourse.Semester.Year === 24) {
+                if(thiscourse.Semester.Term === 'F') {
+                    if(thiscourse.SIS !== null) {
+                        if(thiscourse.SIS.eText) {
+                            if(alldata.SIS.eTextAmount !== null) {
+                                if(alldata.SIS.eTextAmount > 0) {                        
+                                    addetext = true;
+                                }
+                            }
+                        }                    
+                    }
+                }
+            }
+        }
+    }
+    else {
+        // Models will need to be checked
+        addetext = true;
+    }
+    
+    //console.log(addetext);
+    return addetext;
+}
+
+
+function checkExcelEtext(thiscourse) {
+    //console.log(thiscourse);
+    //console.log(etextmapping);
+    var excelfound = false;
+    
+    for(var ee=0; ee<etextmapping.length; ee++) {
+        thiscode = etextmapping[ee][colname_code].trim();
+
+        if(thiscourse.CourseOffering.Code.indexOf(thiscode) > -1) {       
+            excelfound = true;                                 
+        }
+    }
+    
+    //console.log(excelfound);
+    return (excelfound);
+    
+}
+
+
+function excelDataLoadInit(e, req) {
+	var data = new Uint8Array(req.response);
+	etextworkbook = XLSX.read(data, {
+		type: "array"
+	});
+
+	sheetname = etextworkbook.Workbook.Sheets[0].name;
+	etextmapping = XLSX.utils.sheet_to_json(etextworkbook.Sheets[sheetname]);
+    colname_code = etextworkbook.Sheets[sheetname].A1.h;
+    //console.log(colname_code);
+    //colname_cat1 = etextworkbook.Sheets[sheetname].B1.h;
+    //colname_cat2 = etextworkbook.Sheets[sheetname].C1.h;
+    //colname_cat3 = etextworkbook.Sheets[sheetname].D1.h;
+    //colname_other = etextworkbook.Sheets[sheetname].E1.h;
+
+    alldone.ETextMap = true;
+    checkCourseScores();
+}
+
+function getExcelData(filepath) {
+	/* set up async GET request */
+	var req = new XMLHttpRequest();
+	req.open("GET", filepath, true);
+	req.responseType = "arraybuffer";
+	req.onload = function (e) {
+        
+        //console.log(req);
+		if(req.status == 200) {
+			excelDataLoadInit(e, req);
+		}
+
+		/* DO SOMETHING WITH workbook HERE */
+	}
+	req.send();
+}
+
+
+function ltiSearchTOC() {
+    
+    var eTextSearch = JSON.parse(JSON.stringify(etextltilist_24S));
+    for(var et=0; et<eTextSearch.length; et++) {
+        var top_etext = [];
+        if(alldata.Content.Modules.length > 0) {
+            for(var li=0; li< eTextSearch[et].LinkID.length; li++) {
+                for (var m = 0; m < alldata.Content.Modules.length; m++) {
+                    top_etext = findContentTopicsAll("ToolItemId", eTextSearch[et].LinkID[li], alldata.Content.Modules[m], top_etext);
+                }
+            }            
+            eTextSearch[et].Search = top_etext;
+        }
+        else {
+            eTextSearch[et].Search = [];
+        }            
+    }
+    
+    alldata.EText = eTextSearch;
+    var tstamp = new Date().getTime();
+    
+    $.getJSON('assets/json/homepage1-publisher-support.json?t=' + tstamp, function(data) {
+        //console.log(data);   
+        
+        var tstart = new Date().getTime();
+        //console.log(tstart);
+        for(pub=0; pub<data.length; pub++) {
+            if(data[pub].links.length > 0) {
+                for(var publ=0; publ < data[pub].links.length; publ++) {
+                    if(data[pub].links[publ].linkID !== '') {
+                        var top_thispub = [];
+                        if(alldata.Content.Modules.length > 0) {
+                            for (var m = 0; m < alldata.Content.Modules.length; m++) {                
+                                findContentTopicsAll('ToolItemId', parseInt(data[pub].links[publ].linkID), alldata.Content.Modules[m], top_thispub);
+                            }
+                        }
+                        if(data[pub].Found === undefined) {
+                            data[pub].Found = [{linkID: data[pub].links[publ].linkID, Topics:top_thispub}];
+                        }
+                        else {
+                            data[pub].Found.push({linkID: data[pub].links[publ].linkID, Topics:top_thispub});
+                        }
+                    }
+                }
+            }
+        }
+        var tend = new Date().getTime();
+        //console.log(tend);
+        //console.log(tend - tstart);
+        alldata.Publishers = data;
+        
+        checkContentSearchDone();
+        
+        //console.log(alldata.Publishers);
+    });
+    
+    checkContentSearchDone();
+}
+
+
+function processCustomDates() {
+    
+    if(alldata.InstructionalPlan.Data !== null) {
+        if(alldata.InstructionalPlan.Data.Grades !== undefined) {
+            for(var i=0; i<alldata.InstructionalPlan.Data.Grades.length; i++) {            
+                var thisip = alldata.InstructionalPlan.Data.Grades[i];            
+                for(var g=0; g<alldata.GradeItems.Objects.length; g++) {
+                    var thisgrade = alldata.GradeItems.Objects[g];
+                    if(thisip.Id === thisgrade.Id) {
+                        thisgrade.EndDate = thisip.EndDateTime;
+                        thisgrade.DateFromIP = true;
+                        
+                        if(thisgrade.AssociatedTool !== null) {
+                            if(thisgrade.AssociatedTool.ToolId === 3000) {
+                                for(var d=0; d<alldata.DiscussionsAll.Objects.length; d++) {
+                                    var thisforum = alldata.DiscussionsAll.Objects[d];
+                                    for(var dt=0; dt<thisforum.Topics.length; dt++) {
+                                        var thistopic = thisforum.Topics[dt];
+                                        if(thistopic.TopicId === thisgrade.AssociatedTool.ToolItemId) {
+                                            if(thisip.StartDateTime !== undefined) {
+                                                if(thisip.StartDateTime !== null) {
+                                                    thistopic.StartDate = thisip.StartDateTime;
+                                                }
+                                            }
+                                            if(thisip.EndDateTime !== undefined) {
+                                                if(thisip.EndDateTime !== null) {
+                                                    thistopic.EndDate = thisip.EndDateTime;
+                                                }
+                                            }
+                                            break;
+                                        }
+                                    }
+                                }       
+                            }
+                        }    
+                        break;
+                    }
+                }
+            }
+        }    
+    }
+}
+
+
+function checkframejson(ouID) {
+    
+	var datacheck = $("#loadfromframe")[0].contentWindow.thispagedata;
+	if(datacheck !== undefined) {
+        
+		alldata.InstructionalPlan.Data = $("#loadfromframe")[0].contentWindow.thispagedata;
+        $("#loadfromframe").remove();
+        
+        checkContentSearchDone();
+        
+    }
+    else {
+        
+		alldata.InstructionalPlan.Data = null;
+        $("#loadfromframe").remove();       
+        
+        checkContentSearchDone();        
+        
+    }
+}
+
+
+function processInstructionalPlan(topicdata) {
+    
+    //console.log(topicdata);
+    var loadfilepath = topicdata[0].Topic.Url;
+    /*
+    $("#loadfromframe").attr("onerror", function(){
+		alldata.InstructionalPlan.Data = null;
+        $("#loadfromframe").remove();       
+        checkContentSearchDone();
+    });
+    */
+    $("#loadfromframe").attr("onload", "checkframejson("+orgUnitId+")");
+    $("#loadfromframe").attr("src", loadfilepath);
+    
+    //console.log(refpageData);    
+}
+
+
+function findInstructionalPlan() {
+    var top_ipdw = [];
+    for (var m = 0; m < alldata.Content.Modules.length; m++) {
+        top_ipdw = findContentTopicsAll("Url", "ipdw_", alldata.Content.Modules[m], top_ipdw);
+    }
+    
+    var top_other = [];
+    for (var m = 0; m < alldata.Content.Modules.length; m++) {
+        top_other = findContentTopicsAll("Title", "instructional plan", alldata.Content.Modules[m], top_other);
+    }
+    
+    //console.log(top_ipdw);
+    //console.log(top_other);
+    
+    alldata.InstructionalPlan = {
+        Topics: {
+            Dynamic: top_ipdw,
+            Other: top_other
+        }
+    }
+
+    if(top_ipdw.length > 0) {
+        processInstructionalPlan(top_ipdw);
+    }
+    else {
+        alldata.InstructionalPlan.Data = null;
+        checkContentSearchDone();
+        // No Instructional Plan found, or too many Instructional Plans found.
+    }
+}
+
+
+function updateWidgetDataAuto() {
+    
+    if((coursedatesdone===true) && (coursescoredone===true) && (coursegradesdone===true) && (coursedeliverydone===true)) {
+        
+        var numstudents = alldata.Classlist.Objects.length;
+        var minpublished = 0.6;
+        var weightpublished = 0;
+        
+        var catchecks = [];
+        
+        //console.log(omissing);
+        //console.log(alldata.Outline[0].ListOutcomes.length);
+        //console.log(alldata.GradeItems);
+
+        for(var gi=0; gi<alldata.GradeItems.Objects.length; gi++) {
+            var thisgrade = alldata.GradeItems.Objects[gi];
+            if(!thisgrade.IsBonus) {
+                var gradepercent = (thisgrade.NumEvals / numstudents);
+                if(gradepercent >= minpublished) {
+                    if(thisgrade.CategoryId === 0) {
+                        weightpublished += thisgrade.WeightCalc;
+                    }
+                    else {
+                        catchecks.push(thisgrade);
+                    }
+                }
+            }
+        }
+        
+        for(var gc=0; gc<alldata.GradeCategories.length; gc++) {
+            var thiscat = alldata.GradeCategories[gc];
+            thiscat.Published = 0;
+            for(var gi=0; gi<thiscat.Grades.length; gi++) {
+                var thisgrade = thiscat.Grades[gi];
+                for(var cc=0; cc<catchecks.length; cc++) {
+                    if(thisgrade.Id === catchecks[cc].Id) {
+                        thiscat.Published += catchecks[cc].WeightCalc;
+                    }
+                }
+            }
+            if(thiscat.Published > thiscat.Weight) {
+                weightpublished += thiscat.Weight;
+            }
+            else {
+                weightpublished += thiscat.Published;
+            }
+        }        
+        
+        //console.log(alldata.CurrentWeek);
+        //console.log(weightpublished.toFixed(2));
+        
+        var cweek = null;
+        if(alldata.CurrentWeek !== undefined) {
+            cweek = alldata.CurrentWeek;
+        }
+        
+        alldata.EEScanner.Grades = {
+            CurrentWeek: cweek,
+            PublishedWeight: parseFloat(weightpublished.toFixed(2))
+        }
+        
+        var ototal = 0;
+        if(alldata.Outline !== undefined) {
+            if(alldata.Outline !== null) {
+                if(alldata.Outline.length > 0) {
+                    ototal = alldata.Outline[0].ListOutcomes.length
+                }
+            }
+        }
+        
+        alldata.EEScanner.Outcomes = {
+            Total: ototal,
+            Missing: omissing.length
+        }
+        
+        if(alldata.SIS !== undefined) {
+            if(alldata.SIS !== null) {
+                alldata.EEScanner.DeliveryMode = alldata.SIS.DeliveryMode
+            }
+        }
+        
+        putCustomWidgetData(CustomWidgetEE);
+    }
+    
+}
+

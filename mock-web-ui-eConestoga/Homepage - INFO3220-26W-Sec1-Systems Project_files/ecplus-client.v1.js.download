@@ -1,0 +1,917 @@
+/**
+ * ECPlus API Client v1
+ *
+ * Centralizes all ECPlus API calls .
+ *
+ * Notes:
+ *   - Auto environment detection (test/prod) from domain with optional override
+ *   - Response envelope normalization (all methods return {isSuccess, StatusCode, Result, Message})
+ *   - 3-tier caching for course data (localStorage > widget data > API)
+ *   - Configurable timeout
+ *
+ * Example:
+ *   <script src="ecplus-client.v1.js"></script>
+ *   <script>
+ *     ECPlusClient.econestoga.getQuizzes(orgUnitId, { apiVersion: '1.4' })
+ *       .then(function(resp) {
+ *         if (resp.isSuccess) { console.log(resp.Result); }
+ *       });
+ *   </script>
+ */
+(function () {
+  "use strict";
+
+  // =========================================================================
+  // HOST CONFIGURATION
+  // =========================================================================
+
+  var HOSTS = {
+    js: {
+      test: "https://ecplus-js-test.azurewebsites.net",
+      staging: "https://ecplus-js-staging.azurewebsites.net",
+      prod: "https://ecplus-js.azurewebsites.net"
+    },
+    web: {
+      test: "https://ecplus-test.azurewebsites.net",
+      staging: "https://ecplus-staging.azurewebsites.net",
+      prod: "https://ecplus.conestogac.on.ca"
+    },
+    api: {
+      test: "https://api-ecplus-test.azurewebsites.net",
+      staging: "https://api-ecplus-staging.azurewebsites.net",
+      prod: "https://api-ecplus.azurewebsites.net"
+    }
+  };
+
+  // =========================================================================
+  // STATE
+  // =========================================================================
+
+  var _env = null;
+  var _timeout = 30000; //30 seconds default timeout for API requests
+
+  // =========================================================================
+  // CACHE CONFIGURATION
+  // =========================================================================
+
+  var _CACHE_VERSION = 1;
+  var _cacheTTLs = {
+    courseOffering: 24 * 60 * 60 * 1000, // 24 hours
+    ancestors: 24 * 60 * 60 * 1000,      // 24 hours
+    _default: 30 * 60 * 1000             // 30 min fallback
+  };
+  var _widgetIds = {
+    courseOffering: 13311,
+    ancestors: 13312
+  };
+  var _hasStorage = false;
+
+  // =========================================================================
+  // ENVIRONMENT DETECTION
+  // =========================================================================
+
+  function _detectEnv() {
+    if (_env) return;
+    var hostname;
+    try {
+      hostname = window.top.location.hostname.toLowerCase();
+    } catch (e) {
+      hostname = window.location.hostname.toLowerCase();
+    }
+    _env = hostname.indexOf("testconestoga") !== -1 ? "test" : "prod";
+  }
+
+  // =========================================================================
+  // URL RESOLUTION
+  // =========================================================================
+
+  function _resolveUrl(hostKey, path) {
+    _detectEnv();
+    var hostConfig = HOSTS[hostKey];
+    var baseUrl = hostConfig[_env] || hostConfig.prod;
+    return baseUrl + path;
+  }
+
+  // =========================================================================
+  // RESPONSE NORMALIZATION
+  // =========================================================================
+
+  function _errorEnvelope(message, statusCode) {
+    return {
+      isSuccess: false,
+      StatusCode: statusCode || 0,
+      Result: null,
+      Message: message
+    };
+  }
+
+  function _normalizeResponse(xhr) {
+    try {
+      var data = JSON.parse(xhr.responseText);
+
+      // Already enveloped - pass through with consistent shape
+      if (data !== null && typeof data === "object" &&
+          "isSuccess" in data && "Result" in data) {
+        return {
+          isSuccess: !!data.isSuccess,
+          StatusCode: data.StatusCode || xhr.status,
+          Result: data.Result,
+          Message: data.Message || ""
+        };
+      }
+
+      // Raw response - wrap in envelope
+      if (xhr.status >= 200 && xhr.status < 300) {
+        return {
+          isSuccess: true,
+          StatusCode: xhr.status,
+          Result: data,
+          Message: ""
+        };
+      }
+      return {
+        isSuccess: false,
+        StatusCode: xhr.status,
+        Result: data,
+        Message: "Server returned status " + xhr.status
+      };
+    } catch (e) {
+      if (xhr.status >= 200 && xhr.status < 300 && !xhr.responseText) {
+        return { isSuccess: true, StatusCode: xhr.status, Result: null, Message: "" };
+      }
+      return _errorEnvelope("Invalid JSON response from server.", xhr.status || 0);
+    }
+  }
+
+  // =========================================================================
+  // HTTP TRANSPORT
+  // =========================================================================
+
+  /**
+   * All API methods use this function.
+   * @param {string} method - HTTP method
+   * @param {string} hostKey - "js", "web", or "api"
+   * @param {string} path - URL path (including query string)
+   * @param {*} [body] - Request body (object → JSON, string/FormData → raw)
+   * @param {object} [opts] - { contentType, timeout }
+   * @returns {Promise<{isSuccess, StatusCode, Result, Message}>}
+   */
+  function _request(method, hostKey, path, body, opts) {
+    _detectEnv();
+    opts = opts || {};
+    var url = _resolveUrl(hostKey, path);
+
+    return new Promise(function (resolve) {
+      var xhr = new XMLHttpRequest();
+      xhr.open(method, url, true);
+      xhr.timeout = opts.timeout || _timeout;
+
+      // Set Content-Type based on body type
+      if (body !== undefined && body !== null) {
+        if (opts.contentType) {
+          xhr.setRequestHeader("Content-Type", opts.contentType);
+        } else if (typeof body === "object" &&
+                   (typeof FormData === "undefined" || !(body instanceof FormData))) {
+          xhr.setRequestHeader("Content-Type", "application/json");
+        }
+      }
+
+      xhr.onload = function () { resolve(_normalizeResponse(xhr)); };
+      xhr.onerror = function () { resolve(_errorEnvelope("Network error.", 0)); };
+      xhr.ontimeout = function () { resolve(_errorEnvelope("Request timed out.", 0)); };
+
+      // Serialize body
+      var sendBody;
+      if (body === undefined || body === null) {
+        sendBody = null;
+      } else if (typeof body === "string" ||
+                 (typeof FormData !== "undefined" && body instanceof FormData)) {
+        sendBody = body;
+      } else {
+        sendBody = JSON.stringify(body);
+      }
+      xhr.send(sendBody);
+    });
+  }
+
+  function _get(hostKey, path) {
+    return _request("GET", hostKey, path);
+  }
+
+  function _post(hostKey, path, body, opts) {
+    return _request("POST", hostKey, path, body, opts);
+  }
+
+  function _put(hostKey, path, body, opts) {
+    return _request("PUT", hostKey, path, body, opts);
+  }
+
+  // =========================================================================
+  // CACHE LAYER - localStorage (Tier 1)
+  // =========================================================================
+
+  function _storageAvailable() {
+    try {
+      var key = "__ecplus_test__";
+      localStorage.setItem(key, "1");
+      localStorage.removeItem(key);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function _cacheKey(dataType, parts) {
+    _detectEnv();
+    return "ecplus:" + _env + ":" + dataType + ":" + parts.join(":");
+  }
+
+  function _getTTL(dataType) {
+    return _cacheTTLs[dataType] || _cacheTTLs._default;
+  }
+
+  function _cacheGet(dataType, parts) {
+    if (!_hasStorage) return null;
+    var key = _cacheKey(dataType, parts);
+    try {
+      var raw = localStorage.getItem(key);
+      if (!raw) return null;
+      var entry = JSON.parse(raw);
+      if (entry.v !== _CACHE_VERSION) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      if (Date.now() - entry.t > (entry.ttl || _getTTL(dataType))) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      return entry.d;
+    } catch (e) {
+      try { localStorage.removeItem(key); } catch (ignored) { /* */ }
+      return null;
+    }
+  }
+
+  function _cacheSet(dataType, parts, envelope) {
+    if (!_hasStorage) return;
+    if (!envelope || !envelope.isSuccess) return;
+    var ttl = _getTTL(dataType);
+    var entry = { v: _CACHE_VERSION, t: Date.now(), ttl: ttl, d: envelope };
+    var key = _cacheKey(dataType, parts);
+    try {
+      localStorage.setItem(key, JSON.stringify(entry));
+    } catch (e) {
+      _evictStale();
+      try {
+        localStorage.setItem(key, JSON.stringify(entry));
+      } catch (e2) {
+        _evictOldest(5);
+        try {
+          localStorage.setItem(key, JSON.stringify(entry));
+        } catch (e3) { /* give up silently */ }
+      }
+    }
+  }
+
+  function _getECPlusKeys() {
+    var keys = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (key && key.indexOf("ecplus:") === 0) {
+        keys.push(key);
+      }
+    }
+    return keys;
+  }
+
+  function _evictStale() {
+    if (!_hasStorage) return;
+    var keys = _getECPlusKeys();
+    var now = Date.now();
+    for (var i = 0; i < keys.length; i++) {
+      try {
+        var raw = localStorage.getItem(keys[i]);
+        if (!raw) continue;
+        var entry = JSON.parse(raw);
+        if (entry.v !== _CACHE_VERSION ||
+            now - entry.t > (entry.ttl || _cacheTTLs._default)) {
+          localStorage.removeItem(keys[i]);
+        }
+      } catch (e) {
+        localStorage.removeItem(keys[i]);
+      }
+    }
+  }
+
+  function _evictOldest(count) {
+    if (!_hasStorage) return;
+    var keys = _getECPlusKeys();
+    var entries = [];
+    for (var i = 0; i < keys.length; i++) {
+      try {
+        var raw = localStorage.getItem(keys[i]);
+        if (!raw) continue;
+        var entry = JSON.parse(raw);
+        entries.push({ key: keys[i], t: entry.t || 0 });
+      } catch (e) {
+        entries.push({ key: keys[i], t: 0 });
+      }
+    }
+    entries.sort(function (a, b) { return a.t - b.t; });
+    var toRemove = Math.min(count, entries.length);
+    for (var j = 0; j < toRemove; j++) {
+      localStorage.removeItem(entries[j].key);
+    }
+  }
+
+  function _clearAllECPlusCache() {
+    if (!_hasStorage) return;
+    var keys = _getECPlusKeys();
+    for (var i = 0; i < keys.length; i++) {
+      localStorage.removeItem(keys[i]);
+    }
+  }
+
+  function _clearCacheByType(dataType) {
+    if (!_hasStorage) return;
+    _detectEnv();
+    var prefix = "ecplus:" + _env + ":" + dataType + ":";
+    var keys = _getECPlusKeys();
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i].indexOf(prefix) === 0) {
+        localStorage.removeItem(keys[i]);
+      }
+    }
+  }
+
+  // =========================================================================
+  // CACHE LAYER - Widget Data (Tier 2)
+  // =========================================================================
+
+  function _brightspaceGet(path) {
+    return new Promise(function (resolve) {
+      var xhr = new XMLHttpRequest();
+      var baseUrl;
+      try {
+        baseUrl = window.top.location.origin;
+      } catch (e) {
+        baseUrl = window.location.origin;
+      }
+      xhr.open("GET", baseUrl + path, true);
+      xhr.timeout = 10000;
+
+      var xsrfToken;
+      try { xsrfToken = localStorage.getItem("XSRF.Token"); } catch (e) { /* */ }
+      if (xsrfToken) {
+        xhr.setRequestHeader("X-Csrf-Token", xsrfToken);
+      }
+
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve({ ok: true, data: JSON.parse(xhr.responseText) });
+          } catch (e) {
+            resolve({ ok: false, status: xhr.status });
+          }
+        } else {
+          resolve({ ok: false, status: xhr.status });
+        }
+      };
+      xhr.onerror = function () { resolve({ ok: false, status: 0 }); };
+      xhr.ontimeout = function () { resolve({ ok: false, status: 0 }); };
+      xhr.send();
+    });
+  }
+
+  function _widgetDataGet(dataType, orgUnitId, widgetId) {
+    var path = "/d2l/api/lp/1.57/" + orgUnitId + "/widgetdata/" + widgetId;
+    return _brightspaceGet(path).then(function (resp) {
+      if (!resp.ok || !resp.data || !resp.data.Data) return null;
+      try {
+        var inner = JSON.parse(resp.data.Data);
+        if (inner.v !== _CACHE_VERSION) return null;
+        if (Date.now() - inner.t > _getTTL(dataType)) return null;
+        return inner.d;
+      } catch (e) {
+        return null;
+      }
+    });
+  }
+
+  // =========================================================================
+  // CACHE ORCHESTRATOR
+  // =========================================================================
+
+  function _fetchAndCache(dataType, parts, hostKey, path) {
+    return _get(hostKey, path).then(function (resp) {
+      if (resp.isSuccess) {
+        _cacheSet(dataType, parts, resp);
+      }
+      return resp;
+    });
+  }
+
+  /**
+   * 3-tier cached GET: localStorage > widget data > API
+   */
+  function _cachedGet(dataType, parts, hostKey, path, options) {
+    var opts = options || {};
+
+    // TIER 1: localStorage
+    if (!opts.forceRefresh) {
+      var cached = _cacheGet(dataType, parts);
+      if (cached) return Promise.resolve(cached);
+    }
+
+    // TIER 2: Widget Data
+    var widgetId = _widgetIds[dataType];
+    var orgUnitId = parts[0];
+    if (widgetId && orgUnitId && !opts.forceRefresh) {
+      return _widgetDataGet(dataType, orgUnitId, widgetId).then(function (widgetResult) {
+        if (widgetResult) {
+          var envelope = { isSuccess: true, StatusCode: 200, Result: widgetResult, Message: "" };
+          _cacheSet(dataType, parts, envelope);
+          return envelope;
+        }
+        // TIER 3: API
+        return _fetchAndCache(dataType, parts, hostKey, path);
+      });
+    }
+
+    // TIER 3: API (no widget tier or forceRefresh)
+    return _fetchAndCache(dataType, parts, hostKey, path);
+  }
+
+  // =========================================================================
+  // QUERY STRING HELPERS
+  // =========================================================================
+
+  function _enc(val) {
+    return encodeURIComponent(val);
+  }
+
+  function _appendApiVersion(url, opts) {
+    if (opts && opts.apiVersion) {
+      url += "&api-version=" + _enc(opts.apiVersion);
+    }
+    return url;
+  }
+
+  // =========================================================================
+  // INITIALIZATION
+  // =========================================================================
+
+  _hasStorage = _storageAvailable();
+  if (_hasStorage) { try { _evictStale(); } catch (e) { /* */ } }
+
+  // =========================================================================
+  // PUBLIC API
+  // =========================================================================
+
+  var client = {
+
+    // --- Config & Utilities ------------------------------------------------
+
+    config: function (opts) {
+      if (!opts) return;
+      if (opts.env) {
+        var validEnvs = ["test", "staging", "prod"];
+        if (validEnvs.indexOf(opts.env) === -1) {
+          throw new Error(
+            'ECPlusClient: unknown env "' + opts.env +
+            '". Use "test", "staging", or "prod".'
+          );
+        }
+        _env = opts.env;
+      }
+      if (opts.timeout !== undefined) {
+        _timeout = opts.timeout;
+      }
+    },
+
+    getEnvironment: function () {
+      _detectEnv();
+      return {
+        env: _env,
+        hosts: {
+          js: HOSTS.js[_env] || HOSTS.js.prod,
+          web: HOSTS.web[_env] || HOSTS.web.prod,
+          api: HOSTS.api[_env] || HOSTS.api.prod
+        }
+      };
+    },
+
+    cache: {
+      clear: function () { _clearAllECPlusCache(); },
+      clearByType: function (type) { _clearCacheByType(type); }
+    },
+
+    // --- Host: ecplus-js (cached) ------------------------------------------
+
+    courses: {
+      /** GET /api/v1/courses/{orgUnitId} - 3-tier cached */
+      getOffering: function (orgUnitId, opts) {
+        return _cachedGet("courseOffering", [orgUnitId], "js",
+          "/api/v1/courses/" + _enc(orgUnitId), opts);
+      },
+
+      /** GET /api/v1/orgstructure/{orgUnitId}/ancestors - 3-tier cached */
+      getAncestors: function (orgUnitId, opts) {
+        return _cachedGet("ancestors", [orgUnitId], "js",
+          "/api/v1/orgstructure/" + _enc(orgUnitId) + "/ancestors", opts);
+      }
+    },
+
+    // --- Host: ecplus-web - Course Readiness -------------------------------
+
+    courseReadiness: {
+      /** GET /api/Course/{code}/iscommonmerge */
+      isCommonMerge: function (code) {
+        return _get("web", "/api/Course/" + _enc(code) + "/iscommonmerge");
+      },
+
+      /** POST /api/CourseReadiness/{orgUnitId}/Copy?toOrgUnitId=&userId= */
+      initiateCopy: function (orgUnitId, toOrgUnitId, userId) {
+        return _post("web",
+          "/api/CourseReadiness/" + _enc(orgUnitId) + "/Copy" +
+          "?toOrgUnitId=" + _enc(toOrgUnitId) +
+          "&userId=" + _enc(userId));
+      },
+
+      /** GET /api/CourseReadiness/{orgUnitId}/Copy/{jobToken} */
+      pollCopyStatus: function (orgUnitId, jobToken) {
+        return _get("web",
+          "/api/CourseReadiness/" + _enc(orgUnitId) + "/Copy/" + _enc(jobToken));
+      },
+
+      /** POST /api/CourseReadiness/ModelSearch */
+      modelSearch: function (body) {
+        return _post("web", "/api/CourseReadiness/ModelSearch", body);
+      },
+
+      /** GET /api/CourseReadiness/CheckUserAccess?userId=&deliveryId=&modelId= */
+      checkUserAccess: function (params) {
+        var qs = [];
+        if (params) {
+          if (params.userId) qs.push("userId=" + _enc(params.userId));
+          if (params.deliveryId) qs.push("deliveryId=" + _enc(params.deliveryId));
+          if (params.modelId) qs.push("modelId=" + _enc(params.modelId));
+        }
+        return _get("web",
+          "/api/CourseReadiness/CheckUserAccess" + (qs.length ? "?" + qs.join("&") : ""));
+      },
+
+      /** POST /api/CourseReadiness/{modelId}/User/{userId}/Enroll/CopyAccess?deliveryId=&roleId= */
+      grantCopyAccess: function (modelId, userId, params) {
+        var qs = [];
+        if (params) {
+          if (params.deliveryId) qs.push("deliveryId=" + _enc(params.deliveryId));
+          if (params.roleId) qs.push("roleId=" + _enc(params.roleId));
+        }
+        return _post("web",
+          "/api/CourseReadiness/" + _enc(modelId) +
+          "/User/" + _enc(userId) + "/Enroll/CopyAccess" +
+          (qs.length ? "?" + qs.join("&") : ""));
+      }
+    },
+
+    // --- Host: ecplus-web - eConestoga ------------------------------------
+
+    econestoga: {
+      /** GET /api/EConestoga/courseOffering?orgUnitId= */
+      getCourseOffering: function (orgUnitId, opts) {
+        return _get("web",
+          _appendApiVersion("/api/EConestoga/courseOffering?orgUnitId=" + _enc(orgUnitId), opts));
+      },
+
+      /** GET /api/EConestoga/ancestors?orgUnitId= */
+      getAncestors: function (orgUnitId, opts) {
+        return _get("web",
+          _appendApiVersion("/api/EConestoga/ancestors?orgUnitId=" + _enc(orgUnitId), opts));
+      },
+
+      /** GET /api/EConestoga/enrollments?orgUnitId= (&startDate=&endDate= optional) */
+      getEnrollments: function (orgUnitId, opts) {
+        var url = "/api/EConestoga/enrollments?orgUnitId=" + _enc(orgUnitId);
+        if (opts) {
+          if (opts.startDate) url += "&startDate=" + _enc(opts.startDate);
+          if (opts.endDate) url += "&endDate=" + _enc(opts.endDate);
+        }
+        return _get("web", _appendApiVersion(url, opts));
+      },
+
+      /** GET /api/EConestoga/withdrawals?orgUnitId= (&startDate=&endDate= optional) */
+      getWithdrawals: function (orgUnitId, opts) {
+        var url = "/api/EConestoga/withdrawals?orgUnitId=" + _enc(orgUnitId);
+        if (opts) {
+          if (opts.startDate) url += "&startDate=" + _enc(opts.startDate);
+          if (opts.endDate) url += "&endDate=" + _enc(opts.endDate);
+        }
+        return _get("web", _appendApiVersion(url, opts));
+      },
+
+      /** GET /api/EConestoga/quizzes?orgUnitId= */
+      getQuizzes: function (orgUnitId, opts) {
+        return _get("web",
+          _appendApiVersion("/api/EConestoga/quizzes?orgUnitId=" + _enc(orgUnitId), opts));
+      },
+
+      /** GET /api/EConestoga/assignments?orgUnitId= */
+      getAssignments: function (orgUnitId, opts) {
+        return _get("web",
+          _appendApiVersion("/api/EConestoga/assignments?orgUnitId=" + _enc(orgUnitId), opts));
+      },
+
+      /** GET /api/EConestoga/discussions?orgUnitId= */
+      getDiscussions: function (orgUnitId, opts) {
+        return _get("web",
+          _appendApiVersion("/api/EConestoga/discussions?orgUnitId=" + _enc(orgUnitId), opts));
+      },
+
+      /** GET /api/EConestoga/ccblogs?destinationOrgUnitId=&sourceOrgUnitId= */
+      getCcBlogs: function (params) {
+        var qs = [];
+        if (params) {
+          if (params.destinationOrgUnitId) qs.push("destinationOrgUnitId=" + _enc(params.destinationOrgUnitId));
+          if (params.sourceOrgUnitId) qs.push("sourceOrgUnitId=" + _enc(params.sourceOrgUnitId));
+        }
+        return _get("web",
+          "/api/EConestoga/ccblogs" + (qs.length ? "?" + qs.join("&") : ""));
+      },
+
+      /** GET /api/EConestoga/Enrollments/Date?orgUnitId= */
+      getEnrollmentDates: function (orgUnitId) {
+        return _get("web",
+          "/api/EConestoga/Enrollments/Date?orgUnitId=" + _enc(orgUnitId));
+      },
+
+      /** GET /api/EConestoga/olcmodelsearch?courseCode= */
+      olcModelSearch: function (courseCode) {
+        return _get("web",
+          "/api/EConestoga/olcmodelsearch?courseCode=" + _enc(courseCode));
+      },
+
+      /** GET /api/EConestoga/Owners */
+      getOwners: function () {
+        return _get("web", "/api/EConestoga/Owners");
+      },
+
+      /** POST /api/EConestoga/user/{userId}/orgUnit/{orgUnitId}/TempRole */
+      setTempRole: function (userId, orgUnitId) {
+        return _post("web",
+          "/api/EConestoga/user/" + _enc(userId) +
+          "/orgUnit/" + _enc(orgUnitId) + "/TempRole");
+      }
+    },
+
+    // --- Host: ecplus-web - Instructional Plan -----------------------------
+
+    instructionalPlan: {
+      /** POST /api/EConestoga/IP/module?orgUnitId=&userId= */
+      createModule: function (orgUnitId, userId, body) {
+        return _post("web",
+          "/api/EConestoga/IP/module?orgUnitId=" + _enc(orgUnitId) +
+          "&userId=" + _enc(userId), body);
+      },
+
+      /** PUT /api/EConestoga/IP/module?orgUnitId=&userId=&moduleId= */
+      updateModule: function (orgUnitId, userId, moduleId, body) {
+        return _put("web",
+          "/api/EConestoga/IP/module?orgUnitId=" + _enc(orgUnitId) +
+          "&userId=" + _enc(userId) +
+          "&moduleId=" + _enc(moduleId), body);
+      },
+
+      /**
+       * POST /api/EConestoga/IP/topic?orgUnitId=&userId=&moduleId=
+       */
+      createTopic: function (orgUnitId, userId, moduleId, body, opts) {
+        return _post("web",
+          "/api/EConestoga/IP/topic?orgUnitId=" + _enc(orgUnitId) +
+          "&userId=" + _enc(userId) +
+          "&moduleId=" + _enc(moduleId), body, opts);
+      },
+
+      /** PUT /api/EConestoga/IP/topic?orgUnitId=&userId=&topicId= */
+      updateTopic: function (orgUnitId, userId, topicId, body) {
+        return _put("web",
+          "/api/EConestoga/IP/topic?orgUnitId=" + _enc(orgUnitId) +
+          "&userId=" + _enc(userId) +
+          "&topicId=" + _enc(topicId), body);
+      },
+
+      /**
+       * PUT /api/EConestoga/IP/topicfile?orgUnitId=&userId=&topicId=
+       */
+      updateTopicFile: function (orgUnitId, userId, topicId, body, opts) {
+        return _put("web",
+          "/api/EConestoga/IP/topicfile?orgUnitId=" + _enc(orgUnitId) +
+          "&userId=" + _enc(userId) +
+          "&topicId=" + _enc(topicId), body, opts);
+      }
+    },
+
+    // --- Host: ecplus-web - Merge ------------------------------------------
+
+    merge: {
+      /** GET /api/Merge/{orgUnitId} */
+      get: function (orgUnitId) {
+        return _get("web", "/api/Merge/" + _enc(orgUnitId));
+      },
+
+      /** GET /api/Merge/{orgUnitId}/Merges */
+      getRelated: function (orgUnitId) {
+        return _get("web", "/api/Merge/" + _enc(orgUnitId) + "/Merges");
+      },
+
+      /** GET /api/Merge/{orgUnitId}/Sections */
+      getSections: function (orgUnitId) {
+        return _get("web", "/api/Merge/" + _enc(orgUnitId) + "/Sections");
+      }
+    },
+
+    // --- Host: ecplus-web - Subscriptions ----------------------------------
+
+    subscriptions: {
+      /** GET /api/Subscription/User/{userId} */
+      getUser: function (userId) {
+        return _get("web", "/api/Subscription/User/" + _enc(userId));
+      },
+
+      /** POST /api/Subscription/User/{userId}/Subscribe?triggerId=&termId= */
+      subscribe: function (userId, params) {
+        var qs = [];
+        if (params) {
+          if (params.triggerId) qs.push("triggerId=" + _enc(params.triggerId));
+          if (params.termId) qs.push("termId=" + _enc(params.termId));
+        }
+        return _post("web",
+          "/api/Subscription/User/" + _enc(userId) + "/Subscribe" +
+          (qs.length ? "?" + qs.join("&") : ""));
+      }
+    },
+
+    // --- Host: ecplus-web - Performance ------------------------------------
+
+    performance: {
+      /** POST /api/PagePerformance */
+      log: function (body) {
+        return _post("web", "/api/PagePerformance", body);
+      }
+    },
+
+    // --- Host: ecplus-web - SIS (legacy) -----------------------------------
+
+    sis: {
+      /** POST /api/SISIntegration/Grades */
+      pushGradesLegacy: function (body) {
+        return _post("web", "/api/SISIntegration/Grades", body);
+      },
+
+      /** GET /api/SISIntegration/StudentEnrollment?email= */
+      lookupStudent: function (email) {
+        return _get("web",
+          "/api/SISIntegration/StudentEnrollment?email=" + _enc(email));
+      }
+    },
+
+    // --- Host: ecplus-web - Datasets ---------------------------------------
+
+    datasets: {
+      /** GET /api/Datasets/Assignment/{orgUnitId} */
+      getAssignments: function (orgUnitId) {
+        return _get("web", "/api/Datasets/Assignment/" + _enc(orgUnitId));
+      },
+
+      /** GET /api/Datasets/IntelligentAgent/{orgUnitId}/Names */
+      getIntelligentAgentNames: function (orgUnitId) {
+        return _get("web",
+          "/api/Datasets/IntelligentAgent/" + _enc(orgUnitId) + "/Names");
+      }
+    },
+
+    // --- Host: ecplus-web - EDEV0660 ---------------------------------------
+
+    edev0660: {
+      /** POST /api/EDEV0660/Enrollments/{userId}/CopyAccess */
+      enrollCopyAccess: function (userId) {
+        return _post("web",
+          "/api/EDEV0660/Enrollments/" + _enc(userId) + "/CopyAccess");
+      },
+
+      /** POST /api/EDEV0660/Enrollments/{userId}/Student */
+      enrollStudent: function (userId) {
+        return _post("web",
+          "/api/EDEV0660/Enrollments/" + _enc(userId) + "/Student");
+      },
+
+      /** POST /api/EDEV0660/Populate/{orgUnitId} */
+      populate: function (orgUnitId) {
+        return _post("web", "/api/EDEV0660/Populate/" + _enc(orgUnitId));
+      },
+
+      /** GET /api/EDEV0660/WidgetData/{orgUnitId}/{userId} */
+      getWidgetData: function (orgUnitId, userId) {
+        return _get("web",
+          "/api/EDEV0660/WidgetData/" + _enc(orgUnitId) + "/" + _enc(userId));
+      },
+
+      /** POST /api/EDEV0660/CustomShell */
+      customShell: function (body) {
+        return _post("web", "/api/EDEV0660/CustomShell", body);
+      },
+
+      /** POST /api/EDEV0660/{sourceOrgUnitId}/Copy/{targetOrgUnitId} */
+      copy: function (sourceOrgUnitId, targetOrgUnitId) {
+        return _post("web",
+          "/api/EDEV0660/" + _enc(sourceOrgUnitId) +
+          "/Copy/" + _enc(targetOrgUnitId));
+      }
+    },
+
+    // --- Host: api-ecplus (OLC.API) ----------------------------------------
+
+    api: {
+      /** GET /v1/guides */
+      getGuides: function () {
+        return _get("api", "/v1/guides");
+      },
+
+      /** POST /v1/sis/grades */
+      pushGrades: function (body) {
+        return _post("api", "/v1/sis/grades", body);
+      },
+
+      /** GET /v1/SISIntegration/course-readiness/model/{code}?version=&deliveryMode=&numOfWeeks= */
+      getCourseReadinessModel: function (code, params) {
+        var qs = [];
+        if (params) {
+          if (params.version) qs.push("version=" + _enc(params.version));
+          if (params.deliveryMode) qs.push("deliveryMode=" + _enc(params.deliveryMode));
+          if (params.numOfWeeks) qs.push("numOfWeeks=" + _enc(params.numOfWeeks));
+        }
+        return _get("api",
+          "/v1/SISIntegration/course-readiness/model/" + _enc(code) +
+          (qs.length ? "?" + qs.join("&") : ""));
+      },
+
+      /** PUT /v1/SISIntegration/course-readiness/model/{code}?{attr}={val} */
+      updateCourseReadinessModel: function (code, params) {
+        var qs = [];
+        if (params) {
+          for (var key in params) {
+            if (params.hasOwnProperty(key)) {
+              qs.push(_enc(key) + "=" + _enc(params[key]));
+            }
+          }
+        }
+        return _put("api",
+          "/v1/SISIntegration/course-readiness/model/" + _enc(code) +
+          (qs.length ? "?" + qs.join("&") : ""));
+      },
+
+      /** GET /v1/courses/{orgUnitId}/assignment/{assignmentId}/user/{userId}/Submitted */
+      checkAssignmentSubmitted: function (orgUnitId, assignmentId, userId) {
+        return _get("api",
+          "/v1/courses/" + _enc(orgUnitId) +
+          "/assignment/" + _enc(assignmentId) +
+          "/user/" + _enc(userId) + "/Submitted");
+      },
+
+      /** GET /v1/courses/{orgUnitId}/quizzes/{quizId}/user/{userId}/Completed */
+      checkQuizCompleted: function (orgUnitId, quizId, userId) {
+        return _get("api",
+          "/v1/courses/" + _enc(orgUnitId) +
+          "/quizzes/" + _enc(quizId) +
+          "/user/" + _enc(userId) + "/Completed");
+      },
+
+      /** GET /api/Downloader/html?url= */
+      downloadHtml: function (url) {
+        return _get("api", "/api/Downloader/html?url=" + _enc(url));
+      }
+    }
+  };
+
+  // =========================================================================
+  // EXPORT
+  // =========================================================================
+
+  if (typeof Object.freeze === "function") {
+    Object.freeze(client.cache);
+    Object.freeze(client.courses);
+    Object.freeze(client.courseReadiness);
+    Object.freeze(client.econestoga);
+    Object.freeze(client.instructionalPlan);
+    Object.freeze(client.merge);
+    Object.freeze(client.subscriptions);
+    Object.freeze(client.performance);
+    Object.freeze(client.sis);
+    Object.freeze(client.datasets);
+    Object.freeze(client.edev0660);
+    Object.freeze(client.api);
+    Object.freeze(client);
+  }
+
+  window.ecplusClient = client;
+})();

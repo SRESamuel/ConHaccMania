@@ -1,0 +1,1299 @@
+
+<!-- saved from url=(0098)https://conestoga.desire2learn.com/shared/CustomWidgets/CourseHomepage-Standard/librarysearch.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<style>
+		header#pageHeader .header-content {
+			margin-bottom: 0px !important;
+
+		}
+
+		h3 {
+			font-size: 18px !important;
+		}
+
+		a.btn.btn-default--purple {
+			background-color: #fff;
+			border: 2px solid #dedede;
+			font-weight: 600;
+			color: #6a3863;
+		}
+
+		a.btn.btn-default--purple:hover {
+			background-color: #6a3863;
+			border: 2px solid #6a3863;
+			font-weight: 600;
+			color: #fff;
+		}
+
+		a.btn.btn-default--reversepurple {
+			background-color: #6a3863;
+			border: 2px solid #6a3863;
+			font-weight: 600;
+			color: #fff;
+		}
+
+		a.btn.btn-default--reversepurple:hover {
+			background-color: #502B4E;
+			border: 2px solid #502B4E;
+			font-weight: 600;
+			color: #fff;
+		}
+
+		a.btn.btn-default--blue {
+			background-color: #fff;
+			border: 2px solid #dedede;
+			font-weight: 600;
+			color: #0e5085;
+		}
+
+		a.btn.btn-default--blue:hover {
+			background-color: #0e5085;
+			border: 2px solid #0e5085;
+			font-weight: 600;
+			color: #fff;
+		}
+
+		a.btn.btn-default--lightblue {
+			background-color: #fff;
+			border: 2px solid #dedede;
+			font-weight: 600;
+			color: #19809A;
+		}
+
+		a.btn.btn-default--lightblue:hover {
+			background-color: #595b5e;
+			border: 2px solid #595b5e;
+			font-weight: 600;
+			color: #9BDFF3;
+		}
+
+		.hidden-text {
+			position: absolute;
+			left: -10000px;
+			top: auto;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+		}
+
+		.panel.panel-default {
+			color: #000;
+			background-color: white;
+			border-color: white;
+			font-size: 20px;
+			padding-top: 0px;
+			padding-bottom: 0px;
+			border-top-left-radius: 0;
+			border-top-right-radius: 0;
+			margin-bottom: 0px;
+		}
+
+		.panel-default>.panel-heading {
+			color: #333;
+			background-color: white !important;
+			border-bottom: 0px solid transparent;
+			border-color: #ddd;
+			padding: 0px;
+		}
+
+		.panel-body {
+			padding: 0px 0px 0px 0px !important;
+		}
+
+		.btn {
+			font-size: 12px !important;
+		}
+
+		.dropdown-menu>li:nth-child(5) {
+			padding-top: 10px;
+			margin-top: 10px;
+			border-top: 1px solid black;
+		}
+	</style>
+
+
+
+
+<script type="text/javascript" async="" src="./libraryh3lp.js.download"></script><script async="" src="./analytics.js.download"></script><script>window.addEventListener('message', function(event) { 
+					if( !event.data ) {
+						return;
+					}
+
+					let params;
+					try {
+						params = JSON.parse( event.data );
+					}
+					catch {
+						return;
+					}
+					if( !params.subject || params.subject !== 'lti.frameResize' ) {
+						return;
+					}
+
+					const MAX_FRAME_HEIGHT = 10000;
+					if( !params.height || params.height < 1 || params.height > MAX_FRAME_HEIGHT ) {
+						console.warn( 'Invalid height value received, aborting' );
+						return;
+					}
+					const el = document.getElementsByTagName( 'iframe' );
+					for ( let i=0; i < el.length; i++ ) {
+						if( el[i].contentWindow === event.source ) {
+							el[i].style.height = params.height + 'px';
+
+							console.info( 'Setting iFrame height to ' + params.height );
+
+							if( el[i].getAttribute('lockwidth') !== 'true'){
+								el[i].style.width = '100%';
+								console.info( 'Setting iFrame width to 100%' );
+							}
+						}
+					}
+				});</script><script src="./embeds.js.download" type="module"></script><script>document.addEventListener('DOMContentLoaded', function() {
+					window.D2L.EmbedRenderer.renderEmbeds(document.body);
+				});</script><script src="./mathjax.js.download" type="module"></script><script>document.addEventListener('DOMContentLoaded', function() {
+					if (document.querySelector('math, .d2l-element, .d2l-cplus-layout') || /\$\$|\\\(|\\\[|\\begin{|\\ref{|\\eqref{/.test(document.body.innerHTML)) {
+						document.querySelectorAll('mspace[linebreak="newline"]').forEach(elm => {
+							elm.setAttribute('style', 'display: block; height: 0.5rem;');
+						});
+
+						document.querySelectorAll('math mmultiscripts > none').forEach(elm => {
+							const mrow = document.createElementNS('http://www.w3.org/1998/Math/MathML', 'mrow');
+							elm.replaceWith(mrow);
+						});
+
+						window.D2L.MathJax.loadMathJax({
+							outputScale: 1.5,
+							renderLatex: true,
+							enableMML3Support: false
+						});
+					}
+				});</script><script src="./prism.js.download" type="module"></script><script>document.addEventListener('DOMContentLoaded', function() {
+					document.querySelectorAll('.d2l-code').forEach(code => {
+						window.D2L.Prism.formatCodeElement(code, true);
+					});
+				});</script><script src="./creator.js.download" type="module"></script><script>document.addEventListener('DOMContentLoaded', async () => {
+					const activities = [];
+					const practices = [];
+					const allPractices = document.querySelectorAll('.d2l-practice');
+					const elements = document.querySelectorAll('.d2l-element');
+					let layouts = [...document.querySelectorAll('.d2l-cplus-layout')];
+					const tables = document.querySelectorAll('table');
+					const contentStylerStyleLinks = document.querySelectorAll('head > link[href="https://templates.lcs.brightspace.com/lib/assets/css/styles.min.css"]');
+					const contentStylerOverides = document.querySelectorAll('head > link[href^="/d2l/le/contentstyler/"][data-override="override"]');
+
+					layouts = layouts.filter((layout) => layout.closest('.d2l-element.mceNonEditable') === null);
+
+					for (const practice of allPractices) {
+						const activityContainer = practice.hasAttribute('data-d2l-activity-href');
+						if (activityContainer) {
+							activities.push(practice);
+						}
+						else {
+							practices.push(practice);
+						}
+					}
+
+					if (layouts.length > 0) {
+						window.D2L.Creator.convertLayouts(layouts);
+					}
+					if (elements.length > 0) {
+						window.D2L.Creator.convertElements(elements, 6606, '/content/');
+					}
+					if (activities.length > 0) {
+						window.D2L.Creator.convertPracticeActivities(activities, 6606, '/content/');
+					}
+					if (practices.length > 0) {
+						window.D2L.Creator.convertPractices(practices, 6606, '/content/');
+					}
+					if (contentStylerStyleLinks.length > 0 && contentStylerOverides.length > 0 && tables.length > 0) {
+						window.D2L.Creator.wrapTables(tables);
+					}
+				});</script><script>function lti_launch( vars, target ) {
+					var query = '';
+					var new_tab = false;
+
+					for(var key in vars) {
+						if(query.length == 0) {
+							query += '?' + key + '=' + encodeURIComponent(vars[key]);
+						}
+						else {
+							query += '&' + key + '=' + encodeURIComponent(vars[key]);
+						}
+					}
+
+					var url = '/d2l/customization/pearsonlti/6606/Launch' + query;(target == '_blank') ? window.open( url, '_blank' ) : location.replace( url );}</script><style id="d2l-colors">
+		html {
+			/* basic grays (lightest to darkest) */
+			--d2l-color-regolith: #f9fbff;
+			--d2l-color-sylvite: #f1f5fb;
+			--d2l-color-gypsum: #e3e9f1;
+			--d2l-color-mica: #cdd5dc;
+			--d2l-color-corundum: #b1b9be;
+			--d2l-color-chromite: #90989d;
+			--d2l-color-galena: #6e7477;
+			--d2l-color-tungsten: #494c4e;
+			--d2l-color-ferrite: #202122;
+
+			/* zircon */
+			--d2l-color-zircon-plus-2: #e0feff;
+			--d2l-color-zircon-plus-1: #00d2ed;
+			--d2l-color-zircon: #008eab;
+			--d2l-color-zircon-minus-1: #035670;
+
+			/* celestine */
+			--d2l-color-celestine-plus-2: #e8f8ff;
+			--d2l-color-celestine-plus-1: #29a6ff;
+			--d2l-color-celestine: #006fbf;
+			--d2l-color-celestine-minus-1: #004489;
+
+			/* amethyst */
+			--d2l-color-amethyst-plus-2: #f2f0ff;
+			--d2l-color-amethyst-plus-1: #8982ff;
+			--d2l-color-amethyst: #6038ff;
+			--d2l-color-amethyst-minus-1: #4500db;
+
+			/* fluorite */
+			--d2l-color-fluorite-plus-2: #f9ebff;
+			--d2l-color-fluorite-plus-1: #ce68fa;
+			--d2l-color-fluorite: #9d1fd4;
+			--d2l-color-fluorite-minus-1: #6900a0;
+
+			/* tourmaline */
+			--d2l-color-tourmaline-plus-2: #ffebf6;
+			--d2l-color-tourmaline-plus-1: #fd4e9d;
+			--d2l-color-tourmaline: #d40067;
+			--d2l-color-tourmaline-minus-1: #990056;
+
+			/* cinnabar */
+			--d2l-color-cinnabar-plus-2: #ffede8;
+			--d2l-color-cinnabar-plus-1: #ff575a;
+			--d2l-color-cinnabar: #cd2026;
+			--d2l-color-cinnabar-minus-1: #990006;
+
+			/* carnelian */
+			--d2l-color-carnelian-plus-1: #fff3e0;
+			--d2l-color-carnelian: #e87511;
+			--d2l-color-carnelian-minus-1: #ba4700;
+			--d2l-color-carnelian-minus-2: #7d2600;
+
+			/* citrine */
+			--d2l-color-citrine-plus-1: #fff9d6;
+			--d2l-color-citrine: #ffba59;
+			--d2l-color-citrine-minus-1: #c47400;
+			--d2l-color-citrine-minus-2: #7a4300;
+
+			/* peridot */
+			--d2l-color-peridot-plus-1: #efffd9;
+			--d2l-color-peridot: #8ad934;
+			--d2l-color-peridot-minus-1: #4a8f00;
+			--d2l-color-peridot-minus-2: #2f5e00;
+
+			/* olivine */
+			--d2l-color-olivine-plus-1: #e7ffe3;
+			--d2l-color-olivine: #46a661;
+			--d2l-color-olivine-minus-1: #027a21;
+			--d2l-color-olivine-minus-2: #005614;
+
+			/* malachite */
+			--d2l-color-malachite-plus-1: #e3fff5;
+			--d2l-color-malachite: #2de2c0;
+			--d2l-color-malachite-minus-1: #00a490;
+			--d2l-color-malachite-minus-2: #00635e;
+
+			/* primary accent */
+			--d2l-color-primary-accent-action: var(--d2l-color-celestine);
+			--d2l-color-primary-accent-indicator: var(--d2l-color-carnelian);
+
+			/* feedback */
+			--d2l-color-feedback-error: var(--d2l-color-cinnabar);
+			--d2l-color-feedback-warning: var(--d2l-color-carnelian);
+			--d2l-color-feedback-success: var(--d2l-color-olivine);
+			--d2l-color-feedback-action: var(--d2l-color-celestine);
+		}
+
+		/* semantic palette */
+		html {
+			
+		--d2l-sem-background-color-base: #ffffff;
+		--d2l-sem-background-color-elevated: var(--d2l-sem-background-color-base);
+		--d2l-sem-background-color-floating: var(--d2l-sem-background-color-base);
+		--d2l-sem-background-color-interactive-faint-default: var(--d2l-color-regolith);
+		--d2l-sem-background-color-interactive-faint-hover: var(--d2l-color-sylvite);
+		--d2l-sem-background-color-interactive-highlighted: var(--d2l-sem-brand-color-highlight);
+		--d2l-sem-background-color-interactive-primary-default: var(--d2l-sem-brand-color-primary-default);
+		--d2l-sem-background-color-interactive-primary-hover: var(--d2l-sem-brand-color-primary-hover);
+		--d2l-sem-background-color-interactive-secondary-default: var(--d2l-color-gypsum);
+		--d2l-sem-background-color-interactive-secondary-hover: var(--d2l-color-mica);
+		--d2l-sem-background-color-interactive-tertiary-default: #ffffff;
+		--d2l-sem-background-color-interactive-tertiary-hover: var(--d2l-sem-background-color-interactive-secondary-default);
+		--d2l-sem-background-color-interactive-translucent-default: #000000;
+		--d2l-sem-background-color-interactive-translucent-hover: var(--d2l-sem-brand-color-primary-default);
+		--d2l-sem-background-color-sunken: #f6f7f8;
+		--d2l-sem-border-color-emphasized: var(--d2l-color-galena);
+		--d2l-sem-border-color-focus: var(--d2l-color-celestine);
+		--d2l-sem-border-color-standard: var(--d2l-color-mica);
+		--d2l-sem-border-color-subtle: var(--d2l-color-gypsum);
+		--d2l-sem-brand-color-highlight: var(--d2l-color-celestine-plus-2);
+		--d2l-sem-brand-color-primary-default: var(--d2l-color-celestine);
+		--d2l-sem-brand-color-primary-hover: var(--d2l-color-celestine-minus-1);
+		--d2l-sem-icon-color-faint: var(--d2l-sem-border-color-standard);
+		--d2l-sem-icon-color-inverted: #ffffff;
+		--d2l-sem-icon-color-standard: var(--d2l-color-tungsten);
+		--d2l-sem-status-color-default: var(--d2l-color-celestine);
+		--d2l-sem-status-color-error: var(--d2l-color-cinnabar);
+		--d2l-sem-status-color-success-text: var(--d2l-color-olivine-minus-1);
+		--d2l-sem-status-color-success: var(--d2l-color-olivine);
+		--d2l-sem-status-color-warning-text: var(--d2l-color-carnelian-minus-1);
+		--d2l-sem-status-color-warning: var(--d2l-color-carnelian);
+		--d2l-sem-text-color-interactive-default: var(--d2l-sem-brand-color-primary-default);
+		--d2l-sem-text-color-interactive-hover: var(--d2l-sem-brand-color-primary-hover);
+		--d2l-sem-text-color-static-faint: var(--d2l-color-galena);
+		--d2l-sem-text-color-static-inverted: #ffffff;
+		--d2l-sem-text-color-static-standard: var(--d2l-color-ferrite);
+		--d2l-sem-text-color-static-subtle: var(--d2l-color-tungsten);
+
+		--d2l-sem-opacity-disabled-control: 0.5;
+		--d2l-sem-opacity-disabled-link: 0.74;
+		--d2l-sem-opacity-disabled-linkicon: 0.64;
+
+		--d2l-sem-shadow-attached-color: rgba(0, 0, 0, 0.03);
+		--d2l-sem-shadow-attached-offset-x: 0;
+		--d2l-sem-shadow-attached-offset-y: 2px;
+		--d2l-sem-shadow-attached-blur: 4px;
+		--d2l-sem-shadow-attached-spread: 0;
+		--d2l-sem-shadow-attached: var(--d2l-shadow-attached-offset-x) var(--d2l-shadow-attached-offset-y) var(--d2l-shadow-attached-blur) var(--d2l-shadow-attached-spread) var(--d2l-shadow-attached-color);
+		--d2l-sem-shadow-floating-color: rgba(0, 0, 0, 0.15);
+		--d2l-sem-shadow-floating-offset-x: 0;
+		--d2l-sem-shadow-floating-offset-y: 2px;
+		--d2l-sem-shadow-floating-blur: 12px;
+		--d2l-sem-shadow-floating-spread: 0;
+		--d2l-sem-shadow-floating: var(--d2l-shadow-floating-offset-x) var(--d2l-shadow-floating-offset-y) var(--d2l-shadow-floating-blur) var(--d2l-shadow-floating-spread) var(--d2l-shadow-floating-color);
+		--d2l-sem-shadow-inset-color: rgba(177, 185, 190, 0.2); /* corundum */
+		--d2l-sem-shadow-inset-offset-x: 0;
+		--d2l-sem-shadow-inset-offset-y: 2px;
+		--d2l-sem-shadow-inset-blur: 0;
+		--d2l-sem-shadow-inset-spread: 0;
+		--d2l-sem-shadow-inset: inset var(--d2l-shadow-inset-offset-x) var(--d2l-shadow-inset-offset-y) var(--d2l-shadow-inset-blur) var(--d2l-shadow-inset-spread) var(--d2l-shadow-inset-color);
+	
+		}
+		html[data-color-mode="dark"] {
+			
+		--d2l-sem-background-color-base: #161718;
+		--d2l-sem-background-color-elevated: var(--d2l-color-ferrite);
+		--d2l-sem-background-color-floating: var(--d2l-color-ferrite);
+		--d2l-sem-background-color-interactive-faint-default: var(--d2l-color-ferrite);
+		--d2l-sem-background-color-interactive-faint-hover: #303335;
+		--d2l-sem-background-color-interactive-highlighted: var(--d2l-sem-brand-color-highlight);
+		--d2l-sem-background-color-interactive-primary-default: var(--d2l-sem-brand-color-primary-default);
+		--d2l-sem-background-color-interactive-primary-hover: var(--d2l-sem-brand-color-primary-hover);
+		--d2l-sem-background-color-interactive-secondary-default: #303335;
+		--d2l-sem-background-color-interactive-secondary-hover: var(--d2l-color-ferrite);
+		--d2l-sem-background-color-interactive-tertiary-default: #000000;
+		--d2l-sem-background-color-interactive-tertiary-hover: var(--d2l-sem-background-color-interactive-secondary-default);
+		--d2l-sem-background-color-interactive-translucent-default: #000000;
+		--d2l-sem-background-color-interactive-translucent-hover: var(--d2l-sem-brand-color-primary-default);
+		--d2l-sem-background-color-sunken: #000000;
+		--d2l-sem-border-color-emphasized: var(--d2l-color-galena);
+		--d2l-sem-border-color-focus: var(--d2l-color-celestine-plus-1);
+		--d2l-sem-border-color-standard: var(--d2l-color-tungsten);
+		--d2l-sem-border-color-subtle: #303335;
+		--d2l-sem-brand-color-highlight: #161718;
+		--d2l-sem-brand-color-primary-default: var(--d2l-color-celestine-plus-1);
+		--d2l-sem-brand-color-primary-hover: var(--d2l-color-celestine);
+		--d2l-sem-icon-color-faint: var(--d2l-sem-border-color-standard);
+		--d2l-sem-icon-color-inverted: #ffffff;
+		--d2l-sem-icon-color-standard: var(--d2l-color-corundum);
+		--d2l-sem-status-color-default: var(--d2l-sem-brand-color-primary-default);
+		--d2l-sem-status-color-error: var(--d2l-color-cinnabar-plus-1);
+		--d2l-sem-status-color-success-text: #ffffff;
+		--d2l-sem-status-color-success: var(--d2l-color-olivine);
+		--d2l-sem-status-color-warning-text: var(--d2l-color-carnelian);
+		--d2l-sem-status-color-warning: var(--d2l-color-carnelian);
+		--d2l-sem-text-color-interactive-default: var(--d2l-sem-brand-color-primary-default);
+		--d2l-sem-text-color-interactive-hover: var(--d2l-sem-brand-color-primary-hover);
+		--d2l-sem-text-color-static-faint: var(--d2l-color-galena);
+		--d2l-sem-text-color-static-inverted: #161718;
+		--d2l-sem-text-color-static-standard: var(--d2l-color-mica);
+		--d2l-sem-text-color-static-subtle: var(--d2l-color-chromite);
+
+		--d2l-sem-opacity-disabled-control: 0.5;
+		--d2l-sem-opacity-disabled-link: 0.74;
+		--d2l-sem-opacity-disabled-linkicon: 0.64;
+
+		--d2l-sem-shadow-attached-color: rgba(0, 0, 0, 0.03);
+		--d2l-sem-shadow-attached-offset-x: 0;
+		--d2l-sem-shadow-attached-offset-y: 2px;
+		--d2l-sem-shadow-attached-blur: 4px;
+		--d2l-sem-shadow-attached-spread: 0;
+		--d2l-sem-shadow-attached: var(--d2l-shadow-attached-offset-x) var(--d2l-shadow-attached-offset-y) var(--d2l-shadow-attached-blur) var(--d2l-shadow-attached-spread) var(--d2l-shadow-attached-color);
+		--d2l-sem-shadow-floating-color: rgba(0, 0, 0, 0.85);
+		--d2l-sem-shadow-floating-offset-x: 0;
+		--d2l-sem-shadow-floating-offset-y: 2px;
+		--d2l-sem-shadow-floating-blur: 12px;
+		--d2l-sem-shadow-floating-spread: 0;
+		--d2l-sem-shadow-floating: var(--d2l-shadow-floating-offset-x) var(--d2l-shadow-floating-offset-y) var(--d2l-shadow-floating-blur) var(--d2l-shadow-floating-spread) var(--d2l-shadow-floating-color);
+		--d2l-sem-shadow-inset-color: rgba(177, 185, 190, 0.2); /* corundum */
+		--d2l-sem-shadow-inset-offset-x: 0;
+		--d2l-sem-shadow-inset-offset-y: 2px;
+		--d2l-sem-shadow-inset-blur: 0;
+		--d2l-sem-shadow-inset-spread: 0;
+		--d2l-sem-shadow-inset: inset var(--d2l-shadow-inset-offset-x) var(--d2l-shadow-inset-offset-y) var(--d2l-shadow-inset-blur) var(--d2l-shadow-inset-spread) var(--d2l-shadow-inset-color);
+	
+		}
+		@media (prefers-color-scheme: dark) {
+			html[data-color-mode="os"] {
+				
+		--d2l-sem-background-color-base: #161718;
+		--d2l-sem-background-color-elevated: var(--d2l-color-ferrite);
+		--d2l-sem-background-color-floating: var(--d2l-color-ferrite);
+		--d2l-sem-background-color-interactive-faint-default: var(--d2l-color-ferrite);
+		--d2l-sem-background-color-interactive-faint-hover: #303335;
+		--d2l-sem-background-color-interactive-highlighted: var(--d2l-sem-brand-color-highlight);
+		--d2l-sem-background-color-interactive-primary-default: var(--d2l-sem-brand-color-primary-default);
+		--d2l-sem-background-color-interactive-primary-hover: var(--d2l-sem-brand-color-primary-hover);
+		--d2l-sem-background-color-interactive-secondary-default: #303335;
+		--d2l-sem-background-color-interactive-secondary-hover: var(--d2l-color-ferrite);
+		--d2l-sem-background-color-interactive-tertiary-default: #000000;
+		--d2l-sem-background-color-interactive-tertiary-hover: var(--d2l-sem-background-color-interactive-secondary-default);
+		--d2l-sem-background-color-interactive-translucent-default: #000000;
+		--d2l-sem-background-color-interactive-translucent-hover: var(--d2l-sem-brand-color-primary-default);
+		--d2l-sem-background-color-sunken: #000000;
+		--d2l-sem-border-color-emphasized: var(--d2l-color-galena);
+		--d2l-sem-border-color-focus: var(--d2l-color-celestine-plus-1);
+		--d2l-sem-border-color-standard: var(--d2l-color-tungsten);
+		--d2l-sem-border-color-subtle: #303335;
+		--d2l-sem-brand-color-highlight: #161718;
+		--d2l-sem-brand-color-primary-default: var(--d2l-color-celestine-plus-1);
+		--d2l-sem-brand-color-primary-hover: var(--d2l-color-celestine);
+		--d2l-sem-icon-color-faint: var(--d2l-sem-border-color-standard);
+		--d2l-sem-icon-color-inverted: #ffffff;
+		--d2l-sem-icon-color-standard: var(--d2l-color-corundum);
+		--d2l-sem-status-color-default: var(--d2l-sem-brand-color-primary-default);
+		--d2l-sem-status-color-error: var(--d2l-color-cinnabar-plus-1);
+		--d2l-sem-status-color-success-text: #ffffff;
+		--d2l-sem-status-color-success: var(--d2l-color-olivine);
+		--d2l-sem-status-color-warning-text: var(--d2l-color-carnelian);
+		--d2l-sem-status-color-warning: var(--d2l-color-carnelian);
+		--d2l-sem-text-color-interactive-default: var(--d2l-sem-brand-color-primary-default);
+		--d2l-sem-text-color-interactive-hover: var(--d2l-sem-brand-color-primary-hover);
+		--d2l-sem-text-color-static-faint: var(--d2l-color-galena);
+		--d2l-sem-text-color-static-inverted: #161718;
+		--d2l-sem-text-color-static-standard: var(--d2l-color-mica);
+		--d2l-sem-text-color-static-subtle: var(--d2l-color-chromite);
+
+		--d2l-sem-opacity-disabled-control: 0.5;
+		--d2l-sem-opacity-disabled-link: 0.74;
+		--d2l-sem-opacity-disabled-linkicon: 0.64;
+
+		--d2l-sem-shadow-attached-color: rgba(0, 0, 0, 0.03);
+		--d2l-sem-shadow-attached-offset-x: 0;
+		--d2l-sem-shadow-attached-offset-y: 2px;
+		--d2l-sem-shadow-attached-blur: 4px;
+		--d2l-sem-shadow-attached-spread: 0;
+		--d2l-sem-shadow-attached: var(--d2l-shadow-attached-offset-x) var(--d2l-shadow-attached-offset-y) var(--d2l-shadow-attached-blur) var(--d2l-shadow-attached-spread) var(--d2l-shadow-attached-color);
+		--d2l-sem-shadow-floating-color: rgba(0, 0, 0, 0.85);
+		--d2l-sem-shadow-floating-offset-x: 0;
+		--d2l-sem-shadow-floating-offset-y: 2px;
+		--d2l-sem-shadow-floating-blur: 12px;
+		--d2l-sem-shadow-floating-spread: 0;
+		--d2l-sem-shadow-floating: var(--d2l-shadow-floating-offset-x) var(--d2l-shadow-floating-offset-y) var(--d2l-shadow-floating-blur) var(--d2l-shadow-floating-spread) var(--d2l-shadow-floating-color);
+		--d2l-sem-shadow-inset-color: rgba(177, 185, 190, 0.2); /* corundum */
+		--d2l-sem-shadow-inset-offset-x: 0;
+		--d2l-sem-shadow-inset-offset-y: 2px;
+		--d2l-sem-shadow-inset-blur: 0;
+		--d2l-sem-shadow-inset-spread: 0;
+		--d2l-sem-shadow-inset: inset var(--d2l-shadow-inset-offset-x) var(--d2l-shadow-inset-offset-y) var(--d2l-shadow-inset-blur) var(--d2l-shadow-inset-spread) var(--d2l-shadow-inset-color);
+	
+			}
+		}
+	</style><style id="d2l-typography-font-face">
+		
+	@font-face {
+	font-family: 'Lato';
+	font-style: normal;
+	font-weight: 400;
+	src:
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/Lato-400.woff2) format('woff2'),
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/Lato-400.woff) format('woff');
+}
+@font-face {
+	font-family: 'Lato';
+	font-style: normal;
+	font-weight: 700;
+	src:
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/Lato-700.woff2) format('woff2'),
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/Lato-700.woff) format('woff');
+}
+@font-face {
+	font-family: 'Noto Sans Thai';
+	font-style: normal;
+	font-weight: 400;
+	src:
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/NotoSansThai-Regular.woff2) format('woff2'),
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/NotoSansThai-Regular.woff) format('woff');
+}
+@font-face {
+	font-family: 'Noto Sans Thai';
+	font-style: normal;
+	font-weight: 700;
+	src:
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/NotoSansThai-Bold.woff2) format('woff2'),
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/NotoSansThai-Bold.woff) format('woff');
+}
+@font-face {
+	font-family: 'BC Sans';
+	font-style: normal;
+	font-weight: 300;
+	src:
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/BCSans-Light.woff2) format('woff2'),
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/BCSans-Light.woff) format('woff');
+}
+@font-face {
+	font-family: 'BC Sans';
+	font-style: normal;
+	font-weight: 400;
+	src:
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/BCSans-Regular.woff2) format('woff2'),
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/BCSans-Regular.woff) format('woff');
+}
+@font-face {
+	font-family: 'BC Sans';
+	font-style: normal;
+	font-weight: 700;
+	src:
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/BCSans-Bold.woff2) format('woff2'),
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/BCSans-Bold.woff) format('woff');
+}
+@font-face {
+	font-family: 'BC Sans';
+	font-style: italic;
+	font-weight: 300;
+	src:
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/BCSans-LightItalic.woff2) format('woff2'),
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/BCSans-LightItalic.woff) format('woff');
+}
+@font-face {
+	font-family: 'BC Sans';
+	font-style: italic;
+	font-weight: 400;
+	src:
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/BCSans-Italic.woff2) format('woff2'),
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/BCSans-Italic.woff) format('woff');
+}
+@font-face {
+	font-family: 'BC Sans';
+	font-style: italic;
+	font-weight: 700;
+	src:
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/BCSans-BoldItalic.woff2) format('woff2'),
+		url(https://s.brightspace.com/lib/fonts/0.6.4/assets/BCSans-BoldItalic.woff) format('woff');
+}
+	html {
+		--d2l-cursor-resize-inline-end: e-resize;
+		--d2l-cursor-resize-inline-start: w-resize;
+		--d2l-document-direction: ltr;
+		--d2l-inline-end: right;
+		--d2l-inline-start: left;
+		--d2l-length-factor: 1;
+		--d2l-mirror-transform: none;
+	}
+	html[dir="rtl"] {
+		--d2l-cursor-resize-inline-end: w-resize;
+		--d2l-cursor-resize-inline-start: e-resize;
+		--d2l-document-direction: rtl;
+		--d2l-inline-end: left;
+		--d2l-inline-start: right;
+		--d2l-length-factor: -1;
+		--d2l-mirror-transform: scale(-1, 1);
+	}
+
+	.d2l-typography {
+		color: var(--d2l-color-ferrite);
+		display: block;
+		font-family: "Lato", "Lucida Sans Unicode", "Lucida Grande", sans-serif;
+		letter-spacing: 0.01rem;
+	}
+	
+		.d2l-typography {
+			font-size: 0.95rem;
+			font-weight: 400;
+			line-height: 1.4rem;
+		}
+		@media (max-width: 615px) {
+			.d2l-typography {
+				font-size: 0.8rem;
+				line-height: 1.2rem;
+			}
+		}
+	
+	.d2l-typography p {
+		margin: 1rem 0;
+	}
+
+	.d2l-typography:lang(ar), .d2l-typography :lang(ar) {
+		font-family: "Segoe UI", "Geeza Pro", sans-serif;
+	}
+	.d2l-typography:lang(ja), .d2l-typography :lang(ja) {
+		font-family: "Hiragino Kaku Gothic Pro", "Meiyro", sans-serif;
+	}
+	.d2l-typography:lang(ko), .d2l-typography :lang(ko) {
+		font-family: "Apple SD Gothic Neo", Dotum, sans-serif;
+	}
+	.d2l-typography:lang(th), .d2l-typography :lang(th), .d2l-typography:lang(tha), .d2l-typography :lang(tha) {
+		font-family: "Noto Sans Thai", system-ui, Tahoma;
+	}
+	.d2l-typography:lang(zh), .d2l-typography :lang(zh) {
+		font-family: "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+	}
+
+		
+		.d2l-typography .d2l-body-standard {
+			font-size: 0.95rem;
+			font-weight: 400;
+			line-height: 1.4rem;
+		}
+		@media (max-width: 615px) {
+			.d2l-typography .d2l-body-standard {
+				font-size: 0.8rem;
+				line-height: 1.2rem;
+			}
+		}
+	
+		
+		.d2l-typography .d2l-body-compact {
+			font-size: 0.8rem;
+			font-weight: 400;
+			line-height: 1.2rem;
+		}
+		
+	
+		
+		.d2l-typography .d2l-body-small {
+			color: var(--d2l-color-tungsten);
+			font-size: 0.7rem;
+			font-weight: 400;
+			line-height: 0.9rem;
+			margin: auto;
+		}
+		
+	
+		
+		.d2l-typography .d2l-label-text {
+			font-size: 0.7rem;
+			font-weight: 700;
+			letter-spacing: 0.2px;
+			line-height: 0.9rem;
+		}
+		
+	
+		
+		.d2l-typography .d2l-heading-1 {
+			font-size: 2rem;
+			font-weight: 400;
+			line-height: 2.4rem;
+			margin: 1.5rem 0 1.5rem 0;
+		}
+		
+		@supports not selector(:focus-visible) {
+			
+		.d2l-typography .d2l-heading-1:focus {
+			border-radius: 0.3rem;
+			outline: 2px solid var(--d2l-focus-ring-color, var(--d2l-color-celestine));
+			outline-offset: var(--d2l-focus-ring-offset, 2px);
+		}
+		@media (prefers-contrast: more) {
+			.d2l-typography .d2l-heading-1:focus {
+				outline-color: Highlight;
+			}
+		}
+	
+		}
+		@supports selector(:focus-visible) {
+			
+		.d2l-typography .d2l-heading-1:focus-visible {
+			border-radius: 0.3rem;
+			outline: 2px solid var(--d2l-focus-ring-color, var(--d2l-color-celestine));
+			outline-offset: var(--d2l-focus-ring-offset, 2px);
+		}
+		@media (prefers-contrast: more) {
+			.d2l-typography .d2l-heading-1:focus-visible {
+				outline-color: Highlight;
+			}
+		}
+	
+		}
+	
+		@media (max-width: 615px) {
+			.d2l-typography .d2l-heading-1 {
+				font-size: 1.5rem;
+				line-height: 1.8rem;
+			}
+			
+		}
+	
+		
+		.d2l-typography .d2l-heading-2 {
+			font-size: 1.5rem;
+			font-weight: 400;
+			line-height: 1.8rem;
+			margin: 1.5rem 0 1.5rem 0;
+		}
+		
+		@supports not selector(:focus-visible) {
+			
+		.d2l-typography .d2l-heading-2:focus {
+			border-radius: 0.3rem;
+			outline: 2px solid var(--d2l-focus-ring-color, var(--d2l-color-celestine));
+			outline-offset: var(--d2l-focus-ring-offset, 2px);
+		}
+		@media (prefers-contrast: more) {
+			.d2l-typography .d2l-heading-2:focus {
+				outline-color: Highlight;
+			}
+		}
+	
+		}
+		@supports selector(:focus-visible) {
+			
+		.d2l-typography .d2l-heading-2:focus-visible {
+			border-radius: 0.3rem;
+			outline: 2px solid var(--d2l-focus-ring-color, var(--d2l-color-celestine));
+			outline-offset: var(--d2l-focus-ring-offset, 2px);
+		}
+		@media (prefers-contrast: more) {
+			.d2l-typography .d2l-heading-2:focus-visible {
+				outline-color: Highlight;
+			}
+		}
+	
+		}
+	
+		@media (max-width: 615px) {
+			.d2l-typography .d2l-heading-2 {
+				font-size: 1rem;
+				font-weight: 700;
+				line-height: 1.5rem;
+			}
+			
+		}
+	
+		
+		.d2l-typography .d2l-heading-3 {
+			font-size: 1rem;
+			font-weight: 700;
+			line-height: 1.5rem;
+			margin: 1.5rem 0 1.5rem 0;
+		}
+		
+		@supports not selector(:focus-visible) {
+			
+		.d2l-typography .d2l-heading-3:focus {
+			border-radius: 0.3rem;
+			outline: 2px solid var(--d2l-focus-ring-color, var(--d2l-color-celestine));
+			outline-offset: var(--d2l-focus-ring-offset, 2px);
+		}
+		@media (prefers-contrast: more) {
+			.d2l-typography .d2l-heading-3:focus {
+				outline-color: Highlight;
+			}
+		}
+	
+		}
+		@supports selector(:focus-visible) {
+			
+		.d2l-typography .d2l-heading-3:focus-visible {
+			border-radius: 0.3rem;
+			outline: 2px solid var(--d2l-focus-ring-color, var(--d2l-color-celestine));
+			outline-offset: var(--d2l-focus-ring-offset, 2px);
+		}
+		@media (prefers-contrast: more) {
+			.d2l-typography .d2l-heading-3:focus-visible {
+				outline-color: Highlight;
+			}
+		}
+	
+		}
+	
+		@media (max-width: 615px) {
+			.d2l-typography .d2l-heading-3 {
+				font-size: 0.8rem;
+				line-height: 1.2rem;
+			}
+			
+		}
+	
+		
+		.d2l-typography .d2l-heading-4 {
+			font-size: 0.8rem;
+			font-weight: 700;
+			line-height: 1.2rem;
+			margin: 1.5rem 0 1.5rem 0;
+		}
+		
+		@supports not selector(:focus-visible) {
+			
+		.d2l-typography .d2l-heading-4:focus {
+			border-radius: 0.3rem;
+			outline: 2px solid var(--d2l-focus-ring-color, var(--d2l-color-celestine));
+			outline-offset: var(--d2l-focus-ring-offset, 2px);
+		}
+		@media (prefers-contrast: more) {
+			.d2l-typography .d2l-heading-4:focus {
+				outline-color: Highlight;
+			}
+		}
+	
+		}
+		@supports selector(:focus-visible) {
+			
+		.d2l-typography .d2l-heading-4:focus-visible {
+			border-radius: 0.3rem;
+			outline: 2px solid var(--d2l-focus-ring-color, var(--d2l-color-celestine));
+			outline-offset: var(--d2l-focus-ring-offset, 2px);
+		}
+		@media (prefers-contrast: more) {
+			.d2l-typography .d2l-heading-4:focus-visible {
+				outline-color: Highlight;
+			}
+		}
+	
+		}
+	
+	
+		
+		.d2l-typography .d2l-blockquote {
+			font-size: 0.8rem;
+			font-weight: 400;
+			line-height: 1.4rem;
+			margin-block: 0;
+			margin-inline: 0 1.2rem;
+			padding-block: 0.5rem 0;
+			padding-inline: 1.2rem 0;
+			position: relative;
+		}
+		.d2l-typography .d2l-blockquote::before {
+			content: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTEiIGhlaWdodD0iMTEiIHZpZXdCb3g9IjAgMCAyMiAyMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+Cgk8ZGVmcz4KCQk8cGF0aCBpZD0iYSIgZD0iTTAgMGgyNHYyNEgweiIvPgoJPC9kZWZzPgoJPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTEgLTEpIiBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPgoJCTxtYXNrIGlkPSJiIiBmaWxsPSIjZmZmIj48dXNlIHhsaW5rOmhyZWY9IiNhIi8+PC9tYXNrPgoJCTxwYXRoIGQ9Ik02IDIyLjY2N0E0LjY2NyA0LjY2NyAwIDAgMCAxMC42NjcgMThjMC0xLjIyNy0uNTU5LTIuNS0xLjMzNC0zLjMzM0M4LjQ4MSAxMy43NSA3LjM1IDEzLjMzMyA2IDEzLjMzM2MtLjQxMSAwIDEuMzMzLTYuNjY2IDMtOSAxLjY2Ny0yLjMzMyAxLjMzMy0zIC4zMzMtM0M4IDEuMzMzIDUuMjUzIDQuNTg2IDQgNy4yNTUgMS43NzMgMTIgMS4zMzMgMTUuMzkyIDEuMzMzIDE4QTQuNjY3IDQuNjY3IDAgMCAwIDYgMjIuNjY3em0xMiAwQTQuNjY3IDQuNjY3IDAgMCAwIDIyLjY2NyAxOGMwLTEuMjI3LS41NTktMi41LTEuMzM0LTMuMzMzLS44NTItLjkxNy0xLjk4My0xLjMzNC0zLjMzMy0xLjMzNC0uNDExIDAgMS4zMzMtNi42NjYgMy05IDEuNjY3LTIuMzMzIDEuMzMzLTMgLjMzMy0zLTEuMzMzIDAtNC4wOCAzLjI1My01LjMzMyA1LjkyMkMxMy43NzMgMTIgMTMuMzMzIDE1LjM5MiAxMy4zMzMgMThBNC42NjcgNC42NjcgMCAwIDAgMTggMjIuNjY3eiIgZmlsbD0iI0QzRDlFMyIgbWFzaz0idXJsKCNiKSIvPgoJPC9nPgo8L3N2Zz4=");
+			inset-block-start: 0;
+			inset-inline-start: 0;
+			position: absolute;
+			transform: var(--d2l-mirror-transform, none); /* stylelint-disable-line @stylistic/string-quotes, @stylistic/function-whitespace-after */
+		}
+		@media (max-width: 615px) {
+			.d2l-typography .d2l-blockquote {
+				line-height: 1.2rem;
+			}
+		}
+	
+	</style></head>
+
+<body style="font-family: arial, helvetica, sans-serif;font-size: 12px;" data-new-gr-c-s-check-loaded="14.1286.0" data-gr-ext-installed="">
+	<div class="d2l-htmlblock">
+		<p>
+			<doctype html="">
+				
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<title>Home Page - Library Services</title>
+				<link rel="stylesheet" href="./bootstrap.min.css">
+				<link rel="stylesheet" href="./font-awesome.css">
+				<link rel="stylesheet" href="./libraryeconestoga2022.css">
+				<!-- Adding Google Material icons to fix CORS issue with bootstrap glyphs-->
+				<link rel="stylesheet" href="./css2">
+				<style>
+					.material-symbols-outlined {
+						font-variation-settings:
+							'FILL'0,
+							'wght'400,
+							'GRAD'0,
+							'opsz'48
+					}
+				</style>
+				<script>
+					// <![CDATA[
+					(function (i, s, o, g, r, a, m) {
+						i['GoogleAnalyticsObject'] = r;
+						i[r] = i[r] || function () {
+							(i[r].q = i[r].q || []).push(arguments)
+						}, i[r].l = 1 * new Date();
+						a = s.createElement(o),
+							m = s.getElementsByTagName(o)[0];
+						a.async = 1;
+						a.src = g;
+						m.parentNode.insertBefore(a, m)
+					})(window, document, 'script', 'https://www.google-analytics.com/analytics.js', 'ga');
+					ga('create', 'UA-734715-33', 'auto');
+					ga('send', 'pageview');
+					// ]]>
+				</script>
+				<link rel="apple-touch-icon" sizes="180x180" href="https://conestoga.desire2learn.com/apple-touch-icon.png">
+				<link rel="icon" type="image/png" href="https://conestoga.desire2learn.com/favicon-32x32.png" sizes="32x32">
+				<link rel="icon" type="image/png" href="https://conestoga.desire2learn.com/favicon-16x16.png" sizes="16x16">
+				<link rel="manifest" href="https://conestoga.desire2learn.com/manifest.json">
+				<link rel="mask-icon" href="https://conestoga.desire2learn.com/safari-pinned-tab.svg" color="#b69763">
+				<meta name="apple-mobile-web-app-title" content="Conestoga Library">
+				<meta name="application-name" content="Conestoga Library">
+				<meta name="theme-color" content="#ffffff">
+			</doctype>
+		</p>
+		<header id="pageHeader">
+			<nav class="navbar navbar-inverse navbar-fixed-top">
+				<div class="container">
+					<div class="navbar-header"><a class="navbar-brand" href="https://conestoga.desire2learn.com/" target="_parent"> <img src="./library-services-conestoga-college.svg" alt="Library Services Logo" width="315" height="50"> </a> <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false"> <span class="sr-only">Toggle Navigation</span> <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span> </button></div>
+					<div class="collapse navbar-collapse" id="navbar-collapse">
+						<ul class="nav navbar-nav navbar-right" style="font-size: larger;">
+							<li><a href="https://library.conestogac.on.ca/browse/find-resources-by-type" target="_blank" rel="noopener noreferrer">Find Resources By Type</a></li>
+							<li><a href="https://library.conestogac.on.ca/browse/find-resources-by-subject" target="_blank" rel="noopener noreferrer">Find Resources By Subject</a></li>
+							<li><a href="https://library.conestogac.on.ca/browse/get-help" target="_blank" rel="noopener noreferrer">Get Help</a></li>
+							<li><a href="https://library.conestogac.on.ca/browse/our-services" target="_blank" rel="noopener noreferrer">Our Services</a></li>
+							<li><a href="https://library.conestogac.on.ca/browse/for-faculty" target="_blank" rel="noopener noreferrer">For Faculty</a></li>
+							<li><a href="https://library.conestogac.on.ca/browse/about-us" target="_blank" rel="noopener noreferrer">About Us</a></li>
+						</ul>
+					</div>
+				</div>
+			</nav>
+			<div class="header-content" style="background-color: #515066; padding-bottom: 15px; border-bottom: 5px solid #dedede;">
+				<div class="container">
+					<div class="row">
+						<form id="search-form" method="get" target="_blank" data-bind="attr: { action: action() }, submit: submit" action="https://librarysearch.conestogac.on.ca/discovery/search">
+							<div class="modal fade" id="modal-id" tabindex="-1">
+								<div class="modal-dialog">
+									<div class="modal-content">
+										<div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+											<p class="h4 modal-title">Search Filters</p>
+										</div>
+										<div class="modal-body">
+											<div class="form-group"><label>Source Type:</label>
+												<div class="btn-group-justified">
+													<div class="btn-group">
+														<!-- ko if: searchTypes.visible() --> <button type="button" class="btn btn-default btn-lg dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <span data-bind="text: selectedSearchType().label">Articles, Books, Videos and more</span> <span class="caret"></span> </button> <!-- /ko -->
+														<ul class="dropdown-menu" data-bind="foreach: searchTypes.options">
+															<!-- ko ifnot: label === 'separator' -->
+															<li><a data-bind="event: { click: $parent.changeSearchType, keypress: $parent.changeSearchType }, text: label" tabindex="0">Articles, Books, Videos and more</a></li>
+															<!-- /ko -->
+														
+															<!-- ko ifnot: label === 'separator' -->
+															<li><a data-bind="event: { click: $parent.changeSearchType, keypress: $parent.changeSearchType }, text: label" tabindex="0">Articles</a></li>
+															<!-- /ko -->
+														
+															<!-- ko ifnot: label === 'separator' -->
+															<li><a data-bind="event: { click: $parent.changeSearchType, keypress: $parent.changeSearchType }, text: label" tabindex="0">Books</a></li>
+															<!-- /ko -->
+														
+															<!-- ko ifnot: label === 'separator' -->
+															<li><a data-bind="event: { click: $parent.changeSearchType, keypress: $parent.changeSearchType }, text: label" tabindex="0">Videos</a></li>
+															<!-- /ko -->
+														
+															<!-- ko ifnot: label === 'separator' -->
+															<li><a data-bind="event: { click: $parent.changeSearchType, keypress: $parent.changeSearchType }, text: label" tabindex="0">Course Readings</a></li>
+															<!-- /ko -->
+														
+															<!-- ko ifnot: label === 'separator' --><!-- /ko -->
+														
+															<!-- ko ifnot: label === 'separator' -->
+															<li><a data-bind="event: { click: $parent.changeSearchType, keypress: $parent.changeSearchType }, text: label" tabindex="0">Find a Database</a></li>
+															<!-- /ko -->
+														
+															<!-- ko ifnot: label === 'separator' -->
+															<li><a data-bind="event: { click: $parent.changeSearchType, keypress: $parent.changeSearchType }, text: label" tabindex="0">Search Library Web Pages</a></li>
+															<!-- /ko -->
+														</ul>
+													</div>
+												</div>
+											</div>
+											<!-- ko if: searchFilters.visible() --><!-- /ko -->
+										</div>
+										<div class="modal-footer"><button type="button" class="btn btn-default" data-dismiss="modal">Close</button> <button type="submit" class="btn btn-primary">Search</button></div>
+									</div>
+								</div>
+							</div>
+							<!-- ko foreach: hiddenFields() --> <input type="hidden" data-bind="attr: { name: name, value: value }" name="vid" value="01OCLS_CONEST:CONEST"> <input type="hidden" data-bind="attr: { name: name, value: value }" name="vid" value="01OCLS_CONEST:CONEST"> <input type="hidden" data-bind="attr: { name: name, value: value }" name="vid" value="01OCLS_CONEST:CONEST"> <input type="hidden" data-bind="attr: { name: name, value: value }" name="vid" value="01OCLS_CONEST:CONEST">  <input type="hidden" data-bind="attr: { name: name, value: value }" name="search_scope" value="MyInst_and_CI"> <input type="hidden" data-bind="attr: { name: name, value: value }" name="search_scope" value="MyInst_and_CI"> <input type="hidden" data-bind="attr: { name: name, value: value }" name="search_scope" value="MyInst_and_CI"> <input type="hidden" data-bind="attr: { name: name, value: value }" name="search_scope" value="MyInst_and_CI">  <input type="hidden" data-bind="attr: { name: name, value: value }" name="tab" value="Everything"> <input type="hidden" data-bind="attr: { name: name, value: value }" name="tab" value="Everything"> <input type="hidden" data-bind="attr: { name: name, value: value }" name="tab" value="Everything"> <input type="hidden" data-bind="attr: { name: name, value: value }" name="tab" value="Everything">  <input type="hidden" data-bind="attr: { name: name, value: value }" name="query" value="any,contains,"> <input type="hidden" data-bind="attr: { name: name, value: value }" name="query" value="any,contains,"> <input type="hidden" data-bind="attr: { name: name, value: value }" name="query" value="any,contains,"> <input type="hidden" data-bind="attr: { name: name, value: value }" name="query" value="any,contains,"> <!-- /ko -->
+							<div class="input-group input-group-lg hidden-xs hidden-sm">
+								<div class="input-group-btn">
+									<!-- ko if: searchTypes.visible() --> <button type="button" class="btn btn-default" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> <span data-bind="text: selectedSearchType().label">Articles, Books, Videos and more</span> <span class="caret"></span> </button> <!-- /ko -->
+									<ul class="dropdown-menu" data-bind="foreach: searchTypes.options">
+										<!-- ko ifnot: label === 'separator' -->
+										<li><a data-bind="event: { click: $parent.changeSearchType, keypress: $parent.changeSearchType }, text: label" tabindex="0">Articles, Books, Videos and more</a></li>
+										<!-- /ko -->
+									
+										<!-- ko ifnot: label === 'separator' -->
+										<li><a data-bind="event: { click: $parent.changeSearchType, keypress: $parent.changeSearchType }, text: label" tabindex="0">Articles</a></li>
+										<!-- /ko -->
+									
+										<!-- ko ifnot: label === 'separator' -->
+										<li><a data-bind="event: { click: $parent.changeSearchType, keypress: $parent.changeSearchType }, text: label" tabindex="0">Books</a></li>
+										<!-- /ko -->
+									
+										<!-- ko ifnot: label === 'separator' -->
+										<li><a data-bind="event: { click: $parent.changeSearchType, keypress: $parent.changeSearchType }, text: label" tabindex="0">Videos</a></li>
+										<!-- /ko -->
+									
+										<!-- ko ifnot: label === 'separator' -->
+										<li><a data-bind="event: { click: $parent.changeSearchType, keypress: $parent.changeSearchType }, text: label" tabindex="0">Course Readings</a></li>
+										<!-- /ko -->
+									
+										<!-- ko ifnot: label === 'separator' --><!-- /ko -->
+									
+										<!-- ko ifnot: label === 'separator' -->
+										<li><a data-bind="event: { click: $parent.changeSearchType, keypress: $parent.changeSearchType }, text: label" tabindex="0">Find a Database</a></li>
+										<!-- /ko -->
+									
+										<!-- ko ifnot: label === 'separator' -->
+										<li><a data-bind="event: { click: $parent.changeSearchType, keypress: $parent.changeSearchType }, text: label" tabindex="0">Search Library Web Pages</a></li>
+										<!-- /ko -->
+									</ul>
+								</div>
+								<label for="lgQuery" class="sr-only">Library Search</label> <input id="lgQuery" data-bind="value: query" type="text" class="form-control" placeholder="Library Search">
+								<div class="input-group-btn">
+									<!-- ko if: searchFilters.visible() --><!-- /ko -->
+									<ul class="dropdown-menu" data-bind="foreach: searchFilters.options">
+										<!-- ko if: label === 'separator' --><!-- /ko -->
+										<!-- ko ifnot: label === 'separator' -->
+										<li><a data-bind="event: { click: $parent.changeSearchFilter, keypress: $parent.changeSearchFilter }, text: label" tabindex="0">Keyword</a></li>
+										<!-- /ko -->
+									</ul>
+									<button type="submit" class="btn btn-default">
+										<!-- <span class="glyphicon glyphicon-search"></span>--><span class="material-symbols-outlined">
+											search
+										</span> <span class="sr-only">Search</span> </button>
+								</div>
+							</div>
+							<div class="input-group input-group-lg hidden-md hidden-lg"><label for="smQuery" class="sr-only">Mobile Library Search</label> <input id="smQuery" data-bind="value: query" type="text" class="form-control" placeholder="Library Search">
+								<div class="input-group-btn"><button type="button" class="btn btn-default" data-toggle="modal" data-target="#modal-id"> <span class="caret"></span><span class="sr-only">Search Filters</span> </button> <button type="submit" class="btn btn-default"> <!-- <span class="glyphicon glyphicon-search"></span>--><span class="material-symbols-outlined">
+											search
+										</span> <span class="sr-only">Search</span> </button></div>
+							</div>
+							<div class="col-xs-3 col-xs-offset-9" style="background-color: rgba(78, 19, 83, 0.8);"><a class="small" style="float: right; color: #fff; padding-top: 8px; padding-bottom: 8px;" href="https://librarysearch.conestogac.on.ca/discovery/search?vid=01OCLS_CONEST:CONEST&amp;mode=advanced" target="_blank" rel="noopener noreferrer"> Advanced Search </a></div>
+						</form>
+					</div>
+				</div>
+			</div>
+		</header>
+	</div>
+	<div class="container">
+		<div class="row" style="user-select: auto;">
+			<div class="col-xs-4 col-sm-4 col-md-4 col-lg-4" style="user-select: auto; padding-bottom: 15px; background-color: #dedede;">
+				
+			</div>
+			<div class="col-xs-12 col-sm-12col-md-12 col-lg-12" style="user-select: auto;">
+				<h3 class="hidden-text" style="margin-top: -1.5em; padding: 0px; user-select: auto;">Quick Links</h3>
+				<ul style="user-select: auto; list-style: none; padding: 0px;">
+					<li style="user-select: auto; float: left; margin: 5px;"><a href="https://library.conestogac.on.ca/browse/find-resources-by-type" class="btn btn-default--reversepurple" style="user-select: auto;" target="_blank" rel="noopener noreferrer">Resources By Type</a></li>
+					<li style="user-select: auto; float: left; margin: 5px;"><a href="https://library.conestogac.on.ca/browse/find-resources-by-subject" class="btn btn-default--reversepurple" style="user-select: auto;" target="_blank" rel="noopener noreferrer">Resources By Subject</a></li>
+					<li style="user-select: auto; float: left; margin: 5px;"><a href="https://lib.conestogac.on.ca/az.php" class="btn btn-default--purple" style="user-select: auto;" target="_blank" rel="noopener noreferrer">All Resources</a></li>
+					<li style="user-select: auto; float: left; margin: 5px;"><a href="https://librarysearch.conestogac.on.ca/discovery/jsearch?vid=01OCLS_CONEST:CONEST" class="btn btn-default--purple" style="user-select: auto;" target="_blank" rel="noopener noreferrer">Journals by Title</a></li>
+					<li style="user-select: auto; float: left; margin: 5px;"><a href="https://lib.conestogac.on.ca/top-apps" class="btn btn-default--purple" style="user-select: auto;" target="_blank" rel="noopener noreferrer">LinkedIn Learning + More Apps</a></li>
+					<li style="user-select: auto; float: left; margin: 5px;"><a href="https://apa.conestogac.on.ca/" class="btn btn-default--blue" style="user-select: auto;" target="_blank" rel="noopener noreferrer">APA@Conestoga</a></li>
+					<li style="user-select: auto; float: left; margin: 5px;"><a href="https://lib.conestogac.on.ca/meeting-rooms-learning-spaces/book" class="btn btn-default--blue" style="user-select: auto;" target="_blank" rel="noopener noreferrer">Book Meeting Rooms </a></li>
+					<li style="user-select: auto; float: left; margin: 5px;"><a href="https://library.conestogac.on.ca/browse/get-help/online-tutorials" class="btn btn-default--blue" style="user-select: auto;" target="_blank" rel="noopener noreferrer">Tutorials</a></li>
+					<li style="user-select: auto; float: left; margin: 5px;"><a href="https://lib.conestogac.on.ca/books/requests" class="btn btn-default--blue" style="user-select: auto;" target="_blank" rel="noopener noreferrer">Request a Book, etc</a></li>
+				</ul>
+			</div>
+			<div class="col-md-12 col-sm-12 col-xs-12 col-lg-12">
+				<div class="panel panel-default" style="user-select: auto; background-color: #dedede; border-color: #dedede;">
+					<div class="panel-heading" style="user-select: auto; text-align: center; background-color: #dedede; padding: 0px;">
+						<h3 style="background-color: #dedede; padding: 0x; margin-top: 10px; font-weight: 600;">Talk to an Expert</h3>
+					</div>
+					<div class="panel-body" style="user-select: auto; text-align: center; background-color: #dedede;">
+						<p style="font-size: 14px;">Start a chat or book an appointment.</p>
+						<a href="http://lib.conestogac.on.ca/ask-us" class="btn btn-default--blue btn-block" style="user-select: auto;" target="_blank" rel="noopener noreferrer"> Research </a> <a href="https://lib.conestogac.on.ca/writing-services" class="btn btn-default--blue btn-block" style="user-select: auto;" target="_blank" rel="noopener noreferrer"> Writing &amp; Citing </a><a href="http://lib.conestogac.on.ca/Tech-Loans-Help/options" class="btn btn-default--blue  btn-block" style="user-select: auto;" target="_blank" rel="noopener noreferrer"> Technology </a>
+					</div>
+				</div>
+			</div>
+			<p>
+				<script src="./jquery.min(2).js.download"></script>
+				<script src="./bootstrap.min(1).js.download"></script>
+				<script type="text/javascript">
+					// <![CDATA[
+					(function () {
+						var x = document.createElement("script");
+						x.type = "text/javascript";
+						x.async = true;
+						x.src = (document.location.protocol === "https:" ? "https://" : "http://") + "ca.libraryh3lp.com/js/libraryh3lp.js?333";
+						var y = document.getElementsByTagName("script")[0];
+						y.parentNode.insertBefore(x, y);
+					})();
+					// ]]>
+				</script>
+				<script src="./jquery.matchHeight-min.js.download"></script>
+				<script>
+					// <![CDATA[
+					$(function () {
+						$('.hours-block, .quick-links').matchHeight();
+						$('.service-link h3').matchHeight();
+						$('.service-link p').matchHeight();
+					});
+					// ]]>
+				</script>
+
+				<script src="./knockout.debug.js.download"></script>
+				<script src="./knockout.js.download"></script>
+				<script>
+					// <![CDATA[
+					function SearchForm() {
+						var self = this;
+
+						// Observables
+
+						self.target = ko.observable('EXLIBRIS');
+						self.action = ko.observable('https://librarysearch.conestogac.on.ca/discovery/search')
+						self.searchFilters = {
+							visible: ko.observable(false),
+							selected: ko.observable(0),
+							options: [{
+								index: 0,
+								label: 'Keyword',
+								search_scope: '',
+								tab: ''
+							}]
+						};
+
+						self.query = ko.observable(''),
+							self.searchTypes = {
+								visible: ko.observable(true),
+								selected: ko.observable(0),
+								options: [{
+										index: 0,
+										label: 'Articles, Books, Videos and more',
+										search_scope: 'MyInst_and_CI',
+										tab: 'Everything'
+									},
+									{
+										index: 1,
+										label: 'Articles',
+										search_scope: 'Articles',
+										tab: 'Articles'
+									},
+									{
+										index: 2,
+										label: 'Books',
+										search_scope: 'Books',
+										tab: 'Books'
+									},
+									{
+										index: 3,
+										label: 'Videos',
+										search_scope: 'Video',
+										tab: 'Video'
+									},
+									{
+										index: 4,
+										label: 'Course Readings',
+										search_scope: 'CourseReserves',
+										tab: 'CourseReserves'
+									},
+									{
+										index: 5,
+										label: "separator"
+									},
+									{
+										index: 6,
+										label: 'Find a Database'
+									},
+									{
+										index: 7,
+										label: 'Search Library Web Pages'
+									}
+								]
+							};
+
+						// Computed Observables
+						self.selectedSearchFilter = ko.computed(function () {
+							return self.searchFilters.options[self.searchFilters.selected()];
+						});
+						self.selectedSearchType = ko.computed(function () {
+							return self.searchTypes.options[self.searchTypes.selected()];
+						});
+						self.hiddenFields = ko.computed(function () {
+							if (self.target() === 'EXLIBRIS') {
+								return [{
+										name: 'vid',
+										value: '01OCLS_CONEST:CONEST'
+									},
+									{
+										name: 'search_scope',
+										value: self.selectedSearchType().search_scope
+									},
+									{
+										name: 'tab',
+										value: self.selectedSearchType().tab
+									},
+									{
+										name: 'query',
+										value: 'any,contains,' + self.query()
+									}
+								]
+							} else {
+								return [{
+									name: 'q',
+									value: self.query()
+								}]
+							}
+						});
+
+						// Methods
+						self.changeSearchType = function (searchType) {
+							if (searchType.label === 'Find a Database') {
+								self.action('http://lib.conestogac.on.ca/az.php');
+								self.target('LibGuides');
+								self.searchFilters.visible(false);
+							} else if (searchType.label === 'Search Library Web Pages') {
+								self.action('http://lib.conestogac.on.ca/srch.php');
+								self.target('LibGuides');
+								self.searchFilters.visible(false);
+
+							} else {
+								self.action('https://librarysearch.conestogac.on.ca/discovery/search');
+								self.target('EXLIBRIS');
+								self.searchFilters.visible(false);
+							}
+
+							self.searchTypes.selected(searchType.index);
+						};
+
+						self.changeSearchFilter = function (searchFilter) {
+							self.searchFilters.selected(searchFilter.index);
+						};
+
+						self.submit = function () {
+							var url = self.action() + '?';
+
+							// Build the URL from hidden fields on form
+							self.hiddenFields().forEach(function (element) {
+								url += encodeURIComponent(element.name) + '=' + encodeURIComponent(element.value) + '&';
+							});
+							url = url.substring(0, url.length - 1);
+
+							// Open results in a new window
+							window.open(url, '_blank');
+						};
+					}
+
+					// Activate knockout.js
+					ko.applyBindings(new SearchForm());
+					// ]]>
+				</script>
+			</p>
+		</div>
+	</div>
+
+
+</body><grammarly-desktop-integration data-grammarly-shadow-root="true"><template shadowrootmode="open"><style>
+      div.grammarly-desktop-integration {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select:none;
+        user-select:none;
+      }
+
+      div.grammarly-desktop-integration:before {
+        content: attr(data-content);
+      }
+    </style><div aria-label="grammarly-integration" role="group" tabindex="-1" class="grammarly-desktop-integration" data-content="{&quot;mode&quot;:&quot;full&quot;,&quot;isActive&quot;:true,&quot;isUserDisabled&quot;:false}"></div></template></grammarly-desktop-integration></html>

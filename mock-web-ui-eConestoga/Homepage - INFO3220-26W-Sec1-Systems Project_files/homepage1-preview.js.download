@@ -1,0 +1,152 @@
+// JavaScript Document
+
+function getUserEnroll(type, roleid, bookmark) {
+    var enrolldataurl = "/d2l/api/lp/1.35/enrollments/users/" + parent.userID + "/orgUnits/";
+    enrolldataurl = enrolldataurl + "?orgUnitTypeId=3";
+    enrolldataurl = enrolldataurl + "&roleId="+roleid;
+	if (bookmark !== undefined) {
+		enrolldataurl = enrolldataurl + "&bookmark=" + bookmark;
+	}
+    console.log(enrolldataurl);
+    $.ajax({
+        method: "GET",
+        url: enrolldataurl,
+        dataType: 'json',
+        success: function (enrolldata_tmp) {
+            
+            if(type === "preview") {
+                if(alldata.EnrollSelect !== undefined) {
+                    alldata.EnrollSelect.Items = alldata.EnrollSelect.Items.concat(enrolldata_tmp.Items);
+                }
+                else {
+                    alldata.EnrollSelect = {
+                        Items: enrolldata_tmp.Items
+                    }
+                }
+            }
+            else if(type === "import") {
+                alldata.CustomImport.RolesChecked.push(roleid);
+                alldata.CustomImport.Enrolls.Items = alldata.CustomImport.Enrolls.Items.concat(enrolldata_tmp.Items);
+            }
+            
+            var datadone = false;
+            if(enrolldata_tmp.PagingInfo !== undefined) {
+                if(enrolldata_tmp.PagingInfo.HasMoreItems) {
+                    getUserEnroll(type, roleid, enrolldata_tmp.PagingInfo.Bookmark);
+                }
+                else {
+                    datadone = true;
+                }
+            }
+            else {
+                datadone = true;
+            }
+            
+            if(datadone) {
+                if(type === "preview") {
+                    alldata.EnrollSelect.Items.reverse();
+                    console.log(alldata.EnrollSelect);                    
+                    populateSelectList();
+                }
+                else if(type === "import") {
+                    checkImportEnrollsDone();
+                }
+            }
+            
+        } //end success
+    }) //end ajax
+}
+
+
+function populateSelectList() {
+    
+    if(alldata.EnrollSelect.Items.length > 0) {
+        for(var cs=0; cs<alldata.EnrollSelect.Items.length; cs++) {
+            $('#course-select').append('<option value="' + alldata.EnrollSelect.Items[cs].OrgUnit.Id + '">' + alldata.EnrollSelect.Items[cs].OrgUnit.Name + '</option>');
+        } 
+
+        $('#course-select').selectpicker();
+
+        $('#course-select').on('change', function () {
+            $('#course-select').prop('disabled', true);
+            $('#course-select').selectpicker('refresh');
+            var inputorgid = $('#course-select').val();
+            console.log(inputorgid);
+            orgUnitId = inputorgid;
+            
+            timestarted = new Date().getTime();
+            getAPIVersionInfo();
+            //courseSelected(inputorgid, false);
+        });
+
+        $('#course-list-area').removeClass('d-none');
+        frameHeight(500);
+    }
+}
+
+
+function initializePreviewSelect() {
+    //console.log("preview select start");
+    
+    var thisenrollmenturl = "/d2l/api/lp/1.35/enrollments/myenrollments/" + orgUnitId;
+    //console.log(thisenrollmenturl);
+    $.ajax({
+        method: "GET",
+        url: thisenrollmenturl,
+        dataType: 'json',
+        success: function (this_enroll_temp) {
+            //console.log(this_enroll_temp);
+            var thisrole = this_enroll_temp.Access.ClasslistRoleName;
+
+            var isadmin = false;
+            if(pagetype === "preview") {
+                if(thisrole === "Student") {
+                    getUserEnroll("preview", 102);
+                }
+                else if(adminroles.indexOf(thisrole) > -1) {
+                    isadmin = true;
+                }
+            }
+            else if(pagetype === "testing") {
+                isadmin = true;
+            }
+            else {
+                //if(adminroles.indexOf(thisrole) > -1) {
+                //    isadmin = true;
+                //}
+                //else {
+                    timestarted = new Date().getTime();
+                    getAPIVersionInfo();
+                //}
+            }
+            
+            if(isadmin) {                
+                $('#button-admin-load').on('click', function(){
+                    timestarted = new Date().getTime();
+                    orgUnitId = $('#admin-load input').val();
+                    $('#admin-load input').attr('disabled','disabled');
+                    $('#button-admin-load').attr('disabled','disabled');
+
+                    var redirectfound = false;
+                    for (var crc=0; crc<CourseRedirectContent.length; crc++) {
+                        if(CourseRedirectContent[crc].OrgUnitId === orgUnitId) {
+                            top.location.href = CourseRedirectContent[crc].ContentURL;
+                            redirectfound = true;
+                            break;
+                        }
+                    }
+                    if(!redirectfound) {         
+                        timestarted = new Date().getTime();
+                        getAPIVersionInfo();
+                    }
+                    
+                });                
+                
+                $('#admin-load').removeClass('d-none');
+                frameHeight();
+            }
+            
+        } //end success
+    }) //end ajax
+    
+}

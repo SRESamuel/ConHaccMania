@@ -1,0 +1,99 @@
+// JavaScript Document
+
+
+var etextitem = {
+    "Code": "eText",
+    "Name": "eText and Digital Resources",
+    "Desc": "The eText program is an integration of digital resources within program fees. This program provides day 1 access to high quality digital resources at significant savings off the price of a printed text. This course is part of the eText program and you will need to add a link to facilitate the delivery of these resources to your students.",
+    "SubTotal": 0,
+    "Items": [{
+            "Code": "eText_Links",
+            "Name": "eText Links",
+            "Desc": "The necessary eText Link(s) must be present in the Content tool."
+        }
+    ]
+};
+
+
+var scoretemplate = {
+    "Total": 0,
+    "Categories": [{
+            "Code": "CourseInfo",
+            "Name": "Course Information",
+            "Desc": "The Course Information Module is an important section to include in the Content area of every course. Since it provides important overview documents, it should be the first Module in your Table of Contents.",
+            "SubTotal": 0,
+            "Items": [{
+                    "Code": "Course_Information",
+                    "Name": "Course Information Module",
+                    "Desc": "The first (non-hidden) Module in your Table of Contents should be titled exactly \"Course Information\" and not any similar variation."
+                },
+                {
+                    "Code": "Welcome_Message",
+                    "Name": "Welcome Message",
+                    "Desc": "Your course should contain a Welcome Message as the first Content Topic in your \"Course Information\" Module."
+                },
+                {
+                    "Code": "Instructional_Plan",
+                    "Name": "Instructional Plan Document",
+                    "Desc": "An Instructional Plan in the required format and with dates for the current semester should be located within your \"Course Information\" Module."
+                },
+            ]
+        },
+        {
+            "Code": "Evaluations",
+            "Name": "Evaluations Module",
+            "Desc": "The Evaluations Module is an important section to include in the Content area of every course. It should include a Content Topic for each evaluation item which includes clear requirements (e.g., instructions, how to submit, location and format of tests, etc.). Provide a rubric, weighting or marking scheme for each evaluation. Where possible, add links to any of the eConestoga assessment tools you may be using for evaluations.",
+            "SubTotal": 0,
+            "Items": [{
+                    "Code": "Evaluations_Module",
+                    "Name": "Evaluations Module",
+                    "Desc": "The title of the Module should be exactly \"Evaluations\" and not any similar variation."
+                },
+                {
+                    "Code": "Evaluations_Items",
+                    "Name": "Evaluations Items",
+                    "Desc": "All items in the Grades tool with a weight greater than 0% should have <strong>at least one</strong> corresponding Content Topic in the \"Evaluations\" Module. These can be a documents (instructions, rubrics) or links (direct to the eConestoga tool) or a combination both.</p>"
+                },
+                {
+                    "Code": "Evaluations_Links",
+                    "Name": "Evaluations Links",
+                    "Desc": "All eConestoga assessment tool items (Quizzes, Assignments, Discussions) that are formally associated with a Grade are required to have a separate and direct link in the \"Evaluations\" Module. These special links can be added through the \"Existing Activities\" menu."
+                }
+            ]
+        },
+        {
+            "Code": "CourseContent",
+            "Name": "Content for Course Learning",
+            "Desc": "For courses scheduled to run the full semester your Table of Contents should include Modules representing each week. Be sure all PowerPoints, resources, videos, and links are easy to navigate, clearly titled, and accessible.",
+            "SubTotal": 0,
+            "Items": [{
+                    "Code": "Content_Modules",
+                    "Name": "Learning Materials Structure",
+                    "Desc": "For courses scheduled to run the full semester the titles of your Modules must clearly reference the number of each week, 1 through 14 (only 15 is optional)."
+                },
+                {
+                    "Code": "Content_Topics",
+                    "Name": "Learning Materials Contents",
+                    "Desc": "None of the Modules representing learning materials should be empty, but they are allowed to be hidden if necessary. The scan will also identify any \"Broken Topics\", which occur when a Content Topic is created based on a tool or document that is later deleted.</p>"
+                }
+            ]
+        },
+        {
+            "Code": "GradeItems",
+            "Name": "Grade Items and Course Dates",
+            "Desc": "Appropriate Grade Items must be populated into the Grades tool, and student scores should be entered as soon as evaluations are marked. Note: 40% of the course evaluations should be completed by the mid-point of the semester. The scan will also identify any date restrictions applied within tools that are outside the current Course Start Date and Course End Date.",
+            "SubTotal": 0,
+            "Items": [{
+                    "Code": "Grade_Total",
+                    "Name": "Grade Items",
+                    "Desc": "The items populated in the Grades tool must have a combined total weight of 100%, including Grade Categories (if there are any set up for this course)."
+                },
+                {
+                    "Code": "Course_Dates",
+                    "Name": "Course Dates",
+                    "Desc": "Any date restrictions applied in the course should occur within the current Course Start Date and Course End Date. The scan will look at dates set within: Announcements, Assignments, Calendar, Checklists, Content, Discussions, and Quizzes."
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,81 @@
+// JavaScript Document
+
+var scorefeedback = {
+    "General": {
+        "Code": "General",
+        "Name": "General Information",
+        "Resources": {
+            "ContentRename": '<p>If you already have an item that serves the same purpose you can rename it to complete this objective. The following guide demonstrates the process:<br> <a href="https://youtu.be/hLJSfeCcBmc" target="_blank">Video: Renaming Modules and Topics <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>.</p>',
+            "ContentCreate": '<p>If you do not have an item that serves this purpose you can create a new one to complete this objective. The following guide demonstrates the process:<br> <a href="https://youtu.be/unrhDz9WiaU" target="_blank">Video: Creating Modules and Topics <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>.</p>',
+            "ContentMove": '<p>If you already have an existing item but located elsewhere you can move it to complete this objective. The following video demonstrates the process:<br> <a href="https://youtu.be/StufIbNUzXY" target="_blank">Video: Moving Modules and Topics <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>.</p>',
+            "EvaluationLinks": '<p>You can learn more about adding links to assessment tools in the following guides:<br> <a href="https://youtu.be/q7ZMOe0olYQ" target="_blank">Video: Linking Assessments in Content <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a> and <a href="https://youtu.be/b_o5q8WjYuA" target="_blank">Video: Linking Rubrics in Content <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>.</p>',
+            "ContentCopy": '<p>This course does not appear to have any Content populated yet.</p><p>You can learn more about the Copy Process in this resource:<br> <a href="/shared/guides/faculty/copy-course/index.html" target="_blank">Guide: Copying Content <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>.</p>',
+            "BrokenTopics": '<p>You can learn more about the Broken Topics in this guide:<br> <a href="https://youtu.be/wUNZLYZMiHs" target="_blank">Video: Fixing Broken Topics <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>.</p>',
+            "EditGrades": '<p>You can learn more about modifying the Grades tool in the following guides:<br> <a href="https://youtu.be/rkLIKIZlASM" target="_blank">Video: Creating Grade Items</a> and <a href="https://youtu.be/p1Sst6M7DlM" target="_blank">Video: Deleting Grade Items <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>.</p>'
+        }
+    },
+    "CourseInfo": {
+        "Code": "CourseInfo",
+        "Name": "Course Information",
+        "Course_Information": {
+            "NotFound": '<p>No Module with the exact title \"Course Information\" was found in your course.</p>',
+            "NotFirst": '<p>You do have a \"Course Information\" Module, however it is not currently positioned as the <strong>first item</strong> in your Table of Contents.</p>'
+        },
+        "Welcome_Message": {
+            "NotFound": '<p>There was no Topic found in your course with a title that contains \"Welcome\".</p>',
+            "NotFirst": '<p>The scan did find a \"Welcome\" page in your \"Course Information\" Module, however it is not currently positioned as the <strong>first item</strong>.</p>',
+            "NotInside": '<p>The scan did find a \"Welcome\" page in your Content, however it is not currently located within a Module titled exactly \"Course Information\".</p>'
+        },
+        "Instructional_Plan": {
+            "NotFound": '<p>There was no Topic found in your course with a title that contains \"Instructional Plan\".</p>',
+            "GetTemplate": '<p>If you do not have a Topic that serves this purpose you can create a new one to complete this objective. <a href="https://conestoga.desire2learn.com/d2l/le/content/316295/viewContent/11208257/View" target="_blank">Instructional Plan Dynamic Webpage Builder</a>.</p>',
+            "NotInside": '<p>You do have an \"Instructional Plan\" Topic in your course, however it is not currently located within a Module titled exactly \"Course Information\".</p>'
+        }
+    },
+    "Evaluations": {
+        "Code": "Evaluations",
+        "Name": "Evaluations Module",
+        "Evaluations_Module": {
+            "NotFound": '<p>No Module with the title \"Evaluations\" was found in your course.</p>',
+        },
+        "Evaluations_Items": {
+            "Incomplete": '<p>You do have an \"Evaluations\" Module in your course, however the scan determined it is missing certain elements. There should be at least one Content Topic for every Grade Item in your course.</p>'
+
+        },
+        "Evaluations_Links": {
+            "Incomplete": '<p>You do have an \"Evaluations\" Module in your course, however the scan determined it is missing certain elements. Every online assessment that is Graded (Quizzes, Assignments, Discussions) should have a separate direct link.</p>'
+        },
+        "Other": {
+            "NotFound": '<p>There was no Module found in your course with the title \"Evaluations\". See the first item in this section for suggestions on how to complete this objective.</p>',
+            "Multiple": '<p>The scan determined you have several \"Evaluations\" Modules in your course. Please consider consolidating or renaming as needed so that only a single \"Evaluations\" Module is located within your Table of Contents.</p>',
+            "GradesEmpty": '<p>The scan has determined that there are <strong>no assessments defined within the Grades tool</strong>. The scanner cannot provide feedback on this objective until the Grades tool is populated.</p>'
+        }
+    },
+    "CourseContent": {
+        "Code": "CourseContent",
+        "Name": "Content for Course Learning",
+        "Content_Modules": {
+            "NonStandard": '<p>The scan is currently assuming that this course is scheduled for the full semester, and expecting to find Modules named appropriately for each week. However the settings for this course can be modified if necessary so that the weekly naming convention is not required.</p>',
+            "SetOnDashboard": '<p>This change can be applied by clicking on the blue checkmark button located under the \"Standard\" column, and then selecting the \"Non-Standard Delivery\" option from the list before saving.</p>',
+            "SetOnWidget": '<p>If the course is designated "Non-Standard Delivery" then the Essential Elements Scanner will not require the weekly naming convention for your Modules, and another format such as Units can be used instead.</p>',
+            "SomeFound": '<p>The scan determined that there were not enough Modules that follow the naming convention of Week 1, Week 2, and so on.</p>'
+        },
+        "Content_Topics": {
+            "SuccessWeek": '<p>Note that a single weekly materials Module can be empty if it is designated \"Student Success\" in the Title or Description. Example: \"Week 8: Student Success\".</p>'
+        },
+        "Other": {
+            "NoneFound": '<p>The scan determined that there were no Modules in your course that follow the naming convention of Week 1, Week 2, and so on.</p>',
+            "WeekInfo": '<p>Module titles can represent single weeks (Week 1, Week 2) or several weeks (Weeks 1 & 2, Weeks 3 to 5). Your Table of Contents can consist of a combination of both naming techniques (Week 1, Weeks 2 to 4, Week 5, Weeks 7 & 8, etc.). Note that \"Student Success\" week should also be titled to include the incremented week number.</p>',
+            "FullTerm": '<p>This course appears to be scheduled for the full semester. Your Table of Contents must include a Module for each week of the course (even Student Success Week).</p>'
+        }
+    },
+    "GradeItems": {
+        "Code": "GradeItems",
+        "Name": "Grade Items and Course Dates",
+        "Grade_Total": {
+            "IsPoints": '<p>Because your Grades tool is configured to use the Points scheme instead of the Weighted scheme, this tool cannot check that all items are present or that the total points assigned are accurate.</p>',
+            "NotWeighted": '<p>Because your Grades tool is not configured to use the Weighted scheme, this tool cannot check that all items are present or that the total points assigned are accurate.</p>',
+            "GradesEmpty": '<p>The scan has determined that there are <strong>no assessments defined within the Grades tool</strong>. The scanner cannot provide feedback on this objective until the Grades tool is populated.</p>'
+        }
+    }
+}

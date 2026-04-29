@@ -1,0 +1,2997 @@
+// JavaScript Document
+
+
+function nWeeks(date1, date2) {
+    var WEEK = 1000 * 60 * 60 * 24 * 7;
+    
+    date2.setHours(0, 0, 0, 0);
+    var weekstart = getNextDayAtIndex(date1, 1);
+    var nextweek = weekstart;
+    var wcounter = 0;
+    while (nextweek < date2) {
+        nextweek = new Date(nextweek.getTime() + WEEK);
+        wcounter++;
+    }
+    wcounter = Math.max(1, wcounter);
+    //console.log(wcounter);
+
+    return wcounter;
+}
+
+
+function addMinutes(date, minutes) {
+    return new Date(date.getTime() + minutes * 60000);
+}
+
+
+function getNextDayAtIndex(d, index) {
+    var n = new Date(d.getTime());
+    n.setDate(d.getDate() + (7 + index - d.getDay()) % 7);
+    return n;
+}
+
+
+function getUniqueListBy(arr, key) {
+    return [...new Map(arr.map(item => [item[key], item])).values()]
+}
+
+
+function findModuleDates(module, modulearray) {
+    var datemodules = modulearray;
+
+    if ((module.StartDateTime !== null) || (module.EndDateTime !== null)) {
+        datemodules.push(module);
+    }
+
+    if (module.Modules.length > 0) {
+        for (var s = 0; s < module.Modules.length; s++) {
+            datemodules = findModuleDates(module.Modules[s], datemodules);
+        }
+    }
+
+    return datemodules;
+
+}
+
+
+function processOutcomeData(thisoutcome, thisoutline, thisindex, thislevel) {
+
+    //console.log(thisoutcome);
+    //console.log(thisoutline);
+    //console.log(thisindex);
+    //console.log(thislevel);
+
+    thisoutcome.Scheduled = false;
+    thisoutcome.Weeks = [];
+
+    if (thislevel === undefined) {
+        thisoutcome.Enumeration = (thisindex + 1) + '';
+        if (thisoutcome.Children.length > 0) {
+
+            thisoutcome.Children.sort(compareOutcomes);
+            for (var c = 0; c < thisoutcome.Children.length; c++) {
+                processOutcomeData(thisoutcome.Children[c], thisoutcome.Children[c].Description, c, thisoutcome.Enumeration);
+            }
+        }
+    } else {
+        if (thisoutline !== null) {
+            thisoutcome.Enumeration = thislevel + '.' + (thisindex + 1);
+            if (alldata.InstructionalPlan.Data !== null) {
+                for (var s = 0; s < thispagedata.Schedule.length; s++) {
+                    for (var o = 0; o < thispagedata.Schedule[s].Outcomes.length; o++) {
+                        var thisfound = thispagedata.Schedule[s].Outcomes[o];
+                        if (thisfound.Desc.replace(/['"]+/g, '') === thisoutline.replace(/['"]+/g, '')) {
+                            thisoutcome.Scheduled = true;
+                            thisoutcome.Weeks.push(thispagedata.Schedule[s].WeekNum);
+                        }
+                    }
+                }
+
+                alldata.Outline[0].ListOutcomes.push(thisoutcome);
+                if (thisoutcome.Scheduled === false) {
+                    //console.log(thislevel);
+                    //console.log(thisoutcome.Description);
+                    omissing.push(thisoutcome);
+                }
+            }
+        }
+
+        //console.log(thisoutcome);
+        //console.log(thisoutcome.Children.length);
+        if (thisoutcome.Children.length > 0) {
+            thisoutcome.Children.sort(compareOutcomes);
+            for (var c = 0; c < thisoutcome.Children.length; c++) {
+                //console.log(c);
+                //console.log(thisoutcome.Children[c]);
+                processOutcomeData(thisoutcome.Children[c], thisoutcome.Children[c].Description, c, thisoutcome.Enumeration);
+            }
+        }
+    }
+}
+
+
+function getOutcomeEnum(thisoutcome, thisoutline, efound) {
+
+    //console.log(thisoutcome);
+    //console.log(thisoutline);
+
+    if (thisoutline.Children.length > 0) {
+        for (var c = 0; c < thisoutline.Children.length; c++) {
+            efound = getOutcomeEnum(thisoutcome, thisoutline.Children[c], efound);
+            if (efound.Exact.length > 0) {
+                break;
+            }
+        }
+    }
+
+    if (efound.Exact.length === 0) {
+        if (thisoutline.Description !== null) {
+            if (thisoutline.Description.replace(/['"]+/g, '') === thisoutcome.Desc.replace(/['"]+/g, '')) {
+                if (thisoutline.Enumeration === thisoutcome.Enum) {
+                    efound.Exact.push(thisoutline.Enumeration)
+                } else {
+                    efound.Loose.push(thisoutline.Enumeration);
+                }
+            }
+        }
+    }
+
+    return efound;
+}
+
+
+function compareOutcomes(a, b) {
+    if (a.SortOrder < b.SortOrder) {
+        return -1;
+    }
+    if (a.SortOrder > b.SortOrder) {
+        return 1;
+    }
+    return 0;
+}
+
+
+function processCourseSchedule(nweekmanual) {
+
+    if (alldata.DateRange) {
+
+        var sdate = new Date(alldata.CourseOffering.StartDate);
+        var edate = new Date(alldata.CourseOffering.EndDate);
+
+        var nweeks;
+        if (nweekmanual !== undefined) {
+            nweeks = nweekmanual;
+        } else {
+            nweeks = nWeeks(sdate, edate);
+        }
+
+        alldata.Schedule = []
+
+        if (nweeks === 1) {
+
+            var weekstart = getNextDayAtIndex(sdate, 1);
+            var weekend = getNextDayAtIndex(weekstart, 0);
+
+            weekstart.setHours(0, 0, 0, 0);
+            weekend.setHours(23, 59, 59, 59);
+
+            var newobj = {
+                "WeekNum": 1,
+                "Modules": [],
+                "Synchronous": [],
+                "GradeItems": [],
+                "Associations": {
+                    "Communication": [],
+                    "Assessment": []
+                },
+                "StartDate": weekstart,
+                "EndDate": weekend
+            }
+            alldata.Schedule.push(newobj);
+
+        } else {
+            var weekstart;
+            var weekend;
+            var weeknumdisplay = 0;
+
+            for (var w = 0; w < nweeks; w++) {
+                if (w === 0) {
+                    weekstart = getNextDayAtIndex(sdate, 1);
+                    if (alldata.SIS !== null) {
+                        var startsis = new Date(alldata.SIS.StartDate);
+                        if (weekstart < startsis) {
+                            weekstart = startsis;
+                        }
+                    }                    
+                    weekend = getNextDayAtIndex(weekstart, 0);
+                } else {
+                    weekstart = getNextDayAtIndex(weekend, 1);
+                    weekend = getNextDayAtIndex(weekstart, 0);
+                }
+
+                weekstart.setHours(0, 0, 0, 0);
+                weekend.setHours(23, 59, 59, 59);
+                //console.log(weekstart);
+                //console.log(weekend);
+
+                var includeweek = true;
+
+                if (alldata.InstructionalPlan.Data !== null) {
+                    if (thispagedata.SkipDateMod !== undefined) {
+
+                        for (var sd = 0; sd < thispagedata.SkipDateMod.length; sd++) {
+                            var checkstart = new Date(thispagedata.SkipDateMod[sd].SkipStart);
+                            var checkend = new Date(thispagedata.SkipDateMod[sd].SkipEnd);
+                            checkstart.setHours(0, 0, 0, 0);
+                            checkend.setHours(23, 59, 59, 59);
+
+                            //console.log(checkstart);
+                            //console.log(checkend);
+                            if ((weekstart >= checkstart) && (weekend <= checkend)) {
+                                includeweek = false;
+                            }
+                        }
+                    }
+                }
+
+                //console.log(includeweek);
+
+                if (includeweek) {
+
+                    weeknumdisplay++;
+
+                    var newobj = {
+                        "WeekNum": weeknumdisplay,
+                        "Modules": [],
+                        "Synchronous": [],
+                        "GradeItems": [],
+                        "Associations": {
+                            "Communication": [],
+                            "Assessment": []
+                        },
+                        "StartDate": weekstart,
+                        "EndDate": weekend
+                    }
+                    alldata.Schedule.push(newobj);
+                }
+            }
+        }
+
+    } else {
+        $('.weekly-carousel-container').addClass('d-none');
+        alldata.Schedule = []
+    }
+
+    var mod_weekly = [];
+    var mod_week = [];
+    var mod_weeks = [];
+    var mod_week_b = [];
+    var mod_weeks_b = [];
+    //console.log(nweeks);
+
+    var weeknums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+    for (var m = 0; m < alldata.Content.Modules.length; m++) {
+        mod_week = findModulesAll("Week ", mod_week, alldata.Content.Modules[m]);
+        mod_weeks = findModulesAll("Weeks ", mod_weeks, alldata.Content.Modules[m]);
+        mod_week_b = findModulesAll("Week: ", mod_week_b, alldata.Content.Modules[m]);
+        mod_weeks_b = findModulesAll("Weeks: ", mod_weeks_b, alldata.Content.Modules[m]);
+    }
+    mod_weekly_all = mod_week.concat(mod_weeks).concat(mod_week_b).concat(mod_weeks_b);
+    mod_weekly = getUniqueListBy(mod_weekly_all, 'ModuleId');
+    //console.log(mod_weekly);
+
+    var split_weekly_matches = ["week", "weeks", "(week", "(weeks", "week:", "weeks:", "(week:", "(weeks:"];
+    if (mod_weekly.length > 0) {
+        for (var w = 0; w < mod_weekly.length; w++) {
+            var weeksplit = mod_weekly[w].Title.toLowerCase().split(" ");
+            //console.log(weeksplit);
+            var weeksfound = [];
+            var connectorarray = ["and", "&", "to", "-", "+"];
+
+            for (var wind = 0; wind < weeksplit.length; wind++) {
+                if (split_weekly_matches.indexOf(weeksplit[wind]) > -1) {
+
+                    var thisweeknum;
+                    if (wind <= (weeksplit.length - 2)) {
+                        thisweeknum = parseInt(weeksplit[(wind + 1)]);
+                        if (!isNaN(thisweeknum)) {
+                            weeksfound.push(thisweeknum);
+                        } else {
+                            if (weeksplit[(wind + 1)].indexOf("#") === 0) {
+                                thisweeknum = parseInt((weeksplit[(wind + 1)].slice(1)));
+                                if (!isNaN(thisweeknum)) {
+                                    weeksfound.push(thisweeknum);
+                                }
+                            }
+                        }
+                    }
+
+                    if (wind <= (weeksplit.length - 3)) {
+                        if (connectorarray.indexOf(weeksplit[(wind + 2)]) > -1) {
+                            //console.log(weeksplit);
+
+                            if (wind <= (weeksplit.length - 4)) {
+                                var checknext = parseInt(weeksplit[(wind + 3)]);
+                                if (!isNaN(checknext)) {
+                                    if ((weeksplit[(wind + 2)] === "and") || (weeksplit[(wind + 2)] === "&") || (weeksplit[(wind + 2)] === "+")) {
+                                        weeksfound.push(checknext);
+                                    }
+                                    if ((weeksplit[(wind + 2)] === "to") || (weeksplit[(wind + 2)] === "-")) {
+
+                                        for (var t = (thisweeknum + 1); t <= checknext; t++) {
+                                            weeksfound.push(t);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (alldata.Schedule !== undefined) {
+                for (var s = 0; s < alldata.Schedule.length; s++) {
+                    if (weeksfound.indexOf(alldata.Schedule[s].WeekNum) > -1) {
+                        alldata.Schedule[s].Modules.push(mod_weekly[w]);
+                    }
+                }
+            }
+            //console.log(weeksfound);
+
+
+            for (var f = 0; f < weeksfound.length; f++) {
+                var windex = weeknums.indexOf(weeksfound[f]);
+                if (windex > -1) {
+                    weeknums.splice(windex, 1);
+                }
+            }
+        }
+    }
+
+    for (var cd = 0; cd < alldata.CourseDates.length; cd++) {
+        var thisitem = alldata.CourseDates[cd];
+
+        //console.log(thisitem);
+        if((alldata.CourseType === "Standard") || (alldata.CourseType === "High Capacity")) {
+            if (thisitem.Type === "DiscussionTopic") {
+                var gfound = false;
+                for (var gi = 0; gi < alldata.GradeItems.Objects.length; gi++) {
+
+                    if (alldata.GradeItems.Objects[gi].AssociatedTool !== undefined) {
+                        if (alldata.GradeItems.Objects[gi].AssociatedTool !== null) {
+                            if (alldata.GradeItems.Objects[gi].AssociatedTool.ToolItemId === thisitem.ItemId) {
+                                thisitem.Data.GradeItemId = alldata.GradeItems.Objects[gi].Id;
+                                gfound = true;
+                            }
+                        }
+                    }
+
+                    //console.log(thisitem)
+                    //console.log(gfound);
+                    if (gfound) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (alldata.Schedule !== undefined) {
+            for (var s = 0; s < alldata.Schedule.length; s++) {
+
+                var startswithin = false;
+                var endswithin = false;
+                var hasend = false;
+                var additem = false;
+                if (thisitem.StartDate !== null) {
+                    if ((thisitem.StartDate >= alldata.Schedule[s].StartDate) && (thisitem.StartDate <= alldata.Schedule[s].EndDate)) {
+                        startswithin = true;
+                        //additem = true;
+                    }
+                } else {
+                    if (thisitem.Type === "DiscussionForum") {
+                        if (thisitem.PostStartDate !== null) {
+                            if ((thisitem.PostStartDate >= alldata.Schedule[s].StartDate) && (thisitem.PostStartDate <= alldata.Schedule[s].EndDate)) {
+                                startswithin = true;
+                                //additem = true;
+                            }
+                        }
+                    }
+                    if (thisitem.Type === "DiscussionTopic") {
+                        if (thisitem.UnlockStartDate !== null) {
+                            if ((thisitem.UnlockStartDate >= alldata.Schedule[s].StartDate) && (thisitem.UnlockStartDate <= alldata.Schedule[s].EndDate)) {
+                                startswithin = true;
+                                //additem = true;
+                            }
+                        }
+                    }
+                }
+                if (thisitem.DueDate !== undefined) {
+                    if (thisitem.DueDate !== null) {
+                        hasend = true;
+                        if ((thisitem.DueDate >= alldata.Schedule[s].StartDate) && (thisitem.DueDate <= alldata.Schedule[s].EndDate)) {
+                            endswithin = true;
+                            additem = true;
+                        }
+                    }
+                }
+                if (!hasend) {
+                    if (thisitem.EndDate !== null) {
+                        hasend = true;
+                        if ((thisitem.EndDate >= alldata.Schedule[s].StartDate) && (thisitem.EndDate <= alldata.Schedule[s].EndDate)) {
+                            endswithin = true;
+                            additem = true;
+                        }
+                    } else {
+                        if (thisitem.Type === "DiscussionForum") {
+                            if (thisitem.PostEndDate !== null) {
+                                hasend = true;
+                                if ((thisitem.PostEndDate >= alldata.Schedule[s].StartDate) && (thisitem.PostEndDate <= alldata.Schedule[s].EndDate)) {
+                                    endswithin = true;
+                                    additem = true;
+                                }
+                            }
+                        }
+                        if (thisitem.Type === "DiscussionTopic") {
+                            if (thisitem.UnlockEndDate !== null) {
+                                hasend = true;
+                                if ((thisitem.UnlockEndDate >= alldata.Schedule[s].StartDate) && (thisitem.UnlockEndDate <= alldata.Schedule[s].EndDate)) {
+                                    endswithin = true;
+                                    additem = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if(!additem) {
+                    if(startswithin) {
+                        if(hasend === false) {
+                            additem = true;
+                        }
+                    }
+                }
+                
+                if (additem) {
+                    if ((thisitem.Type === "Announcement") || (thisitem.Type === "CalendarEvent")) {
+                        alldata.Schedule[s].Associations.Communication.push(thisitem);
+
+                        if (thisitem.Data.GradeData !== undefined) {
+                            if (thisitem.Data.GradeData.GradeItem !== null) {
+                                var gobj = {
+                                    GID: thisitem.Data.GradeData.GradeItem.Id,
+                                    Weight: 0
+                                }
+                                alldata.Schedule[s].GradeItems.push(gobj);
+                            }
+                        }
+
+                    } else {
+                        alldata.Schedule[s].Associations.Assessment.push(thisitem);
+                        if ((endswithin === true) || (hasend === false)) {
+                            //console.log(thisitem);
+                            if (thisitem.Type === "GradeItem") {
+                                var gobj = {
+                                    GID: thisitem.Data.Id,
+                                    Weight: 0
+                                }
+                                alldata.Schedule[s].GradeItems.push(gobj);
+                            } else {
+                                if (thisitem.Data.gradeItemId !== undefined) {
+                                    if (thisitem.Data.gradeItemId !== null) {
+                                        var gobj = {
+                                            GID: thisitem.Data.gradeItemId,
+                                            Weight: 0
+                                        }
+                                        alldata.Schedule[s].GradeItems.push(gobj);
+                                    }
+                                }
+                                if (thisitem.Data.GradeItemId !== undefined) {
+                                    if (thisitem.Data.GradeItemId !== null) {
+                                        var gobj = {
+                                            GID: thisitem.Data.GradeItemId,
+                                            Weight: 0
+                                        }
+                                        alldata.Schedule[s].GradeItems.push(gobj);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
+    for (var ol = 0; ol < alldata.Synchronous.length; ol++) {
+        var thisitem = alldata.Synchronous[ol];
+
+        if (alldata.Schedule !== undefined) {
+            for (var s = 0; s < alldata.Schedule.length; s++) {
+                if (thisitem.event.StartDateTime !== null) {
+                    if ((thisitem.event.StartDateTime >= alldata.Schedule[s].StartDate) && (thisitem.event.StartDateTime <= alldata.Schedule[s].EndDate)) {
+                        alldata.Schedule[s].Synchronous.push(thisitem);
+                    }
+                }
+            }
+        }
+
+    }
+
+    //console.log(mod_weekly);
+    //console.log(weeknums);
+}
+
+
+function processCourseDates() {
+
+    var tdate = new Date();
+    var csdate;
+    var cedate;
+    var alldates = [];
+    var caldates = [];
+
+    if (alldata.CourseOffering.StartDate !== null) {
+        csdate = new Date(alldata.CourseOffering.StartDate);
+        csdate_display = csdate.toLocaleString();
+        csdate = addMinutes(csdate, -2);
+    }
+    if (alldata.CourseOffering.EndDate !== null) {
+        cedate = new Date(alldata.CourseOffering.EndDate);
+        cedate_display = cedate.toLocaleString();
+        cedate = addMinutes(cedate, 2);
+    }
+
+    for (var a = 0; a < alldata.AssignmentsAll.Objects.length; a++) {
+        //if (!alldata.AssignmentsAll.Objects[a].AllowOnlyUsersWithSpecialAccess) {
+            var asdate = null;
+            var aedate = null;
+            var addate = null;
+            var incalendar = false;
+            var isoutside = false;
+            var isvisible = true;
+
+            if (alldata.AssignmentsAll.Objects[a].Availability !== null) {
+                if (alldata.AssignmentsAll.Objects[a].Availability.StartDate !== null) {
+                    asdate = new Date(alldata.AssignmentsAll.Objects[a].Availability.StartDate);
+                }
+                if (alldata.AssignmentsAll.Objects[a].Availability.EndDate !== null) {
+                    aedate = new Date(alldata.AssignmentsAll.Objects[a].Availability.EndDate);
+                }
+            }
+            if (alldata.AssignmentsAll.Objects[a].DueDate !== null) {
+                addate = new Date(alldata.AssignmentsAll.Objects[a].DueDate);
+            }
+
+            if (asdate !== null) {
+                if ((asdate < csdate) || (asdate > cedate)) {
+                    isoutside = true;
+                }
+                else {
+                    incalendar = true;
+                }
+            }
+            if (aedate !== null) {
+                if ((aedate < csdate) || (aedate > cedate)) {
+                    isoutside = true;
+                }
+                else {
+                    incalendar = true;
+                }
+            }
+            if (addate !== null) {
+                if ((addate < csdate) || (addate > cedate)) {
+                    isoutside = true;
+                }
+                else {
+                    incalendar = true;
+                }
+            }
+
+            var dobj = {
+                Type: 'Assignment',
+                Data: alldata.AssignmentsAll.Objects[a],
+                Name: alldata.AssignmentsAll.Objects[a].Name,
+                ItemId: alldata.AssignmentsAll.Objects[a].Id,
+                StartDate: asdate,
+                EndDate: aedate,
+                DueDate: addate,
+                InCalendar: incalendar,
+                IsOutside: isoutside,
+                IsVisible: isvisible,
+                URL: alldata.AssignmentsAll.Objects[a].URL
+            }
+            
+            /*
+            if (studentroles.indexOf(alldata.CurrentRole) > -1) {
+                if(alldata.AssignmentsAll.Objects[a].GroupTypeId === null) {
+                    dobj.URL = '/d2l/lms/dropbox/user/folder_submit_files.d2l?db=' + alldata.AssignmentsAll.Objects[a].Id + '&ou=' + orgUnitId;
+                }
+                else {
+                    var groupid = -1;
+                    for(var ga=0; ga<alldata.GroupsAll.Objects.length; ga++) {
+                        if(alldata.AssignmentsAll.Objects[a].GroupTypeId === alldata.GroupsAll.Objects[ga].GroupCategoryId) {
+                            
+                            for(var gd=0; gd< alldata.GroupsAll.Objects[ga].Groups.length; gd++) {
+                                var thisgd = alldata.GroupsAll.Objects[ga].GroupsData[gd];
+                                if(thisgd.Enrollments.indexOf(parseInt(alldata.WhoAmI.Identifier)) > -1) {
+                                    groupid = thisgd.GroupId;
+                                    break;
+                                }
+                            }
+                            
+                            break;
+                        }
+                    }
+                    if(groupid > -1) {
+                        dobj.URL = '/d2l/lms/dropbox/user/folder_submit_files.d2l?db=' + alldata.AssignmentsAll.Objects[a].Id + '&ou=' + orgUnitId + '&grpid=' + groupid;
+                    }
+                    else {
+                        dobj.URL = '/d2l/lms/dropbox/user/folders_list.d2l?ou=' + orgUnitId + '&isprv=0';
+                    }
+                }
+            } 
+            else if (observeroles.indexOf(alldata.CurrentRole) > -1) {
+                dobj.URL = '';
+            }
+            else {
+                dobj.URL = '/d2l/lms/dropbox/admin/mark/folder_submissions_observed.d2l?db=' + alldata.AssignmentsAll.Objects[a].Id + '&ou=' + orgUnitId;
+                //dobj.URL = '/d2l/lms/dropbox/admin/modify/folder_newedit_properties.d2l?ou=' + orgUnitId + '&db=' + alldata.AssignmentsAll.Objects[a].Id;
+            }
+            */
+
+            alldates.push(dobj);
+            if(incalendar) {
+                caldates.push(dobj);
+            }
+        //}
+    }
+
+    for (var ch = 0; ch < alldata.ChecklistsAll.Objects.length; ch++) {
+        if (alldata.ChecklistsAll.Objects[ch].Items !== undefined) {
+            for (var i = 0; i < alldata.ChecklistsAll.Objects[ch].Items.Objects.length; i++) {
+                var ciddate = null;
+                var isoutside = false;
+                var isvisible = true;
+                var incalendar = false;
+
+                if (alldata.ChecklistsAll.Objects[ch].Items.Objects[i].DueDate !== null) {
+                    ciddate = new Date(alldata.ChecklistsAll.Objects[ch].Items.Objects[i].DueDate);
+                }
+                if (ciddate !== null) {
+                    if ((ciddate < csdate) || (ciddate > cedate)) {
+                        isoutside = true;
+                    }
+                    else {
+                        incalendar = true;
+                    }
+                }
+
+                var dobj = {
+                    Type: 'ChecklistItem',
+                    Data: alldata.ChecklistsAll.Objects[ch].Items.Objects[i],
+                    Name: alldata.ChecklistsAll.Objects[ch].Name + ' > ' + alldata.ChecklistsAll.Objects[ch].Items.Objects[i].Name,
+                    ItemId: alldata.ChecklistsAll.Objects[ch].Items.Objects[i].ChecklistItemId,
+                    StartDate: null,
+                    EndDate: null,
+                    DueDate: ciddate,
+                    InCalendar: incalendar,
+                    IsOutside: isoutside,
+                    IsVisible: isvisible,
+                    URL: ''
+                }
+
+                if (studentroles.indexOf(alldata.CurrentRole) > -1) {
+                    dobj.URL = '/d2l/lms/checklist/viewchecklist.d2l?checklistId=' + alldata.ChecklistsAll.Objects[ch].Items.Objects[i].ChecklistId + '&ou=' + orgUnitId;
+                } 
+                else if (observeroles.indexOf(alldata.CurrentRole) > -1) {
+                    dobj.URL = '';
+                }
+                else {
+                    dobj.URL = '/d2l/lms/checklist/edititem.d2l?checklistId=' + alldata.ChecklistsAll.Objects[ch].Items.Objects[i].ChecklistId + '&itemId=' + alldata.ChecklistsAll.Objects[ch].Items.Objects[i].ChecklistItemId + '&ou=' + orgUnitId
+                }
+
+                alldates.push(dobj);
+                if(incalendar) {
+                    caldates.push(dobj);
+                }
+            }
+        }
+    }
+
+    var datemodules = [];
+    for (var m = 0; m < alldata.Content.Modules.length; m++) {
+        datemodules = findModuleDates(alldata.Content.Modules[m], datemodules);
+    }
+
+    var datetopics = [];
+    for (var m = 0; m < alldata.Content.Modules.length; m++) {
+        var pmod = [alldata.Content.Modules[m]];
+        datetopics = findContentTopicDates(alldata.Content.Modules[m], datetopics, pmod);
+    }
+    //console.log(datetopics);
+
+    var gradetopics = [];
+
+    if((alldata.CourseType === "Standard") || (alldata.CourseType === "High Capacity")) {
+        for (var gi = 0; gi < alldata.GradeItems.Objects.length; gi++) {
+            var thisgrade = alldata.GradeItems.Objects[gi];
+
+            for (var m = 0; m < alldata.Content.Modules.length; m++) {
+                gradetopics = findContentTopicsAll("GradeItemId", thisgrade.Id, alldata.Content.Modules[m], gradetopics);
+            }
+        }        
+    }
+
+    //console.log(gradetopics);
+
+    var alltopics = [];
+    var alltopicids = [];
+    for (var z = 0; z < datetopics.length; z++) {
+        var associated = false;
+        if (datetopics[z].Topic.ToolId !== null) {
+            for (var ti = 0; ti < d2l_tools.Items.length; ti++) {
+                if (datetopics[z].Topic.ToolId === parseInt(d2l_tools.Items[ti].ToolId)) {
+                    var thistool = d2l_tools.Items[ti];
+                    if ((thistool.DisplayName === "Assignments") || (thistool.DisplayName === "Discussions") || (thistool.DisplayName === "Announcements") || (thistool.DisplayName === "Quizzes") || (thistool.DisplayName === "Checklist")) {
+                        associated = true;
+                    }
+                }
+            }
+        }
+
+        if (!associated) {
+            alltopics.push(datetopics[z]);
+            alltopicids.push(datetopics[z].Topic.TopicId);
+        }
+    }
+    for (var z = 0; z < gradetopics.length; z++) {
+        var associated = false;
+        if (gradetopics[z].Topic.ToolId !== null) {
+            for (var ti = 0; ti < d2l_tools.Items.length; ti++) {
+                if (gradetopics[z].Topic.ToolId === parseInt(d2l_tools.Items[ti].ToolId)) {
+                    var thistool = d2l_tools.Items[ti];
+                    //console.log(thistool);
+                    //console.log(thistool.DisplayName);
+                    if ((thistool.DisplayName === "Assignments") || (thistool.DisplayName === "Discussions") || (thistool.DisplayName === "Announcements") || (thistool.DisplayName === "Quizzes") || (thistool.DisplayName === "Checklist")) {
+                        associated = true;
+                    }
+                    if (thistool.DisplayName === "External Learning Tools") {
+                        //console.log(gradetopics[z]);
+                    }
+                }
+            }
+        }
+
+        //console.log(associated);
+        if (!associated) {
+            if (alltopicids.indexOf(gradetopics[z].Topic.TopicId) === -1) {
+                alltopics.push(gradetopics[z]);
+                alltopicids.push(gradetopics[z].Topic.TopicId);
+            }
+        }
+    }
+    
+    //console.log(JSON.parse(JSON.stringify(alldata.CalendarAll)));
+    for(var ce=0; ce<alldata.CalendarAll.length; ce++) {
+        if(alldata.CalendarAll[ce].AssociatedEntity !== null) {
+            if(alldata.CalendarAll[ce].AssociatedEntity.AssociatedEntityType == 'D2L.LE.Content.ContentObject.TopicCO') {
+                //console.log(alldata.CalendarAll[ce]);
+                //console.log(alldata.CalendarAll[ce].EndDateTime);
+                if(alldata.CalendarAll[ce].EndDateTime !== null) {
+                    var datetopics = [];
+                    for (var m = 0; m < alldata.Content.Modules.length; m++) {
+                        datetopics = findContentTopicsAll("TopicId", alldata.CalendarAll[ce].AssociatedEntity.AssociatedEntityId, alldata.Content.Modules[m], datetopics);
+                    }
+                    //console.log(datetopics);
+                    if(datetopics.length > 0) {
+                        alldata.CalendarAll[ce].ContentMatched = true;
+                        var dateset = false;
+                        for(var dt=0; dt<datetopics.length; dt++) {                        
+                            if(datetopics[dt].Topic.EndDateTime === null) {
+                                datetopics[dt].Topic.DueDateTime = alldata.CalendarAll[ce].EndDateTime;
+                                datetopics[dt].Topic.EndDateTime = alldata.CalendarAll[ce].EndDateTime;   
+                                dateset = true;
+                            }
+                            else {
+                                var ctedate = new Date(datetopics[dt].Topic.EndDateTime);
+                                var ceedate = new Date(alldata.CalendarAll[ce].EndDateTime);
+                                if(ctedate !== ceedate) {
+                                    if(datetopics[dt].Topic.ToolId === 3000) {
+                                        //console.log(datetopics[dt]);
+                                        datetopics[dt].Topic.EndDateTime = alldata.CalendarAll[ce].EndDateTime; 
+                                        
+                                        for(var d1=0; d1<alldata.DiscussionsAll.Objects.length; d1++) {
+                                            var thisdiscussfor = alldata.DiscussionsAll.Objects[d1];
+                                            for(var d2=0; d2<thisdiscussfor.Topics.length; d2++) {
+                                                var thisdiscusstop = thisdiscussfor.Topics[d2];
+                                                if(thisdiscusstop.TopicId === datetopics[dt].Topic.ToolItemId) {
+                                                    if(thisdiscusstop.EndDate !== null) {
+                                                        var dtedate = new Date(thisdiscusstop.EndDate);
+                                                        if(ceedate < dtedate) {
+                                                            thisdiscusstop.EndDate = ceedate;
+                                                        }
+                                                    }
+                                                    else {
+                                                        thisdiscusstop.EndDate = ceedate;
+                                                    }
+                                                    break;
+                                                }
+                                            }
+                                        } 
+                                    }
+                                    else {
+                                        datetopics[dt].Topic.EndDateTime = alldata.CalendarAll[ce].EndDateTime;
+                                        datetopics[dt].Topic.DueDateTime = alldata.CalendarAll[ce].EndDateTime;
+                                        dateset = true;
+                                    }
+                                }
+                            }
+                            if(dateset) {
+                                if(alltopicids.indexOf(datetopics[dt].Topic.TopicId) === -1) {
+                                    alltopics.push(datetopics[dt]);
+                                    alltopicids.push(datetopics[dt].Topic.TopicId);
+                                }                                    
+                            }                                      
+                        }
+                    }
+                }
+            }
+            if(alldata.CalendarAll[ce].AssociatedEntity.AssociatedEntityType == 'D2L.LE.Content.ContentObject.ModuleCO') {
+                if(alldata.CalendarAll[ce].EndDateTime !== null) {
+                    var datemods = [];
+                    for (var m = 0; m < alldata.Content.Modules.length; m++) {
+                        datemods = findModulesByAtt("ModuleId", alldata.CalendarAll[ce].AssociatedEntity.AssociatedEntityId, alldata.Content.Modules[m], datemods);
+                    }
+                    if(datemods.length > 0) {
+                        alldata.CalendarAll[ce].ContentMatched = true;
+                        var dateset = false;
+                        for(var dm=0; dm<datemods.length; dm++) {
+                            
+                            var dmindex = -1;
+                            for(var i=0; i<datemodules.length; i++) {
+                                if(datemods[dm].Module.ModuleId === datemodules[i].ModuleId) {
+                                    dmindex = i;
+                                }
+                            }
+                            
+                            if(datemods[dm].Module.EndDateTime === null) {
+                                datemods[dm].Module.DueDateTime = alldata.CalendarAll[ce].EndDateTime;
+                                datemods[dm].Module.EndDateTime = alldata.CalendarAll[ce].EndDateTime;   
+                                dateset = true;
+                            }
+                            else {
+                                var cmedate = new Date(datemods[dm].Module.EndDateTime);
+                                var ceedate = new Date(alldata.CalendarAll[ce].EndDateTime);
+                                //console.log(ceedate);
+                                //console.log(cmedate);
+                                if(ceedate < cmedate) {
+                                    //console.log(alldata.CalendarAll[ce]);
+                                    datemods[dm].Module.DueDateTime = alldata.CalendarAll[ce].EndDateTime;
+                                    datemods[dm].Module.EndDateTime = alldata.CalendarAll[ce].EndDateTime;
+                                }
+                            }
+                            if(dateset) {
+                                if(dmindex === -1) {
+                                    datemodules.push(datemods[dm].Module);
+                                }                                
+                            }
+                        }                        
+                    }
+                }
+            }
+        }
+    }
+    
+    //console.log(datemodules);
+    for (var z = 0; z < datemodules.length; z++) {
+        var cmsdate = null;
+        var cmedate = null;
+        var isoutside = false;
+        var isvisible = true;
+        var incalendar = false;
+
+        if (datemodules[z].StartDateTime !== null) {
+            cmsdate = new Date(datemodules[z].StartDateTime);
+        }
+        if (datemodules[z].EndDateTime !== null) {
+            cmedate = new Date(datemodules[z].EndDateTime);
+        }
+
+        if (cmsdate !== null) {
+            if ((cmsdate < csdate) || (cmsdate > cedate)) {
+                isoutside = true;
+            }
+            else {
+                incalendar = true;
+            }
+        }
+        if (cmedate !== null) {
+            if ((cmedate < csdate) || (cmedate > cedate)) {
+                isoutside = true;
+            }
+            else {
+                incalendar = true;
+            }
+        }
+
+        var dobj = {
+            Type: 'ContentModule',
+            Data: datemodules[z],
+            Name: datemodules[z].Title,
+            ItemId: datemodules[z].ModuleId,
+            StartDate: cmsdate,
+            EndDate: cmedate,
+            InCalendar: incalendar,                
+            IsOutside: isoutside,
+            IsVisible: isvisible,
+            URL: '/d2l/le/content/' + orgUnitId + '/Home?itemIdentifier=D2L.LE.Content.ContentObject.ModuleCO-' + datemodules[z].ModuleId
+        }
+        alldates.push(dobj);
+        if(incalendar) {
+            caldates.push(dobj);
+        }
+
+    }    
+
+    //console.log(alltopics);
+    for (var at = 0; at < alltopics.length; at++) {
+        var ctsdate = null;
+        var ctedate = null;
+        var isoutside = false;
+        var isvisible = true;
+        var incalendar = false;
+
+        if (alltopics[at].Topic.StartDateTime !== null) {
+            ctsdate = new Date(alltopics[at].Topic.StartDateTime);
+        }
+        if (alltopics[at].Topic.EndDateTime !== null) {
+            ctedate = new Date(alltopics[at].Topic.EndDateTime);
+        }
+
+        if (ctsdate !== null) {
+            if ((ctsdate < csdate) || (ctsdate > cedate)) {
+                isoutside = true;
+            }
+            else {
+                incalendar = true;
+            }
+        }
+        if (ctedate !== null) {
+            if ((ctedate < csdate) || (ctedate > cedate)) {
+                isoutside = true;
+            }
+            else {
+                incalendar = true;
+            }
+        }
+
+        var dobj = {
+            Type: 'ContentTopic',
+            Data: alltopics[at].Topic,
+            Name: alltopics[at].Topic.Title,
+            ItemId: alltopics[at].Topic.ToolItemId,
+            StartDate: ctsdate,
+            EndDate: ctedate,
+            InCalendar: incalendar,
+            IsOutside: isoutside,
+            IsVisible: isvisible,
+            URL: '/d2l/le/content/' + orgUnitId + '/viewContent/' + alltopics[at].Topic.TopicId + '/View'
+        }
+        alldates.push(dobj);
+        if(incalendar) {
+            caldates.push(dobj);
+        }
+    }
+
+    for (var d = 0; d < alldata.DiscussionsAll.Objects.length; d++) {
+
+        var dsdate = null;
+        var dedate = null;
+        var dpsdate = null;
+        var dpedate = null;
+        var disoutside = false;
+        var disvisible = true;
+        var dincalendar = false;
+
+        if (alldata.DiscussionsAll.Objects[d].StartDate !== null) {
+            dsdate = new Date(alldata.DiscussionsAll.Objects[d].StartDate);
+        }
+        if (alldata.DiscussionsAll.Objects[d].EndDate !== null) {
+            dedate = new Date(alldata.DiscussionsAll.Objects[d].EndDate);
+        }
+        if (alldata.DiscussionsAll.Objects[d].PostStartDate !== null) {
+            dpsdate = new Date(alldata.DiscussionsAll.Objects[d].PostStartDate);
+        }
+        if (alldata.DiscussionsAll.Objects[d].PostEndDate !== null) {
+            dpedate = new Date(alldata.DiscussionsAll.Objects[d].PostEndDate);
+        }
+
+        if (dsdate !== null) {
+            if ((dsdate < csdate) || (dsdate > cedate)) {
+                disoutside = true;
+            }
+            else {
+                dincalendar = true;
+            }
+        }
+        if (dedate !== null) {
+            if ((dedate < csdate) || (dedate > cedate)) {
+                disoutside = true;
+            }
+            else {
+                dincalendar = true;
+            }
+        }
+        if (dpsdate !== null) {
+            if ((dpsdate < csdate) || (dpsdate > cedate)) {
+                disoutside = true;
+            }
+            else {
+                dincalendar = true;
+            }
+        }
+        if (dpedate !== null) {
+            if ((dpedate < csdate) || (dpedate > cedate)) {
+                disoutside = true;
+            }
+            else {
+                dincalendar = true;
+            }
+        }
+
+        var dobj = {
+            Type: 'DiscussionForum',
+            Data: alldata.DiscussionsAll.Objects[d],
+            Name: alldata.DiscussionsAll.Objects[d].Name,
+            ItemId: alldata.DiscussionsAll.Objects[d].ForumId,
+            StartDate: dsdate,
+            EndDate: dedate,
+            PostStartDate: dpsdate,
+            PostEndDate: dpedate,
+            InCalendar: dincalendar,                
+            IsOutside: disoutside,
+            IsVisible: disvisible,
+            URL: ''
+        }
+        //console.log(alldata.DiscussionsAll.Objects[d]);
+        //console.log(dsdate);
+        //console.log(dedate);
+        //console.log(dpsdate);
+        //console.log(dpedate);
+
+        if (studentroles.indexOf(alldata.CurrentRole) > -1) {
+            dobj.URL = '/d2l/le/' + orgUnitId + '/discussions/List';
+        } 
+        else if (observeroles.indexOf(alldata.CurrentRole) > -1) {
+            dobj.URL = '';
+        }     
+        else {
+            dobj.URL = '/d2l/lms/discussions/admin/forum_new_properties.d2l?ou=' + orgUnitId + '&fid=' + alldata.DiscussionsAll.Objects[d].ForumId
+        }
+
+        var hasDiscussTopicDates = false;
+        if (alldata.DiscussionsAll.Objects[d].Topics !== undefined) {
+            for (var t = 0; t < alldata.DiscussionsAll.Objects[d].Topics.length; t++) {
+                var dtsdate = null;
+                var dtedate = null;
+                var dtusdate = null;
+                var dtuedate = null;
+                var dtisoutside = false;
+                var dtisvisible = true;
+                var dtincalendar = false;
+
+                if (alldata.DiscussionsAll.Objects[d].Topics[t].StartDate !== null) {
+                    dtsdate = new Date(alldata.DiscussionsAll.Objects[d].Topics[t].StartDate);
+                }
+                if (alldata.DiscussionsAll.Objects[d].Topics[t].EndDate !== null) {
+                    dtedate = new Date(alldata.DiscussionsAll.Objects[d].Topics[t].EndDate);
+                }
+                if (alldata.DiscussionsAll.Objects[d].Topics[t].UnlockStartDate !== null) {
+                    dtusdate = new Date(alldata.DiscussionsAll.Objects[d].Topics[t].UnlockStartDate);
+                }
+                if (alldata.DiscussionsAll.Objects[d].Topics[t].UnlockEndDate !== null) {
+                    dtuedate = new Date(alldata.DiscussionsAll.Objects[d].Topics[t].UnlockEndDate);
+                }
+
+                if (dtsdate !== null) {
+                    if ((dtsdate < csdate) || (dtsdate > cedate)) {
+                        dtisoutside = true;
+                    }
+                    else {
+                        dtincalendar = true;
+                    }
+                }
+                if (dtedate !== null) {
+                    if ((dtedate < csdate) || (dtedate > cedate)) {
+                        dtisoutside = true;
+                    }
+                    else {
+                        dtincalendar = true;
+                    }
+                }
+                if (dtusdate !== null) {
+                    if ((dtusdate < csdate) || (dtusdate > cedate)) {
+                        dtisoutside = true;
+                    }
+                    else {
+                        dtincalendar = true;
+                    }
+                }
+                if (dtuedate !== null) {
+                    if ((dtuedate < csdate) || (dtuedate > cedate)) {
+                        dtisoutside = true;
+                    }
+                    else {
+                        dtincalendar = true;
+                    }
+                }
+
+                var dtobj = {
+                    Type: 'DiscussionTopic',
+                    Data: alldata.DiscussionsAll.Objects[d].Topics[t],
+                    Name: alldata.DiscussionsAll.Objects[d].Topics[t].Name,
+                    Forum: alldata.DiscussionsAll.Objects[d],
+                    ItemId: alldata.DiscussionsAll.Objects[d].Topics[t].TopicId,
+                    StartDate: dtsdate,
+                    EndDate: dtedate,
+                    UnlockStartDate: dtusdate,
+                    UnlockEndDate: dtuedate,
+                    InCalendar: dtincalendar,                
+                    IsOutside: dtisoutside,
+                    IsVisible: dtisvisible,
+                    URL: ''
+                }
+
+                if (studentroles.indexOf(alldata.CurrentRole) > -1) {
+                    dtobj.URL = '/d2l/le/' + orgUnitId + '/discussions/topics/' + alldata.DiscussionsAll.Objects[d].Topics[t].TopicId + '/View';
+                } 
+                else if (observeroles.indexOf(alldata.CurrentRole) > -1) {
+                    dtobj.URL = '';
+                }
+                else {
+                    dtobj.URL = '/d2l/lms/discussions/admin/topic_new_properties.d2l?ou=' + orgUnitId + '&tid=' + alldata.DiscussionsAll.Objects[d].Topics[t].TopicId
+                }
+
+                alldates.push(dtobj);
+                if(dtincalendar) {
+                    caldates.push(dtobj);
+                    hasDiscussTopicDates = true;
+                }
+                else {
+                    
+                }
+
+            }
+        }
+        
+        //console.log(hasDiscussTopicDates);
+        if(!hasDiscussTopicDates) {
+            //console.log(dobj);
+            alldates.push(dobj);
+            //console.log(dincalendar);
+            if(dincalendar) {
+                caldates.push(dobj);
+            }
+        }
+    }
+
+    for (var q = 0; q < alldata.QuizzesAll.Objects.length; q++) {
+        //if (!alldata.QuizzesAll.Objects[q].AllowOnlyUsersWithSpecialAccess) {
+            var qsdate = null;
+            var qedate = null;
+            var qddate = null;
+            var isoutside = false;
+            var isvisible = true;
+            var incalendar = false;
+
+            if (alldata.QuizzesAll.Objects[q].StartDate !== null) {
+                qsdate = new Date(alldata.QuizzesAll.Objects[q].StartDate);
+            }
+            if (alldata.QuizzesAll.Objects[q].DueDate !== null) {
+                qddate = new Date(alldata.QuizzesAll.Objects[q].DueDate);
+            }
+            if (alldata.QuizzesAll.Objects[q].EndDate !== null) {
+                qedate = new Date(alldata.QuizzesAll.Objects[q].EndDate);
+            }
+            else {
+                if(qddate !== null) {
+                    qedate = qddate;
+                }
+            }
+
+            if (qsdate !== null) {
+                if ((qsdate < csdate) || (qsdate > cedate)) {
+                    isoutside = true;
+                }
+                else {
+                    incalendar = true;
+                }
+            }
+            if (qedate !== null) {
+                if ((qedate < csdate) || (qedate > cedate)) {
+                    isoutside = true;
+                }
+                else {
+                    incalendar = true;
+                }
+            }
+            if (qddate !== null) {
+                if ((qddate < csdate) || (qddate > cedate)) {
+                    isoutside = true;
+                }
+                else {
+                    incalendar = true;
+                }
+            }
+
+            var dobj = {
+                Type: 'Quiz',
+                Data: alldata.QuizzesAll.Objects[q],
+                Name: alldata.QuizzesAll.Objects[q].Name,
+                ItemId: alldata.QuizzesAll.Objects[q].QuizId,
+                StartDate: qsdate,
+                EndDate: qedate,
+                DueDate: qddate,
+                InCalendar: incalendar,                
+                IsOutside: isoutside,
+                IsVisible: isvisible,
+                URL: alldata.QuizzesAll.Objects[q].URL
+            }
+
+            /*
+            if (studentroles.indexOf(alldata.CurrentRole) > -1) {
+                dobj.URL = '/d2l/lms/quizzing/user/quiz_summary.d2l?qi=' + alldata.QuizzesAll.Objects[q].QuizId + '&ou=' + orgUnitId;
+            } 
+            else if (observeroles.indexOf(alldata.CurrentRole) > -1) {
+                dobj.URL = '';
+            }
+            else {
+                dobj.URL = '/d2l/lms/quizzing/admin/modify/quiz_newedit_properties.d2l?qi=' + alldata.QuizzesAll.Objects[q].QuizId + '&ou=' + orgUnitId
+            }
+            */
+
+            alldates.push(dobj);
+            if(incalendar) {
+                caldates.push(dobj);
+            }
+        //}
+    }
+
+    for (var ce = 0; ce < alldata.CalendarAll.length; ce++) {
+
+        var isoutside = false;
+        var ispast = false;
+        var cesdate = null;
+        var ceedate = null;
+        var isvisible = true;
+        var incalendar = false;
+
+        if(!alldata.CalendarAll[ce].ContentMatched) {
+            if (alldata.CalendarAll[ce].AssociatedEntity === null) {
+                if (alldata.CalendarAll[ce].StartDateTime !== null) {
+                    cesdate = new Date(alldata.CalendarAll[ce].StartDateTime);
+                }
+				else {
+					if(alldata.CalendarAll[ce].StartDay !== null) {
+						cesdate = new Date(alldata.CalendarAll[ce].StartDay);
+					}
+				}
+                if (alldata.CalendarAll[ce].EndDateTime !== null) {
+                    ceedate = new Date(alldata.CalendarAll[ce].EndDateTime);
+                }
+                else {
+                    if(alldata.CalendarAll[ce].EndDay !== null) {
+                        ceedate = new Date(alldata.CalendarAll[ce].EndDay);
+                    }
+                }
+
+                if (ceedate !== null) {
+                    if (ceedate < csdate) {
+                        isoutside = true;
+                        ispast = true;
+                    }
+                    else {
+                        incalendar = true;
+                    }
+                    if (ceedate > cedate) {
+                        isoutside = true;
+                    }
+                    else {
+                        incalendar = true;
+                    }
+                }
+
+                var dobj = {
+                    Type: 'CalendarEvent',
+                    Data: alldata.CalendarAll[ce],
+                    Name: alldata.CalendarAll[ce].Title,
+                    ItemId: alldata.CalendarAll[ce].CalendarEventId,
+                    StartDate: cesdate,
+                    EndDate: ceedate,
+                    IsPast: ispast,
+                    InCalendar: incalendar,                
+                    IsOutside: isoutside,
+                    IsVisible: isvisible,
+                    URL: ''
+                }
+
+                var sdaynum = cesdate.getDate();
+                var smonthnum = cesdate.getMonth() + 1;
+                var syearnum = cesdate.getFullYear();
+                dobj.URL = '/d2l/le/calendar/' + orgUnitId + '/home/list?year=' + syearnum + '&month=' + smonthnum + '&day=' + sdaynum;
+
+                alldates.push(dobj);
+                if(incalendar) {
+                    caldates.push(dobj);
+                }
+            } else {
+                if (alldata.CalendarAll[ce].AssociatedEntity.AssociatedEntityType === 'D2L.LE.Content.ContentObject.TopicCO') {
+                    if (alltopicids.indexOf(alldata.CalendarAll[ce].AssociatedEntity.AssociatedEntityId) > -1) {
+                        var gradetopics = [];
+                        for (var m = 0; m < alldata.Content.Modules.length; m++) {
+                            gradetopics = findContentTopicsAll("TopicId", alldata.CalendarAll[ce].AssociatedEntity.AssociatedEntityId, alldata.Content.Modules[m], gradetopics);
+                        }
+
+                        if (gradetopics.length === 1) {
+                            //console.log(gradetopics);
+                            if (gradetopics[0].Topic.Type !== undefined) {
+                                if (gradetopics[0].Topic.Type === "Discussion") {
+                                    for (var ad = 0; ad < alldates.length; ad++) {
+                                        if (alldates[ad].Type === "DiscussionTopic") {
+                                            if (alldates[ad].ItemId === gradetopics[0].Topic.ToolItemId) {
+                                                //console.log(alldata.CalendarAll[ce]);
+                                                //console.log(alldates[ad]);
+
+                                                var onetime = false;
+                                                if (alldata.CalendarAll[ce].StartDateTime.getTime() === alldata.CalendarAll[ce].EndDateTime.getTime()) {
+                                                    onetime = true;
+                                                }
+
+                                                //console.log(onetime);
+
+                                                if ((alldates[ad].StartDate === null) && (alldates[ad].UnlockStartDate === null)) {
+                                                    if ((alldates[ad].EndDate === null) && (alldates[ad].UnlockEndDate === null)) {
+                                                        if (onetime) {
+                                                            alldates[ad].EndDate = alldata.CalendarAll[ce].EndDateTime;
+                                                        } else {
+                                                            alldates[ad].StartDate = alldata.CalendarAll[ce].StartDateTime;
+                                                            alldates[ad].EndDate = alldata.CalendarAll[ce].EndDateTime;
+                                                        }
+                                                    } else {
+
+                                                        var dedate = null;
+                                                        if (alldates[ad].EndDate !== null) {
+                                                            dedate = new Date(alldates[ad].EndDate);
+                                                        }
+                                                        if (alldates[ad].UnlockEndDate !== null) {
+                                                            dedate = new Date(alldates[ad].UnlockEndDate);
+                                                        }
+
+                                                        if (alldata.CalendarAll[ce].StartDateTime.getTime() < dedate.getTime()) {
+                                                            alldates[ad].StartDate = alldata.CalendarAll[ce].StartDateTime;
+                                                        }
+
+                                                    }
+                                                } else {
+                                                    if ((alldates[ad].EndDate === null) && (alldates[ad].UnlockEndDate === null)) {
+
+                                                        var dsdate = null
+                                                        if (alldates[ad].StartDate !== null) {
+                                                            dsdate = new Date(alldates[ad].StartDate);
+                                                        }
+                                                        if (alldates[ad].UnlockStartDate !== null) {
+                                                            dsdate = new Date(alldates[ad].UnlockStartDate);
+                                                        }
+
+                                                        if (alldata.CalendarAll[ce].EndDateTime.getTime() > dsdate) {
+                                                            alldates[ad].EndDate = alldata.CalendarAll[ce].EndDateTime;
+                                                        }
+                                                    }
+                                                }
+
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (alldata.CalendarAll[ce].StartDateTime !== null) {
+                            cesdate = new Date(alldata.CalendarAll[ce].StartDateTime);
+                        }
+                        if (alldata.CalendarAll[ce].EndDateTime !== null) {
+                            ceedate = new Date(alldata.CalendarAll[ce].EndDateTime);
+                        }
+                        else {
+                            if(alldata.CalendarAll[ce].EndDay !== null) {
+                                ceedate = new Date(alldata.CalendarAll[ce].EndDay);
+                            }
+                        }
+
+                        if (ceedate !== null) {
+                            if (ceedate < csdate) {
+                                isoutside = true;
+                                ispast = true;
+                            }
+                            else {
+                                incalendar = true;
+                            }
+                            if (ceedate > cedate) {
+                                isoutside = true;
+                            }
+                            else {
+                                incalendar = true;
+                            }
+                        }
+
+                        var dobj = {
+                            Type: 'CalendarEvent',
+                            Data: alldata.CalendarAll[ce],
+                            Name: alldata.CalendarAll[ce].Title,
+                            ItemId: alldata.CalendarAll[ce].CalendarEventId,
+                            StartDate: cesdate,
+                            EndDate: ceedate,
+                            IsPast: ispast,
+                            InCalendar: incalendar,
+                            IsOutside: isoutside,
+                            IsVisible: isvisible,
+                            URL: alldata.CalendarAll[ce].AssociatedEntity.Link
+                        }
+
+                        alldates.push(dobj);
+                        if(incalendar) {
+                            caldates.push(dobj);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (alldata.InstructionalPlan.Data !== null) {
+        if (thispagedata.Grades.length > 0) {
+            for (var g = 0; g < thispagedata.Grades.length; g++) {
+
+                var gradefound = false;
+                var hasassoc = false;
+                for (var gi = 0; gi < alldata.GradeItems.Objects.length; gi++) {
+                    var thisgrade = alldata.GradeItems.Objects[gi];
+                    if (thisgrade.Id === thispagedata.Grades[g].Id) {
+                        gradefound = true;
+                        if (thisgrade.AssociatedTool !== null) {
+                            hasassoc = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (gradefound) {
+                    if (!hasassoc) {
+                        thispagedata.Grades[g].HasAssociation = false;
+                        var dateobj = {
+                            Type: "GradeItem",
+                            Data: thispagedata.Grades[g],
+                            Name: thispagedata.Grades[g].Name,
+                            ItemId: thispagedata.Grades[g].Id,
+                            StartDate: null,
+                            EndDate: null,
+                            InCalendar: incalendar,                
+                            IsOutside: false,
+                            IsVisible: true,
+                            URL: "/d2l/lms/grades/index.d2l?ou=" + orgUnitId
+                        }
+
+                        var addobj = false;
+                        if (thispagedata.Grades[g].StartDateTime !== undefined) {
+                            addobj = true;
+                            dateobj.StartDate = new Date(thispagedata.Grades[g].StartDateTime);
+                        }
+                        if (thispagedata.Grades[g].EndDateTime !== undefined) {
+                            addobj = true;
+                            dateobj.EndDate = new Date(thispagedata.Grades[g].EndDateTime);
+                        }
+
+                        if (addobj) {
+                            
+                            for(var gi=0; gi<alldata.GradeItems.Objects.length; gi++) {
+                                var thisgradeitem = alldata.GradeItems.Objects[gi];
+                                if(thispagedata.Grades[g].Id === thisgradeitem.Id) {
+                                    dateobj.Name = thisgradeitem.Name;
+                                    break;
+                                }
+                            }
+                            
+                            alldates.push(dateobj);
+                            caldates.push(dateobj);
+                        }
+                    } else {
+                        thispagedata.Grades[g].HasAssociation = true;
+                    }
+                }
+            }
+        }
+    }
+
+    //console.log(alldates);
+    alldata.CourseDates = alldates;
+    alldata.CourseCalendar = caldates;
+
+    /*
+    alldata.CalendarBuild = [];
+    for (var cd = 0; cd < alldata.CourseDates.length; cd++) {
+
+        var itemstart;
+        var itemend;
+        if (alldata.CourseDates[cd].StartDate !== null) {
+            itemstart = alldata.CourseDates[cd].StartDate;
+        }
+        if (alldata.CourseDates[cd].EndDate !== null) {
+            itemend = alldata.CourseDates[cd].EndDate;
+        }
+
+        if ((itemstart !== undefined) || (itemend !== undefined)) {
+
+            if (itemstart === undefined) {
+                itemstart = itemend;
+            }
+            if (itemend === undefined) {
+                itemend === itemstart;
+            }
+
+            var newobj = {
+                start: itemstart,
+                end: itemend,
+                title: alldata.CourseDates[cd].Name
+            }
+            alldata.CalendarBuild.push(newobj);
+        }
+    }
+    
+    if(alldata.CalendarBuild.length > 0) {
+        //initCalendar(alldata.CourseDates);
+    }
+    else {
+        $('.thisweek-management-cards').addClass('d-none');
+        $('.calendarzone').addClass('d-none');
+    }    
+    */
+    
+    initWorkToDo();
+
+}
+
+
+function generateOutcomeString(weeknum) {
+
+    var s = -1;
+    for (var w = 0; w < thispagedata.Schedule.length; w++) {
+        if (thispagedata.Schedule[w].WeekNum === weeknum) {
+            s = w;
+        }
+    }
+
+    //console.log(s);
+    var ofound = 0;
+    var outcome_html = '';
+
+    if (thispagedata.Schedule[s] !== undefined) {
+        if (thispagedata.Schedule[s].Outcomes.length > 0) {
+
+            for (var o = 0; o < thispagedata.Schedule[s].Outcomes.length; o++) {
+                var thisoutcome = thispagedata.Schedule[s].Outcomes[o];
+                var efound = {
+                    Exact: [],
+                    Loose: []
+                };
+                if (alldata.Outline.length > 0) {
+                    for (var o1 = 0; o1 < alldata.Outline[0].UnitOutcomes.length; o1++) {
+                        efound = getOutcomeEnum(thisoutcome, alldata.Outline[0].UnitOutcomes[o1], efound);
+                        if (efound.Exact.length > 0) {
+                            break;
+                        }
+                    }
+                    if (efound.Exact.length > 0) {
+                        ofound++;
+                        outcome_html += '<li class="list-group-item iphighlight">' + thisoutcome.Enum + ': ' + thisoutcome.Desc + '</li>';
+                    } else {
+                        if (efound.Loose.length > 0) {
+                            ofound++;
+                            if (efound.Loose.length === 1) {
+                                outcome_html += '<li class="list-group-item iphighlight">' + efound.Loose[0] + ': ' + thisoutcome.Desc + '</li>';
+                            } else {
+                                outcome_html += '<li class="list-group-item iphighlight">' + thisoutcome.Desc + '</li>';
+                            }
+                        }
+                    }
+                } else {
+                    ofound++;
+                    outcome_html += '<li class="list-group-item iphighlight">' + thisoutcome.Desc + '</li>';
+                }
+            }
+        }
+    }
+
+    var robj = {
+        ofound: ofound,
+        ohtml: outcome_html
+    }
+    return robj;
+}
+
+
+function getItemWeekNum(itemdate) {
+    
+    //console.log(itemdate);
+    var idate = new Date(itemdate); 
+    
+    if(alldata.Schedule !== undefined) {
+        var weekstring = '';
+        
+        for(var s=0; s<alldata.Schedule.length; s++) {
+            var wstart = new Date(alldata.Schedule[s].StartDate);
+            var wend = new Date(alldata.Schedule[s].EndDate);
+
+            if((idate >= wstart) && (idate < wend)) {
+                weekstring = 'Week ' + alldata.Schedule[s].WeekNum;
+                break;
+            }
+        }
+        
+        if(weekstring === '') {
+            var cstart = new Date(alldata.Schedule[0].StartDate);
+            var cend = new Date(alldata.Schedule[(alldata.Schedule.length-1)].EndDate);
+            if(idate < cstart) {
+                weekstring = 'Week ' + alldata.Schedule[0].WeekNum;
+            }
+            if(idate > cend) {
+                weekstring = 'Week ' + alldata.Schedule[(alldata.Schedule.length-1)].WeekNum;
+            }
+        }
+        
+        return weekstring;
+        
+    }
+    else {
+        return null;
+    }
+    
+}
+
+function generateCommString(commitem) {
+
+    var sortdate;
+
+    //console.log(commitem);
+    var cname = commitem.Name;
+
+    if (commitem.Type === "CalendarEvent") {
+        if (cname === "") {
+            cname = "Calendar Item";
+        }
+        if (commitem.Data.IsAllDayEvent) {
+            cname += " (All Day Event)";
+        }
+    }
+
+    var commstring = '';
+    var isactivity = false;
+    var isevaluation = false;
+    var isdiscussion = false;
+
+    if (commitem.Type === 'CalendarEvent') {
+
+        //console.log(commitem);
+
+        if (commitem.Data.AssociatedEntity !== null) {
+            if (commitem.Data.AssociatedEntity.AssociatedEntityType === 'D2L.LE.Content.ContentObject.TopicCO') {
+                isactivity = true;
+
+                var gradetopics = [];
+                for (var m = 0; m < alldata.Content.Modules.length; m++) {
+                    gradetopics = findContentTopicsAll("TopicId", commitem.Data.AssociatedEntity.AssociatedEntityId, alldata.Content.Modules[m], gradetopics);
+                }
+
+                if (gradetopics.length === 1) {
+                    if (gradetopics[0].Topic.Type !== undefined) {
+                        if (gradetopics[0].Topic.Type === "Discussion") {
+                            isdiscussion = true;
+                        }
+                    }
+
+                    if (gradetopics[0].Topic.GradeItemId !== null) {
+                        //console.log(gradetopics[0])
+                        isevaluation = true;
+                    }
+
+                    //console.log(gradetopics[0]);
+
+                }
+            }
+        }
+    }
+
+    commstring += '<tr class="scheduledateitem displayblock-' + commitem.Type + '">';
+
+    //console.log(commitem);
+
+    if (isactivity) {
+        if (isevaluation) {
+            //commstring += '<th class="tdlabel d-none d-md-table-cell">Evaluation</th>';
+        } else {
+            //commstring += '<th class="tdlabel d-none d-md-table-cell">Activity</th>'; 
+        }
+
+    } else {
+        //commstring += '<th class="tdlabel d-none d-md-table-cell">Communication</th>';
+    }
+
+    commstring += '<td class="tdcontent">';
+
+    if (isactivity) {
+        commstring += '<div class="assessbox assesstype-ContentTopic">';
+    } else {
+        commstring += '<div class="assessbox assesstype-' + commitem.Type + '">';
+    }
+
+    commstring += '<p>';
+    if (commitem.URL !== "") {
+        commstring += '<a href="' + commitem.URL + '" target="_blank">' + cname + ' <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>';
+    } else {
+        commstring += cname;
+    }
+
+    commstring += '<ul>';
+
+    if (commitem.Type === 'Announcement') {
+        if (sortdate === undefined) {
+            sortdate = commitem.StartDate;
+        }
+        commstring += '<li>Posted: ' + commitem.StartDate + '</li>';
+    }
+    if (commitem.Type === 'CalendarEvent') {
+
+        var onetime = false;
+        if ((commitem.StartDate !== null) && (commitem.EndDate !== null)) {
+            if (commitem.StartDate.getTime() === commitem.EndDate.getTime()) {
+                onetime = true;
+            }
+        }
+
+        if (onetime) {
+            sortdate = commitem.EndDate;
+            if (commitem.URL !== "") {
+                var dstring = commitem.EndDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(commitem.EndDate);
+                
+                commstring += '<li><strong>Due Date: ' + dstring + '</strong></li>';
+            } else {
+                var dstring = commitem.EndDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(commitem.EndDate);
+                
+                commstring += '<li><strong>Date: ' + dstring + '</strong></li>';
+            }
+        } else {
+            if (commitem.StartDate !== null) {
+                if (sortdate === undefined) {
+                    sortdate = commitem.StartDate;
+                }
+                var dstring = commitem.StartDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(commitem.StartDate);
+                commstring += '<li>Start Date: ' + dstring + '</li>';
+            }
+            if (commitem.EndDate !== null) {
+                if (sortdate === undefined) {
+                    sortdate = commitem.EndDate;
+                }
+                var dstring = commitem.EndDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(commitem.EndDate);
+                commstring += '<li>Due Date: ' + dstring + '</li>';
+            }
+        }
+
+    }
+    commstring += '</ul>';
+    commstring += '</div>';
+    commstring += '</td>';
+    commstring += '</tr>';
+
+    if (isdiscussion) {
+        var robj = {
+            HTML: commstring,
+            StartDateTime: sortdate,
+            IsDiscussion: isdiscussion,
+            GradeItem: gradetopics[0].Topic.GradeItemId
+        }
+    } else {
+        var robj = {
+            HTML: commstring,
+            StartDateTime: sortdate,
+            IsDiscussion: isdiscussion,
+        }
+    }
+
+    return robj;
+}
+
+
+function generateAssessString(assessitem, wobj, isgraded) {
+    //console.log(assessitem);
+    //console.log(wobj);
+    var sortdate;
+
+    var assessname = assessitem.Name;
+
+
+    var assessstring = '<tr class="scheduledateitem assessment-' + assessitem.ItemId + ' displayblock-' + assessitem.Type + '">';
+    if (isgraded) {
+        if (alldata.GradeSetup.GradingSystem !== 'Formula') {
+            /*
+            var weightstring;
+            for (var g1 = 0; g1 < CSVal.thiscourse.GradeData.Array.length; g1++) {
+                if (CSVal.thiscourse.GradeData.Array[g1].Type === "Item") {
+                    var thisgrade = CSVal.thiscourse.GradeData.Array[g1];
+                    if (gid === thisgrade.Id) {
+                        weightstring = thisgrade.Weight;
+                    }
+                } else {
+                    for (var g2 = 0; g2 < CSVal.thiscourse.GradeData.Array[g1].Grades.length; g2++) {
+                        var thisgrade = CSVal.thiscourse.GradeData.Array[g1].Grades[g2];
+                        if (gid === thisgrade.Id) {
+                            if(thisgrade.WeightDrop !== undefined) {
+                                weightstring = '0% or ' + parseFloat(thisgrade.WeightDrop).toFixed(2);
+                            }
+                            else {
+                                weightstring = parseFloat(thisgrade.WeightO).toFixed(2);
+                            }                            
+                        }
+                    }
+                }
+            }
+
+            if (weightstring !== undefined) {
+                weightstring += '';
+                if(weightstring.indexOf('.') > -1) {
+                    var decindex = weightstring.indexOf('.');
+                    var decvalue = weightstring.slice(decindex + 1);
+                    //console.log(decvalue);
+                    if (decvalue === '00') {
+                        weightstring = weightstring.slice(0, decindex);
+                    }
+                }
+                weightstring = weightstring + '%';
+                if (assessname.indexOf(weightstring) === -1) {
+                    assessname += ' (' + weightstring + ')';
+                }
+            }
+            
+            */
+        }
+        //assessstring += '<th class="tdlabel d-none d-md-table-cell">Evaluation</th>';
+        assessstring += '<td class="tdcontent">';
+    } else {
+        //assessstring += '<th class="tdlabel d-none d-md-table-cell">Activity</th>';
+        assessstring += '<td class="tdcontent">';
+    }
+
+    assessstring += '<div class="assessbox assesstype-' + assessitem.Type + '">';
+    assessstring += '<p>';
+    var addlink = true;
+
+    if (studentroles.indexOf(alldata.CurrentRole) > -1) {
+        if (assessitem.Data.IsHidden !== undefined) {
+            if (assessitem.Data.IsHidden) {
+                addlink = false;
+            }
+        }
+        if (assessitem.Data.IsHidden !== undefined) {
+            if (assessitem.Data.IsHidden) {
+                addlink = false;
+            }
+        }
+        var tdate = new Date();
+        if ((assessitem.Type === "Assignment") || (assessitem.Type === "DiscussionTopic")) {
+            if (assessitem.StartDate !== null) {
+                if (assessitem.StartDate > tdate) {
+                    addlink = false;
+                }
+            }
+            if (assessitem.EndDate !== null) {
+                if (assessitem.EndDate < tdate) {
+                    addlink = false;
+                }
+            }
+        }
+    }
+    else if(observeroles.indexOf(alldata.CurrentRole) > -1) {
+        addlink = false;
+    }
+
+    if (addlink) {
+        if(assessitem.URL !== "") {
+            assessstring += '<a href="' + assessitem.URL + '" target="_blank">' + assessname + ' <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>';
+        }
+        else {
+            assessstring += assessname;
+        }
+    } else {
+        assessstring += assessname;
+    }
+
+    var datefound = false;
+    var datearray = [];
+
+    if (assessitem.StartDate !== null) {
+        if ((assessitem.StartDate >= wobj.StartDate) && (assessitem.StartDate <= wobj.EndDate)) {
+            if (sortdate === undefined) {
+                sortdate = assessitem.StartDate;
+            }
+            var dstring = assessitem.StartDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.StartDate);
+            
+            datearray.push('<strong>Start Date: (' + getItemWeekNum(assessitem.StartDate) + ') ' + dstring + '</strong>');
+        } else {
+            var dstring = assessitem.StartDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.StartDate);
+            datearray.push('Start Date: (' + getItemWeekNum(assessitem.StartDate) + ') ' + dstring);
+        }
+    }
+
+    //console.log(assessitem.Type);
+
+    if ((assessitem.Type === 'Assignment') || (assessitem.Type === 'Quiz') || (assessitem.Type === 'ChecklistItem')) {
+        var hasend = false;
+        if (assessitem.DueDate !== null) {
+            hasend = true;
+            if ((assessitem.DueDate >= wobj.StartDate) && (assessitem.DueDate <= wobj.EndDate)) {
+                if (sortdate === undefined) {
+                    sortdate = assessitem.DueDate;
+                }
+                var dstring = assessitem.DueDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.DueDate);
+                datearray.push('<strong>Due Date: (' + getItemWeekNum(assessitem.DueDate) + ') ' + dstring + '</strong>');
+            } else {
+                var dstring = assessitem.DueDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.DueDate);
+                datearray.push('Due Date: (' + getItemWeekNum(assessitem.DueDate) + ') ' + dstring);            
+            }
+        }
+        if (!hasend) {
+            if (assessitem.EndDate !== null) {
+                if ((assessitem.EndDate >= wobj.StartDate) && (assessitem.EndDate <= wobj.EndDate)) {
+                    if (sortdate === undefined) {
+                        sortdate = assessitem.EndDate;
+                    }
+                    var dstring = assessitem.EndDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.EndDate);
+                    datearray.push('<strong>Due Date: (' + getItemWeekNum(assessitem.EndDate) + ') ' + dstring + '</strong>');
+                } else {
+                    var dstring = assessitem.EndDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.EndDate);
+                    datearray.push('Due Date: (' + getItemWeekNum(assessitem.EndDate) + ') ' + dstring);                                     
+                }
+            }
+        }
+    }
+    if ((assessitem.Type === 'ContentTopic') || assessitem.Type === 'ContentModule') {
+        //console.log(assessitem);   
+        var hasend = false;
+        if (assessitem.DueDate !== undefined) {
+            if (assessitem.DueDate !== null) {
+                hasend = true;
+                if ((assessitem.DueDate >= wobj.StartDate) && (assessitem.DueDate <= wobj.EndDate)) {
+                    if (sortdate === undefined) {
+                        sortdate = assessitem.DueDate;
+                    }
+                    var dstring = assessitem.DueDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.DueDate);
+                    datearray.push('<strong>Due Date: (' + getItemWeekNum(assessitem.DueDate) + ') ' + dstring + '</strong>');
+                } else {
+                    var dstring = assessitem.DueDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.DueDate);
+                    datearray.push('Due Date: (' + getItemWeekNum(assessitem.DueDate) + ') ' + dstring);
+                }
+            }
+        }
+        if (!hasend) {
+            if (assessitem.EndDate !== null) {
+                if ((assessitem.EndDate >= wobj.StartDate) && (assessitem.EndDate <= wobj.EndDate)) {
+                    if (sortdate === undefined) {
+                        sortdate = assessitem.EndDate;
+                    }
+                    var dstring = assessitem.EndDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.EndDate);
+                    datearray.push('<strong>Due Date: (' + getItemWeekNum(assessitem.EndDate) + ') ' + dstring + '</strong>');
+                } else {
+                    var dstring = assessitem.EndDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.EndDate);
+                    datearray.push('Due Date: (' + getItemWeekNum(assessitem.EndDate) + ') ' + dstring);
+                }
+            }
+        }
+    }
+    if (assessitem.Type === 'DiscussionForum') {
+        //console.log(assessitem);
+        if (assessitem.EndDate !== null) {
+            if ((assessitem.EndDate >= wobj.StartDate) && (assessitem.EndDate <= wobj.EndDate)) {
+                if (sortdate === undefined) {
+                    sortdate = assessitem.EndDate;
+                }
+                var dstring = assessitem.EndDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.EndDate);
+                datearray.push('<strong>Due Date: (' + getItemWeekNum(assessitem.EndDate) + ') ' + dstring + '</strong>');
+            } else {
+                var dstring = assessitem.EndDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.EndDate);
+                datearray.push('Due Date: (' + getItemWeekNum(assessitem.EndDate) + ') ' + dstring);    
+            }
+        }
+        if (assessitem.PostStartDate !== null) {
+            if ((assessitem.PostStartDate >= wobj.StartDate) && (assessitem.PostStartDate <= wobj.EndDate)) {
+                if (sortdate === undefined) {
+                    sortdate = assessitem.PostStartDate;
+                }
+                datearray.push('<strong>Start Date (Forum - Posting): ' + assessitem.PostStartDate + '</strong>');
+            } else {
+                datearray.push('Start Date (Forum - Posting): ' + assessitem.PostStartDate);
+            }
+        }
+        if (assessitem.PostEndDate !== null) {
+            if ((assessitem.PostEndDate >= wobj.StartDate) && (assessitem.PostEndDate <= wobj.EndDate)) {
+                if (sortdate === undefined) {
+                    sortdate = assessitem.PostEndDate;
+                }
+                datearray.push('<strong>End Date (Forum - Posting): ' + assessitem.PostEndDate + '</strong>');
+            } else {
+                datearray.push('End Date (Forum - Posting): ' + assessitem.PostEndDate);
+            }
+        }
+    }
+    if (assessitem.Type === 'DiscussionTopic') {
+        //console.log(assessitem);
+        if (assessitem.UnlockStartDate !== null) {
+            if ((assessitem.UnlockStartDate >= wobj.StartDate) && (assessitem.UnlockStartDate <= wobj.EndDate)) {
+                if (sortdate === undefined) {
+                    sortdate = assessitem.UnlockStartDate;
+                }
+                datearray.push('<strong>Start Date (Topic - Unlock): ' + assessitem.UnlockStartDate + '</strong>');
+            } else {
+                datearray.push('Start Date (Topic - Unlock): ' + assessitem.UnlockStartDate);
+            }
+        }
+        if (assessitem.EndDate !== null) {
+            if ((assessitem.EndDate >= wobj.StartDate) && (assessitem.EndDate <= wobj.EndDate)) {
+                if (sortdate === undefined) {
+                    sortdate = assessitem.EndDate;
+                }
+                var dstring = assessitem.EndDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.EndDate);
+                datearray.push('<strong>Due Date: (' + getItemWeekNum(assessitem.EndDate) + ') ' + dstring + '</strong>');
+            } else {
+                var dstring = assessitem.EndDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.EndDate);
+                datearray.push('Due Date: (' + getItemWeekNum(assessitem.EndDate) + ') ' + dstring);
+            }
+        } else {
+            if (assessitem.UnlockEndDate !== null) {
+                if ((assessitem.UnlockEndDate >= wobj.StartDate) && (assessitem.UnlockEndDate <= wobj.EndDate)) {
+                    if (sortdate === undefined) {
+                        sortdate = assessitem.UnlockEndDate;
+                    }
+                    var dstring = assessitem.UnlockEndDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.UnlockEndDate);
+                    datearray.push('<strong>Due Date: (' + getItemWeekNum(assessitem.UnlockEndDate) + ') ' + dstring + '</strong>');
+                } else {
+                    var dstring = assessitem.UnlockEndDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.UnlockEndDate);
+                    
+                    if(assessitem.UnlockEndDate < wobj.StartDate) {
+                        datearray.push('Due Date: (Previous Week) ' + dstring);
+                    }
+                    else {
+                        datearray.push('Due Date: (Upcoming Week) ' + dstring);
+                    }
+                }
+            }
+        }
+    }
+    if (assessitem.Type === 'GradeItem') {
+        if (assessitem.EndDate !== null) {
+            if (sortdate === undefined) {
+                sortdate = assessitem.EndDate;
+            }
+            var dstring = assessitem.EndDate.toLocaleDateString('en-us', { weekday:"long", year:"numeric", month:"long", day:"numeric"}) + ", " + formatAMPM(assessitem.EndDate);
+            datearray.push('<strong>Due Date: ' + dstring + '</strong>');
+        }
+    }
+
+    if (datearray.length > 0) {
+        assessstring += '<ul>';
+        for (var da = 0; da < datearray.length; da++) {
+            assessstring += '<li>' + datearray[da] + '</li>';
+        }
+        assessstring += '</ul>';
+    }
+    assessstring += '</p>';
+    assessstring += '</div>';
+    assessstring += '</td></tr>';
+
+    var robj = {
+        HTML: assessstring,
+        StartDateTime: sortdate
+    }
+    return robj;
+}
+
+
+function processDateTypes() {
+
+    if (alldata.Schedule !== undefined) {
+        for (var s = 0; s < alldata.Schedule.length; s++) {
+            alldata.Schedule[s].Associations.SortByDate = [];
+            alldata.Schedule[s].Associations.IsGraded = [];
+            alldata.Schedule[s].Associations.Activity = [];
+            alldata.Schedule[s].Associations.IsDiscussion = [];
+            if (alldata.Schedule[s].Associations.Assessment.length > 0) {
+                for (var aa = 0; aa < alldata.Schedule[s].Associations.Assessment.length; aa++) {
+                    var assessitem = alldata.Schedule[s].Associations.Assessment[aa];
+
+                    var gid = -1;
+                    if (assessitem.Data.gradeItemId !== undefined) {
+                        if (assessitem.Data.gradeItemId !== null) {
+                            gid = assessitem.Data.gradeItemId;
+                        }
+                    }
+                    if (assessitem.Data.GradeItemId !== undefined) {
+                        if (assessitem.Data.GradeItemId !== null) {
+                            gid = assessitem.Data.GradeItemId;
+                        }
+                    }
+                    if (assessitem.Type === 'GradeItem') {
+                        gid = assessitem.ItemId;
+                    }
+
+                    if (gid > -1) {
+                        var assesshtml = generateAssessString(assessitem, alldata.Schedule[s], true);
+                    } else {
+                        var assesshtml = generateAssessString(assessitem, alldata.Schedule[s], false);
+                    }
+
+                    alldata.Schedule[s].Associations.SortByDate.push(assesshtml);
+
+                    if (gid > -1) {
+                        alldata.Schedule[s].Associations.IsGraded.push(assesshtml);
+                    } else {
+                        alldata.Schedule[s].Associations.Activity.push(assesshtml);
+                    }
+
+                }
+            }
+            if (alldata.Schedule[s].Associations.Communication.length > 0) {
+                for (var ac = 0; ac < alldata.Schedule[s].Associations.Communication.length; ac++) {
+                    var thiscomm = alldata.Schedule[s].Associations.Communication[ac];
+                    var issynch = false;
+                    var synchdex = -1;
+                    for (var sy = 0; sy < alldata.Synchronous.length; sy++) {
+                        if (thiscomm.ItemId === alldata.Synchronous[sy].event.CalendarEventId) {
+                            issynch = true;
+                            synchdex = sy;
+                            break;
+                        }
+                    }
+
+                    if (!issynch) {
+                        var commobj = generateCommString(thiscomm);
+                        if (commobj.IsDiscussion) {
+                            alldata.Schedule[s].Associations.IsDiscussion.push(commobj);
+                        } else {
+                            alldata.Schedule[s].Associations.SortByDate.push(commobj);
+                        }
+                    }
+                }
+            }
+
+            if (alldata.Schedule[s].Synchronous.length > 0) {
+                for (var z = 0; z < alldata.Schedule[s].Synchronous.length; z++) {
+                    var dateobj = zoomDateInfo(alldata.Schedule[s].Synchronous[z].event);
+                    //console.log(dateobj);
+
+                    var om_html = '';
+                    om_html += '<tr class="scheduledateitem">';
+                    //om_html += '<th class="tdlabel d-none d-md-table-cell">Online Meeting</th>';
+                    om_html += '<td class="tdcontent">';
+                    om_html += '<div class="assessbox assesstype-CalendarEvent">'
+                    om_html += '<p><a href="' + alldata.Schedule[s].Synchronous[z].href + '" target="_blank">' + alldata.Schedule[s].Synchronous[z].event.Title + ' <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a></p>';
+                    om_html += '<ul>';
+                    om_html += '<li><strong>Online Meeting: ' + dateobj.DateString + ', ' + dateobj.TimeRange + '</strong></li>';
+                    om_html += '</ul>';
+                    om_html += '</div>';
+                    om_html += '</td>';
+
+                    var robj = {
+                        HTML: om_html,
+                        StartDateTime: alldata.Schedule[s].Synchronous[z].event.StartDateTime
+                    }
+                    alldata.Schedule[s].Associations.SortByDate.push(robj);
+
+                }
+            }
+
+            alldata.Schedule[s].Associations.SortByDate.sort(dateSort);
+            alldata.Schedule[s].Associations.IsGraded.sort(dateSort);
+            alldata.Schedule[s].Associations.Activity.sort(dateSort);
+            //console.log(alldata.Schedule[s].Associations.SortByDate);
+        }
+    }
+
+}
+
+
+function processCalendarDesc() {
+
+    alldata.Synchronous = [];
+
+    for (var c = 0; c < alldata.CalendarAll.length; c++) {
+
+        var withincourse = true;
+        if (alldata.CourseOffering.StartDate !== null) {
+            var checkstart = new Date(alldata.CourseOffering.StartDate);
+            if (alldata.CalendarAll[c].EndDateTime < checkstart) {
+                withincourse = false;
+            }
+        }
+
+        if (alldata.CourseOffering.EndDate !== null) {
+            var checkend = new Date(alldata.CourseOffering.EndDate);
+            if (alldata.CalendarAll[c].EndDateTime > checkend) {
+                withincourse = false;
+            }
+        }
+
+        if (withincourse) {
+            if (alldata.CalendarAll[c].Description !== "") {
+                var thishtml = $.parseHTML(alldata.CalendarAll[c].Description);
+                //console.log(thishtml);
+
+                var afound = $(thishtml).find("a");
+                //console.log(afound);
+
+                var azoomhref = "";
+                for (var a = 0; a < afound.length; a++) {
+                    if ((afound[a].href.indexOf("conestogac.zoom.us/j/") > -1) ||
+                        (afound[a].href.indexOf("conestogac.zoom.us/s/") > -1) ||
+                        (afound[a].href.indexOf("conestogac.zoom.us%2Fj%2F") > -1) ||
+                        (afound[a].href.indexOf("conestogac.zoom.us/my/") > -1) ||
+                        (afound[a].href.indexOf("conestogac.zoom.us/meeting/") > -1) ||
+                        ((afound[a].href.indexOf("teams.microsoft.com") > -1) && (afound[a].href.indexOf("meetup-join") > -1))
+                    ) {
+                        if(afound[a].href.indexOf("/ics?") === -1) {
+                            azoomhref = afound[a].href;
+                            break;
+                        }
+                    }
+                }
+
+                if (azoomhref !== "") {
+                    var zoomlink = {
+                        "href": azoomhref,
+                        "event": alldata.CalendarAll[c]
+                    }
+                    alldata.Synchronous.push(zoomlink);
+                }
+            }
+        }
+    }
+}
+
+
+function processGradeMatching() {
+    for(var gi=0; gi<alldata.GradeItems.Objects.length; gi++) {
+        var thisgradeitem = alldata.GradeItems.Objects[gi];
+        if(thisgradeitem.AssociatedTool === null) {
+            var titletopics = [];
+            for (var m = 0; m < alldata.Content.Modules.length; m++) {
+                titletopics = findContentTopicsAll("Title", thisgradeitem.Name, alldata.Content.Modules[m], titletopics);
+            }
+            if(titletopics.length > 0) {
+                for(var tt=0; tt<titletopics.length; tt++) {
+                    //only watch exact title matches
+                    if(titletopics[tt].Topic.Title === thisgradeitem.Name) {
+                        var hasdates = false;
+                        if(titletopics[tt].Topic.StartDateTime !== null) {
+                            hasdates = true;
+                        }
+                        if(titletopics[tt].Topic.EndDateTime !== null) {
+                            hasdates = true;
+                        }
+                        if(titletopics[tt].Topic.DueDateTime !== undefined) {
+                            if(titletopics[tt].Topic.DueDateTime !== null) {
+                                hasdates = true;
+                                titletopics[tt].Topic.EndDateTime = titletopics[tt].Topic.DueDateTime;
+                            }
+                        }
+                        if(hasdates) {
+                            thisgradeitem.AssociatedTool = {
+                                ToolId: titletopics[tt].Topic.ToolId,
+                                ToolItemId: titletopics[tt].Topic.ToolItemId
+                            }
+                            titletopics[tt].Topic.GradeItemId = thisgradeitem.Id
+                            break;
+                        }                        
+                    }
+                }
+            }
+            //console.log(titletopics);
+        }
+    }
+}
+
+
+var thispagedata;
+var omissing = [];
+var coursedatesdone = false;
+function buildCourseDates() {
+
+    //console.log("processing");
+
+    var manualweeks = -1;
+    if (alldata.InstructionalPlan.Data !== null) {
+
+        thispagedata = alldata.InstructionalPlan.Data;
+
+        if (thispagedata.StartDateMod !== undefined) {
+
+            var dataok_week = false;
+            var dataok_num = false;
+            if (thispagedata.StartDateMod.WeekDate !== undefined) {
+
+                var checkdate_s = new Date(alldata.CourseOffering.StartDate);
+                var checkdate_e = new Date(alldata.CourseOffering.EndDate);
+                var checkdate = new Date(thispagedata.StartDateMod.WeekDate);
+                if ((checkdate >= checkdate_s) && (checkdate <= checkdate_e)) {
+                    dataok_week = true;
+                    alldata.CourseOffering.StartDate = thispagedata.StartDateMod.WeekDate;
+                }
+            }
+
+            if (dataok_week) {
+                if (thispagedata.StartDateMod.WeekNum !== undefined) {
+                    // Need to add extra check to make sure Weeks doesn't run past end date of course.
+                    if (thispagedata.StartDateMod.WeekNum > -1) {
+                        dataok_num = true;
+                        manualweeks = thispagedata.StartDateMod.WeekNum;
+                    }
+                }
+            }
+        }
+    }
+    
+    omissing = [];
+    //console.log(alldata.Outline);
+    if (alldata.Outline.length > 0) {
+        alldata.Outline[0].ListOutcomes = [];
+
+        //console.log(alldata.Outline);
+        alldata.Outline[0].UnitOutcomes.sort(compareOutcomes);
+        for (var o1 = 0; o1 < alldata.Outline[0].UnitOutcomes.length; o1++) {
+            var thisoutcome = alldata.Outline[0].UnitOutcomes[o1];
+            processOutcomeData(thisoutcome, thisoutcome.Description, o1);
+        }
+    }    
+    
+
+    processCalendarDesc();
+    processCourseDates();
+
+    if (manualweeks > -1) {
+        processCourseSchedule(manualweeks);
+    } else {
+        processCourseSchedule();
+    }
+    processDateTypes();
+ 
+
+    var tdate = new Date();
+    var thisweek;
+
+    if (alldata.Schedule !== undefined) {
+        for (var cs = 0; cs < alldata.Schedule.length; cs++) {
+
+            var weekcheck = alldata.Schedule[cs];
+            if ((tdate >= weekcheck.StartDate) && (tdate < weekcheck.EndDate)) {
+                thisweek = weekcheck;
+                break;
+            }
+        }
+    }
+
+    if (thisweek !== undefined) {
+        displayCourseDates(thisweek);
+        alldata.CurrentWeek = thisweek.WeekNum;
+    }
+    else {
+        if(alldata.Schedule.length > 0) {
+            displayCourseDates(alldata.Schedule[0]);
+            alldata.CurrentWeek = alldata.Schedule[0].WeekNum; 
+        }
+    }
+    
+    //console.log(omissing);
+    coursedatesdone = true;
+    updateWidgetDataAuto();
+
+    $('.weekly-carousel-controls .carousel-previous').attr('onClick', 'weekNavPrev()');
+    $('.weekly-carousel-controls .carousel-next').attr('onClick', 'weekNavNext()');
+    $('.weekly-carousel-controls .carousel-previous').removeAttr('disabled');
+    $('.weekly-carousel-controls .carousel-next').removeAttr('disabled');
+
+}
+
+
+function showThisWeekActivities() {
+    
+    var activepanel = $('.cc-homepage-content.active');
+    //console.log(activepanel);
+    
+    var activeclass;
+    if($(activepanel).hasClass('instructor-content')) {
+        activeclass = "instructor-content";
+    }
+    if($(activepanel).hasClass('student-content')) {
+        activeclass = "student-content";
+    }
+
+    var thisweek;
+    if (alldata.CurrentWeek !== undefined) {
+        for (var s = 0; s < alldata.Schedule.length; s++) {
+            if (alldata.Schedule[s].WeekNum === alldata.CurrentWeek) {
+                thisweek = alldata.Schedule[s];
+            }
+        }
+
+        var thisweekdates = "";
+
+        thisweekdates += "<table>";
+        thisweekdates += "<tbody>";
+
+        for (var twd = 0; twd < thisweek.Associations.SortByDate.length; twd++) {
+            thisweekdates += thisweek.Associations.SortByDate[twd].HTML;
+        }
+
+        thisweekdates += "</tbody>";
+        thisweekdates += "</table>";
+
+        $('.' + activeclass + ' .collapseThisWeekActivities .card-body').html(thisweekdates);
+        $('.' + activeclass + ' .collapseThisWeekActivities').collapse('toggle');
+
+        var currentstate = $('.comingup-weekdatesall .management-button').attr('aria-expanded');
+        //console.log(currentstate);
+        if (currentstate === "false") {
+            $('.' + activeclass + ' .comingup-weekdatesall .management-button').attr('aria-expanded', 'true');
+        } else {
+            $('.' + activeclass + ' .comingup-weekdatesall .management-button').attr('aria-expanded', 'false');
+        }
+
+    }
+
+    //frameHeight();
+
+}
+
+function showThisWeekOutcomes() {
+
+    var thisweek;
+    if (alldata.CurrentWeek !== undefined) {
+        for (var s = 0; s < alldata.Schedule.length; s++) {
+            if (alldata.Schedule[s].WeekNum === alldata.CurrentWeek) {
+                thisweek = alldata.Schedule[s];
+            }
+        }
+
+        var thisweekoutcomes = "";
+        thisweekoutcomes += "<ul>";
+        thisweekoutcomes += thisweek.Outcomes.ohtml;
+        thisweekoutcomes += "</ul>";
+
+        $('#unitOutcomesModal .modal-body').html(thisweekoutcomes);
+        $('#unitOutcomesModal').modal('toggle');
+
+    }
+
+    //frameHeight();
+}
+
+function displayCourseDates(thisweek) {
+
+    //console.log(thisweek);
+    var weektitle = '';
+
+    $('.thisweek-start').text("Start: " + thisweek.StartDate.toLocaleDateString('en-us', { weekday: "long", year: "numeric", month: "long", day: "numeric" }));
+    $('.thisweek-start').attr('data-date', thisweek.StartDate.toISOString());
+    $('.thisweek-end').text("End: " + thisweek.EndDate.toLocaleDateString('en-us', { weekday: "long", year: "numeric", month: "long", day: "numeric" }));
+    $('.thisweek-end').attr('data-date', thisweek.EndDate.toISOString());
+
+    var weekdatecount = thisweek.Associations.SortByDate.length;
+    $('.comingup-weekdatesall .management-count').text(weekdatecount);
+
+    if (weekdatecount > 0) {
+        $('.comingup-weekdatesall').attr('href', 'javascript:showThisWeekActivities()');
+        $('.comingup-weekdatesall').removeAttr('disabled');
+        $('.comingup-weekdatesall').addClass('active');
+    } else {
+        $('.comingup-weekdatesall').removeAttr('href');
+        $('.comingup-weekdatesall').attr('disabled', 'disabled');
+        $('.comingup-weekdatesall').removeClass('active');
+    }
+
+    $('.thisweek-events').removeClass('d-none');
+    
+    /*
+    $('.thisweek-isgraded .week-tile-badge').text(thisweek.Associations.IsGraded.length);
+    if(thisweek.Associations.IsGraded.length > 0) {
+        $('.thisweek-isgraded').attr('href','javascript:showThisWeekGraded()');
+        $('.thisweek-isgraded').removeAttr('disabled');
+    }
+    else {
+        $('.thisweek-isgraded').removeAttr('href');
+        $('.thisweek-isgraded').attr('disabled','disabled');
+    }
+    
+    $('.thisweek-activity .week-tile-badge').text(thisweek.Associations.Activity.length);
+    if(thisweek.Associations.Activity.length > 0) {
+        $('.thisweek-activity').attr('href','javascript:showThisWeekActivities()');
+        $('.thisweek-activity').removeAttr('disabled');
+    }
+    else {
+        $('.thisweek-activity').removeAttr('href');
+        $('.thisweek-activity').attr('disabled','disabled');
+    }    
+    */
+
+    $('.thisweek-desc').html('');
+    $('.thisweek-content-links').html('');
+    $('.thisweek-content-progress').html('');
+    $('.thisweek-delivery').addClass('d-none');
+    $('.thisweek-outcomes').addClass('d-none');
+
+    var thisdata;
+    var dynamicmodule = false;
+    if (alldata.InstructionalPlan.Data !== null) {
+        for (var ips = 0; ips < alldata.InstructionalPlan.Data.Schedule.length; ips++) {
+            var ipweekcheck = alldata.InstructionalPlan.Data.Schedule[ips];
+            if (ipweekcheck.WeekNum === thisweek.WeekNum) {
+                thisdata = ipweekcheck;
+                break;
+            }
+        }
+    }
+    if (thisdata !== undefined) {
+        if (thisdata.Delivery.length > 0) {
+            var deliverytext = 'Delivery: ';
+            for (var tdd = 0; tdd < thisdata.Delivery.length; tdd++) {
+                var thisdelivery = thisdata.Delivery[tdd];
+                deliverytext += thisdelivery;
+                if (tdd < (thisdata.Delivery.length - 1)) {
+                    deliverytext += ', ';
+                }
+            }
+            $('.thisweek-delivery').text(deliverytext);
+            $('.thisweek-delivery').removeClass('d-none');
+        }                
+        if (thisdata.Outcomes.length > 0) {
+            var ofound = false;
+            thisweek.Outcomes = generateOutcomeString(thisweek.WeekNum);
+            if(thisweek.Outcomes !== undefined) {
+                if(thisweek.Outcomes !== null) {
+                    if(thisweek.Outcomes.ofound > 0) {
+                        ofound = true;
+                        $('.comingup-outcomesall .management-count').text(thisdata.Outcomes.length);
+                        $('.comingup-outcomesall').attr('href', 'javascript:showThisWeekOutcomes()');
+                        $('.comingup-outcomesall').removeAttr('disabled');
+                        $('.comingup-outcomesall').addClass('active');                                    
+                        $('.thisweek-outcomes').removeClass('d-none');
+                    }
+                }
+            }
+            if(!ofound) {
+                $('.comingup-outcomesall').removeAttr('href');
+                $('.comingup-outcomesall').attr('disabled', 'disabled');
+                $('.comingup-outcomesall').removeClass('active');                
+            }
+        } else {
+            thisweek.Outcomes = null;
+            $('.comingup-outcomesall').removeAttr('href');
+            $('.comingup-outcomesall').attr('disabled', 'disabled');
+            $('.comingup-outcomesall').removeClass('active');
+        }
+
+        if(alldata.InstructionalPlan.Data.ToolSwitch !== undefined) {
+            if(alldata.InstructionalPlan.Data.ToolSwitch.ModuleDescription !== undefined) {
+                if(alldata.InstructionalPlan.Data.ToolSwitch.ModuleDescription === false) {
+                    if (thisdata.Description !== '') {
+                        $('.thisweek-desc').html(thisdata.Description);
+                    }                    
+                }
+                else {
+                    dynamicmodule = true;
+                }
+            }
+        }
+    }
+
+    if (thisweek.Modules.length > 0) {
+        
+        var thisweeknoparent = [];
+        
+        for (var twm = 0; twm < thisweek.Modules.length; twm++) {
+            var thismod = thisweek.Modules[twm];
+            if(thismod.Parents === undefined) {
+                thisweeknoparent.push(thismod);
+            }
+        }
+        
+        if(thisweeknoparent.length === 0) {
+            for (var twm = 0; twm < thisweek.Modules.length; twm++) {
+                var thismod = thisweek.Modules[twm];
+                if(thismod.Parents !== undefined) {
+                    var foundparent = false;
+                    for(var twnp=0; twnp < thisweeknoparent.length; twnp++) {
+                        if(thismod.Parents.indexOf(thisweeknoparent[twnp].ModuleId) > -1) {
+                            foundparent = true;
+                        }
+                    }
+                    if(!foundparent) {
+                        thisweeknoparent.push(thismod);
+                    }
+                }
+            }
+        }
+        
+        //console.log(thisweeknoparent);
+        if(thisweeknoparent.length > 0) {
+            $('.thisweek-content').removeClass('d-none');
+            for(var twnp=0; twnp < thisweeknoparent.length; twnp++) {
+                var thismod = thisweeknoparent[twnp];
+                var newrow = '';
+                newrow += '<div class="row">';
+                newrow += '<div class="col-12">';
+                var newlink = '';
+                newlink += '<p><a href="/d2l/le/content/' + orgUnitId + '/Home?itemIdentifier=D2L.LE.Content.ContentObject.ModuleCO-' + thismod.ModuleId + '" class="cc-file" target="_blank">' + thismod.Title + ' <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a></p>';
+                newrow += newlink;
+                newrow += '</div>';
+                newrow += '<div class="col-12 text-center">';
+                var newprogress = '';  
+                if(alldata.CurrentRole === "Student") {                     
+                    var tdate = new Date();
+                    var mdate = new Date(thismod.StartDateTime);
+                    if(mdate <= tdate) {
+                        newprogress += '<div class="progress"><div class="progress-bar" role="progressbar" style="width: ' + thismod.Progress.Percentage + '%;" aria-valuenow="' + thismod.Progress.Percentage + '" aria-valuemin="0" aria-valuemax="100"></div></div>';
+                        newprogress += '<p class="mt-1">' + thismod.Progress.Read + ' out of ' + thismod.Progress.Total + ' content pages viewed</p>';
+                    }
+                    else {
+                        newprogress += '<p>This weekly content is not currently available to students.</p>';
+                    }
+                }
+                else {
+                    //newprogress += '<p>Students will see their content progress here.</p>';
+                }
+                newrow += newprogress;
+                newrow += '</div>';
+                $('.thisweek-content-links').append(newrow);
+                
+            }
+            
+            if (thisweeknoparent.length === 1) {
+                weektitle = '<span class="mobile-show">Week ' + thisweek.WeekNum + '</span><span class="mobile-hide">' + thisweeknoparent[0].Title + '</span>';
+                
+                if (dynamicmodule === true) {
+                    if (thisweeknoparent[0].Description !== null) {
+                        if (thisweeknoparent[0].Description.Text !== "") {
+                            var cleandesc = thisweek.Modules[0].Description.Html.replace(/(?:<style>((?:.*?\r?\n?)*)<\/style>)+|(?:<script>((?:.*?\r?\n?)*)<\/script>)+|(style=\"[^\"]*\")/g,"");
+                            //console.log(cleandesc);
+                            $('.thisweek-desc').html(cleandesc);
+                            $('.thisweek-desc img').each(function() {
+                                var oheight = $(this).attr('height');
+                                var owidth = $(this).attr('width');
+                                
+                                if(oheight !== undefined) {
+                                    if($.isNumeric(oheight)) {
+                                        if(oheight < 200) {
+                                            $(this).css({
+                                                "height":oheight+"px"
+                                            });
+                                        }
+                                    }
+                                }
+                                $(this).removeAttr("height");
+                                $(this).removeAttr("width");
+                            })
+
+                            //$('.thisweek-desc').html(thisweek.Modules[0].Description.Html);
+                        }
+                    }
+                }
+            }
+            else {
+                weektitle = 'Week ' + thisweek.WeekNum;
+            }
+        }
+
+    } else {
+        $('.thisweek-content').addClass('d-none');
+        weektitle = 'Week ' + thisweek.WeekNum;
+    }
+    
+    $('.week-header').html(weektitle) 
+    
+    var thisindex = -1;
+    for(var w=0; w<alldata.Schedule.length; w++) {
+        if(alldata.Schedule[w].WeekNum === thisweek.WeekNum) {
+            thisindex = w;
+        }
+    }
+    
+    //console.log(thisindex);
+    if(thisindex === 0) {
+        $('.weekly-carousel-controls .carousel-previous').addClass('disabled');
+        $('.weekly-carousel-controls .carousel-previous').attr('aria-disabled','true');
+    }
+    else {
+        $('.weekly-carousel-controls .carousel-previous').removeClass('disabled');
+        $('.weekly-carousel-controls .carousel-previous').removeAttr('aria-disabled');
+    }
+    if(thisindex === (alldata.Schedule.length-1)) {
+        $('.weekly-carousel-controls .carousel-next').addClass('disabled');
+        $('.weekly-carousel-controls .carousel-next').attr('aria-disabled','true');
+    }
+    else {
+        $('.weekly-carousel-controls .carousel-next').removeClass('disabled');
+        $('.weekly-carousel-controls .carousel-next').removeAttr('aria-disabled');
+    }
+ 
+}
+
+function weekNavNext() {
+
+    $('.collapseThisWeekGraded').collapse('hide');
+    $('.collapseThisWeekGraded .card-body').html('');
+    $('.collapseThisWeekActivities').collapse('hide');
+    $('.collapseThisWeekActivities .card-body').html('');
+
+    if (alldata.Schedule !== undefined) {
+        for (var s = 0; s < alldata.Schedule.length; s++) {
+            if (alldata.Schedule[s].WeekNum === alldata.CurrentWeek) {
+                if (s < (alldata.Schedule.length - 1)) {
+                    var weekshow = alldata.Schedule[s + 1];
+                    //console.log(weekshow);
+                    displayCourseDates(weekshow);
+                    alldata.CurrentWeek = weekshow.WeekNum;
+                }
+                break;
+            }
+        }
+    }
+
+    //frameHeight();
+}
+
+function weekNavPrev() {
+
+    $('.collapseThisWeekGraded').collapse('hide');
+    $('.collapseThisWeekGraded .card-body').html('');
+    $('.collapseThisWeekActivities').collapse('hide');
+    $('.collapseThisWeekActivities .card-body').html('');
+
+    for (var s = 0; s < alldata.Schedule.length; s++) {
+        if (alldata.Schedule[s].WeekNum === alldata.CurrentWeek) {
+            if (s > 0) {
+                var weekshow = alldata.Schedule[s - 1];
+                //console.log(weekshow);
+                displayCourseDates(weekshow);
+                alldata.CurrentWeek = weekshow.WeekNum;
+            }
+            break;
+        }
+    }
+
+    //frameHeight();
+}
+
+function wtd_date_sort(a, b) {
+    return new Date(a.DueDate).getTime() - new Date(b.DueDate).getTime();
+}
+
+var MonthAbbreviations_WTD = [
+	"Jan",
+	"Feb",
+	"Mar",
+	"Apr",
+	"May",
+	"Jun",
+	"Jul",
+	"Aug",
+	"Sep",
+	"Oct",
+	"Nov",
+	"Dec"
+]
+
+function initWorkToDo() {
+    
+    var tdate = new Date();
+    alldata.WorkToDo = [];
+    
+    for(var cd=0; cd<alldata.CourseCalendar.length; cd++) {
+        var thisitem = alldata.CourseCalendar[cd];
+        if(thisitem.Type === "Assignment") {
+            //if(!thisitem.Data.Submissions) {
+                var edata = getEndDate("Assignments", thisitem.Data);
+                var edate = edata.date;
+                if(edate !== null) {
+                    if(edate > tdate) {
+                        alldata.WorkToDo.push({
+                            DueDate: edate,
+                            DateLabel: edata.label,
+                            Type: "Assign",
+                            Object: thisitem.Data,
+                            Name: thisitem.Name,
+                            URL: thisitem.URL
+                        });
+                    }
+                }
+            //}
+        }
+        else if(thisitem.Type === "Quiz") {
+            //if(!thisitem.Data.Attempts) {
+                var edata = getEndDate("Quizzes", thisitem.Data);
+                var edate = edata.date;
+                if(edate !== null) {
+                    if(edate > tdate) {
+                        alldata.WorkToDo.push({
+                            DueDate: edate,
+                            DateLabel: edata.label,
+                            Type: "Quiz",
+                            Object: thisitem.Data,
+                            Name: thisitem.Name,
+                            URL: thisitem.URL
+                        })
+                    }
+                }
+            //}
+        }
+        /*
+        else if((thisitem.Type === "ContentTopic") || (thisitem.Type === "ContentModule")) {
+            var edate = thisitem.EndDate;
+            if(edate !== null) {
+                if(edate > tdate) {
+                    alldata.WorkToDo.push({
+                        DueDate: edate,
+                        Type: "Content",
+                        Object: thisitem.Data,
+                        Name: thisitem.Name,
+                        URL: thisitem.URL
+                    })
+                }
+            }
+        }
+        */
+        else if((thisitem.Type === "DiscussionForum") || (thisitem.Type === "DiscussionTopic")) {
+        //else if(thisitem.Type === "DiscussionTopic") {
+            var edate = thisitem.EndDate;
+            if(edate !== null) {
+                if(edate > tdate) {
+                    alldata.WorkToDo.push({
+                        DueDate: edate,
+                        DateLabel: "Ends",
+                        Type: "Discuss",
+                        Object: thisitem.Data,
+                        Name: thisitem.Name,
+                        URL: thisitem.URL
+                    })
+                }
+            }
+        }
+        else if(thisitem.Type === "ChecklistItem") {
+            var edate = thisitem.DueDate;
+            if(edate !== null) {
+                if(edate > tdate) {
+                    alldata.WorkToDo.push({
+                        DueDate: edate,                        
+                        DateLabel: "Due",
+                        Type: "Check",
+                        Object: thisitem.Data,
+                        Name: thisitem.Name,
+                        URL: thisitem.URL
+                    })
+                }
+            }
+        }
+        else if(thisitem.Type === "GradeItem") {
+            var edate = thisitem.EndDate;
+            if(edate !== null) {
+                if(edate > tdate) {
+                    alldata.WorkToDo.push({
+                        DueDate: edate,                        
+                        DateLabel: "Ends",
+                        Type: "Grade",
+                        Object: thisitem.Data,
+                        Name: thisitem.Name,
+                        URL: thisitem.URL
+                    })
+                }
+            }
+        }
+    }
+    
+    alldata.WorkToDo.sort(wtd_date_sort);
+    //console.log(alldata.WorkToDo);
+    $('.upcoming-item-full').on('click', function(){
+        $('a[data-target="#cc-coming-up-student"]')[0].click();
+    });
+    $('.upcoming-item-full').removeClass('d-none');
+    
+    $('.student-upcoming-items').html('');
+    
+    if(alldata.WorkToDo.length > 0) {
+        var wtd_num_to_show = Math.min(alldata.WorkToDo.length, 6);
+        
+        $('.upcoming-badge').text(wtd_num_to_show);
+        if(wtd_num_to_show > 1) {
+            $('.student-upcoming').addClass('view-more-mobile');
+            if(wtd_num_to_show > 2) {
+                $('.student-upcoming').addClass('view-more-tablet');
+            }
+        }
+        
+        for(var wtd=0; wtd<wtd_num_to_show; wtd++) {
+            var thisitem = alldata.WorkToDo[wtd];
+            var wtdhtml = '';
+            wtdhtml += '<div class="upcoming-item">';
+            wtdhtml += '<div class="upcoming-item-icon">';
+            if(thisitem.Type === "Quiz") {
+                wtdhtml += '<div class="cc-icon blue-bg calendar-quiz"></div>';
+            }
+            else if (thisitem.Type === "Assign") {
+                wtdhtml += '<div class="cc-icon blue-bg calendar-assignment"></div>';
+            }
+            else if (thisitem.Type === "Grade") {
+                wtdhtml += '<div class="cc-icon blue-bg calendar-grade"></div>';
+            }
+            else if (thisitem.Type === "Content") {
+                wtdhtml += '<div class="cc-icon blue-bg calendar-content"></div>';
+            }
+            else if (thisitem.Type === "Discuss") {
+                wtdhtml += '<div class="cc-icon blue-bg calendar-discussion"></div>';
+            }
+            else if (thisitem.Type === "Check") {
+                wtdhtml += '<div class="cc-icon blue-bg calendar-checklist"></div>';
+            }
+            wtdhtml += '</div>';
+            wtdhtml += '<div class="upcoming-item-content">';
+            
+            if(thisitem.URL !== '') {
+                wtdhtml += '<a href="'+thisitem.URL+'" class="upcoming-item-title" target="_blank">'+thisitem.Name+'</a>';
+            }
+            else {
+                wtdhtml += '<span><strong>'+thisitem.Name+'</strong></span>';
+            }            
+            
+            var datestring = MonthAbbreviations_WTD[thisitem.DueDate.getMonth()] + " " + thisitem.DueDate.getDate() + " " + thisitem.DueDate.getFullYear();
+            wtdhtml += '<span class="upcoming-item-date">'+thisitem.DateLabel+' '+datestring+'</span>';
+            wtdhtml += '</div>';
+            wtdhtml += '</div>';
+
+            $('.student-upcoming-items').append(wtdhtml);
+        }
+        
+        $('.upcoming-item-show-more').on('click',function() {
+            $('.upcoming-item').each(function(){
+                $(this).addClass('show-item');
+            })
+            $('.upcoming-item-show-more').addClass('d-none');
+        });
+    }
+    else {
+        $('.student-upcoming-items').html('<p>There are no upcoming items to display at this time.</p>');
+    }
+    
+    $('#student-upcoming .info-badge').on('click',function(){
+        $('#workToDoInfo').modal('show');
+    });        
+    
+    
+
+    /*
+        <div class="upcoming-item">
+            <div class="upcoming-item-icon">
+                <div class="cc-icon blue-bg calendar-quiz"></div>
+            </div>
+            <div class="upcoming-item-content">
+                <a href="" class="upcoming-item-title">Measurement Quiz</a>
+                <span class="upcoming-item-date">Due Jan 12 2024</span>
+            </div>
+        </div>   
+    */
+    
+}

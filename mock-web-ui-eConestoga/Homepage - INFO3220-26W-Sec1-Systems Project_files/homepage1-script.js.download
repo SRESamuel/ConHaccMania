@@ -1,0 +1,889 @@
+//Prevents a function from being called too frequently. Often used to prevent functions bound to events that tend to run many times a second. 
+function debounce(fn, delay) {
+  var timeout;
+
+  return function () {
+    var context = this,
+      args = arguments;
+
+    clearTimeout(timeout);
+    timeout = setTimeout(function () {
+      fn.apply(context, args);
+    }, delay || 250);
+  };
+}
+
+let initLinkScrollControls = function () {
+  let scrollContainer = document.querySelectorAll('.scrollable-wrapper');
+
+  scrollContainer.forEach((container) => {
+    let leftLinkElement = container.querySelector('.previous-link');
+    let rightLinkElement = container.querySelector('.next-link');
+    let linkElementArray = container.querySelectorAll('.link-item');
+
+    const mutationObserverConfig = {
+      childList: true,
+      subtree: true
+    };
+    const childElementAdded = (mutationList, observer) => {
+      for (const mutation of mutationList) {
+        if (mutation.type === "childList") {
+          refreshThisLinkList();
+        }
+      }
+    }
+
+    const refreshThisLinkList = () => {
+      linkElementArray = container.querySelectorAll('.link-item');
+      checkButtonStates();
+    }
+
+    linkListFunctionArr.push(refreshThisLinkList);
+
+
+
+    const mutationObserver = new MutationObserver(childElementAdded);
+    mutationObserver.observe(container, mutationObserverConfig);
+
+    let checkInView = (element) => {
+      //Get container properties
+      let cLeft = container.scrollLeft;
+      let cRight = cLeft + container.clientWidth;
+
+      //Get element properties
+      let eLeft = element.offsetLeft;
+      let eRight = eLeft + element.clientWidth - 30;
+
+      //Check if in view    
+      let isTotal = (eLeft >= cLeft && eRight <= cRight);
+
+      //Return outcome
+      return (isTotal);
+    }
+
+    const isScrolledToLeft = () => {
+      return (container.scrollLeft === 0);
+    }
+    const isScrolledToRight = () => {
+
+      if (container.scrollWidth == 0) {
+        return false;
+      }
+      return (container.scrollLeft + container.clientWidth === (container.scrollWidth));
+    }
+
+    let checkButtonStates = () => {
+      leftLinkElement.disabled = isScrolledToLeft();
+      rightLinkElement.disabled = isScrolledToRight();
+        
+        var numvisiblelinks = linkElementArray.length;
+        if(alldata.CustomSettings !== null) {
+            if(alldata.CustomSettings.Textbook !== undefined) {
+                if(alldata.CustomSettings.Textbook.Option === "text-displaynone") {
+                    if($(container).parent().hasClass("links-container-edit")) {
+                        //Edit container counts the Textbook link even if set not display
+                    }
+                    else {
+                        //All other containers do not include hidden Textbook link
+                        numvisiblelinks--;
+                    }                    
+                }
+            }
+        }
+        
+      if (numvisiblelinks > 0) {
+          if (numvisiblelinks <= 5 && getComputedStyle(linkElementArray[0]).flex.substring(4, 6) === "20") {
+            container.classList.add('hide-controls');
+          } else if (numvisiblelinks <= 3 && getComputedStyle(linkElementArray[0]).flex.substring(4, 6) === "33") {
+            container.classList.add('hide-controls');
+          } else {
+            container.classList.remove('hide-controls');
+          }          
+      }
+      else {
+          container.classList.add('hide-controls');
+      }
+
+    }
+    var scrollTimeout;
+    container.addEventListener('scroll', function (e) {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(function () {
+        checkButtonStates();
+      }, 100);
+    });
+
+    window.addEventListener('resize', function (e) {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(function () {
+        checkButtonStates();
+      }, 100);
+    });
+
+    linkElementArray.forEach((linkElement) => {
+      linkElement.querySelector('a').addEventListener("focus", (event) => {
+        event.target.parentElement.scrollIntoView({
+          behavior: "smooth",
+          block: 'nearest'
+        });
+      });
+    });
+
+    let scrollContainer = (direction) => {
+      let numberOfItemsShown = getComputedStyle(linkElementArray[0]).flex.substring(4, 6) === "20" ? 5 : 3;
+      let targetElement = undefined;
+
+      if (direction === "right") {
+        let foundVisible = false;
+
+        linkElementArray.forEach((el, index, list) => {
+          if (checkInView(el) && !foundVisible) {
+            foundVisible = true;
+          } else if (!checkInView(el) && foundVisible && targetElement === undefined) {
+
+            targetElement = list[((index + numberOfItemsShown) > list.length) ? list.length - 1 : (index - 1) + numberOfItemsShown];
+
+          }
+        })
+      } else if (direction === "left") {
+        let foundVisible = false;
+
+        linkElementArray.forEach((el, index, list) => {
+          if (checkInView(el) && !foundVisible) {
+            foundVisible = true;
+            targetElement = list[((index - numberOfItemsShown) < 0) ? 0 : index - numberOfItemsShown];
+          }
+
+        })
+      }
+
+      targetElement.scrollIntoView({
+        behavior: "smooth",
+        block: 'nearest'
+      });
+    }
+
+    if (rightLinkElement && leftLinkElement) {
+      rightLinkElement.addEventListener('click', () => {
+        scrollContainer("right")
+      });
+
+      leftLinkElement.addEventListener('click', () => {
+        scrollContainer("left")
+      });
+
+    }
+
+    checkButtonStates();
+  });
+}
+
+let initNav = function () {
+  let navContainer = document.querySelectorAll('.cc-homepage-nav');
+
+  const linkElement = document.createElement("link");
+  linkElement.rel = "stylesheet";
+  linkElement.href = "/content/enforced/753789-olc_dev_echs_homepage_staging_zach_taylor/ECHS/assets/css/D2LEnvironmentTweaks.css";
+
+  window.parent.document.head.appendChild(linkElement);
+
+  function inIframe() {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true;
+    }
+  }
+
+
+  navContainer.forEach((container) => {
+    let linkList = container.querySelectorAll('.nav-link');
+    let currentItem = container.querySelector('.active');
+    let courseImage = container.querySelector('.nav-course-icon > img');
+
+    let clickCount = 0;
+    let lastClickTime = 0;
+
+    courseImage.addEventListener('click', () => {
+      const currentTime = new Date().getTime();
+      const hedgehog = '/shared/Announcements/Images/iStock-497394963.jpg';
+      let isHedgedog = false;
+      if (currentTime - lastClickTime < 250) {
+        clickCount++;
+      } else {
+        clickCount = 1;
+      }
+
+      if (clickCount === 4) {
+        courseImage.src = hedgehog;
+        courseImage.classList.add('wiggle');
+        setTimeout(() => {
+          courseImage.classList.remove('wiggle');
+        }, 500);
+        clickCount = 0;
+      }
+
+      lastClickTime = currentTime;
+    });
+
+
+    //  /shared/CustomWidgets/ECHS/assets/img/iStock-497394963.jpg
+
+    let swapMenus = function () {
+      document.querySelectorAll('.cc-homepage-nav').forEach((nav) => {
+        nav.classList.toggle('active');
+      });
+
+      document.querySelectorAll('.cc-homepage-content').forEach((nav) => {
+        nav.classList.toggle('active');
+      });
+    }
+
+    linkList.forEach((el) => {
+      el.setAttribute("tabindex", "0");
+
+      function handleClick(event) {
+        if (currentItem == el) {
+          return;
+        }
+
+        if (el.classList.contains('nav-switch')) {
+          swapMenus();
+          //frameHeight();
+          return;
+        }
+
+
+        currentItem.classList.remove('active');
+        document.querySelector(currentItem.getAttribute('data-target')).classList.remove('active');
+
+        el.classList.add('active');
+        document.querySelector(el.getAttribute('data-target')).classList.add('active');
+        document.querySelector(el.getAttribute('data-target')).focus();
+        currentItem = el;
+
+        //frameHeight();
+        scrollTarget.dispatchEvent(new Event('scroll'));
+
+      }
+
+      function handleKeydown(event) {
+        if (event.key === "Enter") {
+          handleClick(event);
+        }
+      }
+
+      el.addEventListener('click', handleClick);
+      el.addEventListener('keydown', handleKeydown);
+    })
+  });
+
+  let lastKnownScrollPosition = 0;
+  let ticking = false;
+  const mobileNavBreakpoint = 769;
+
+
+  let adjustNavHeight = function (scrollTop) {
+    let containerFluidBounds = document.querySelector('.container-fluid').getBoundingClientRect();
+
+    var widgTop = parent.document.querySelector('#homepage1_widget').closest('.d2l-homepage');
+    //console.log(widgTop);
+
+    iframeTop = scrollTarget.pageYOffset + widgTop.getBoundingClientRect().top;
+
+    if (containerFluidBounds.width <= mobileNavBreakpoint) {
+      let newTop = 0;
+      navContainer.forEach((container) => {
+
+
+
+        if (inIframe()) {
+          let containerHeight = 120;
+          newTop = scrollTop + scrollTarget.innerHeight - iframeTop - containerHeight;
+
+          let maxTop = containerFluidBounds.height - containerHeight;
+
+          if (newTop >= maxTop) {
+            newTop = maxTop;
+          }
+        } else {
+          newTop = scrollTop + scrollTarget.innerHeight - container.getBoundingClientRect().height;
+        }
+
+        container.style.top = newTop + 'px';
+      })
+    }
+
+  }
+
+  let scrollTarget = undefined;
+  let iframeTop = 0;
+
+
+  if (inIframe()) {
+    scrollTarget = window.parent;
+    iframeTop = parent.document.querySelector('.d2l-homepage').getBoundingClientRect().top;
+  } else {
+    scrollTarget = window;
+  }
+
+
+  scrollTarget.addEventListener("scroll", (event) => {
+    lastKnownScrollPosition = scrollTarget.scrollY;
+
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        adjustNavHeight(lastKnownScrollPosition);
+        ticking = false;
+      });
+
+      ticking = true;
+    }
+  });
+
+  scrollTarget.addEventListener("resize", (event) => {
+    lastKnownScrollPosition = scrollTarget.scrollY;
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        adjustNavHeight(lastKnownScrollPosition);
+        ticking = false;
+      });
+
+      ticking = true;
+    }
+  });
+
+  scrollTarget.dispatchEvent(new Event('scroll'));
+
+
+}
+
+
+// Set up contact us nav. This is over engineered, but I'm too deep now to stop.
+const initContactUsNav = (containerObj) => {
+  let navTabs = containerObj.querySelectorAll('.contact-us-nav-item');
+  let contentPane = containerObj.querySelectorAll('.contact-us-content-pane');
+
+  const checkARIAHiddenValues = () => {
+    contentPane.forEach((pane) => {
+      if (pane.classList.contains('active')) {
+        pane.setAttribute('aria-hidden', 'false');
+      } else {
+        pane.setAttribute('aria-hidden', 'true');
+      }
+    })
+  }
+
+  checkARIAHiddenValues();
+
+  const removeAllActiveTabs = () => {
+
+    function removeActiveClass(currentitem) {
+      if (currentitem.classList.contains('active'))
+        currentitem.classList.remove('active');
+    }
+
+    navTabs.forEach((tab) => { removeActiveClass(tab) });
+    contentPane.forEach((pane) => { removeActiveClass(pane) });
+  }
+
+  const handleClickEvent = (tab, event) => {
+    event.preventDefault();
+    removeAllActiveTabs();
+    tab.classList.add('active');
+    const tabTarget = tab.getAttribute('href').substring(1);
+    const targetPane = Array.from(contentPane).find(pane => pane.id === tabTarget);
+
+    if (targetPane) {
+      targetPane.classList.add('active');
+      checkARIAHiddenValues();
+    }
+  }
+
+  const mobileCollapseContent = (contentPane) => {
+
+    if (!contentPane.classList.contains('active')) {
+      return;
+    }
+    const transitionSetting = 'max-height .3s ease-out';
+    contentPane.style.transition = 'none';
+    const contentHeight = contentPane.scrollHeight + 'px';
+    contentPane.style.maxHeight = contentHeight;
+    setTimeout(function () {
+      contentPane.style.transition = transitionSetting;
+      contentPane.style.maxHeight = '0';
+    }, 0);
+
+    contentPane.addEventListener('transitionend', function () {
+      contentPane.style.maxHeight = null;
+      contentPane.style.transition = null;
+      contentPane.classList.remove('active');
+      checkARIAHiddenValues();
+    }, { once: true });
+  }
+
+  const mobileExpandContent = (contentPane) => {
+    if (contentPane.classList.contains('active')) {
+      return;
+    }
+
+    contentPane.style.maxHeight = '0';
+    contentPane.classList.add('active');
+    setTimeout(function () {
+
+      contentPane.style.maxHeight = contentPane.scrollHeight + 'px';
+    }, 0);
+
+    contentPane.addEventListener('transitionend', function () {
+      contentPane.style.maxHeight = null;
+      checkARIAHiddenValues();
+    }, { once: true });
+  }
+
+
+  //Should only run on mobile.
+  const removeOtherActiveTabs = (mobileTab) => {
+    const activeSiblings = Array.from(mobileTab.parentNode.children).filter(function (element) {
+      return element !== mobileTab && element.classList.contains('active');
+    });
+    activeSiblings.forEach((item) => {
+      if (item.classList.contains('contact-us-mobile-nav-item')) {
+        item.classList.remove('active');
+      } else {
+        mobileCollapseContent(item);
+      }
+    })
+  }
+
+  const handleMobileClickEvent = (tab, event) => {
+    event.preventDefault();
+    removeOtherActiveTabs(tab);
+    if (!tab.classList.contains('active')) {
+      tab.classList.add('active');
+      mobileExpandContent(tab.targetPane);
+    } else {
+      tab.classList.remove('active');
+      mobileCollapseContent(tab.targetPane);
+    }
+  }
+
+  //Duplicate each tab for mobile menu.
+  navTabs.forEach((tab) => {
+    const mobileTab = tab.cloneNode(true);
+    const newLocation = mobileTab.getAttribute('href').substring(1);
+    const targetPane = Array.from(contentPane).find(pane => pane.id === newLocation);
+
+    if (targetPane) {
+      mobileTab.classList.add('contact-us-mobile-nav-item');
+      mobileTab.classList.remove('contact-us-nav-item');
+      targetPane.parentNode.insertBefore(mobileTab, targetPane);
+      mobileTab.targetPane = targetPane;
+      mobileTab.addEventListener('click', (event) => handleMobileClickEvent(mobileTab, event));
+
+
+
+
+      const desktopTabObserver = new MutationObserver((mutationList) => {
+        for (const mutation of mutationList) {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+            mobileTabObserver.disconnect();
+            if (tab.classList.contains('active')) {
+              mobileTab.classList.add('active');
+            } else {
+              mobileTab.classList.remove('active');
+            }
+            mobileTabObserver.observe(mobileTab, { attributes: true });
+          }
+        }
+      });
+
+      const mobileTabObserver = new MutationObserver((mutationList) => {
+        for (const mutation of mutationList) {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+            desktopTabObserver.disconnect();
+            if (mobileTab.classList.contains('active')) {
+              tab.classList.add('active');
+            } else {
+              tab.classList.remove('active');
+            }
+            desktopTabObserver.observe(tab, { attributes: true });
+          }
+        }
+      });
+
+      desktopTabObserver.observe(tab, { attributes: true });
+      mobileTabObserver.observe(mobileTab, { attributes: true });
+
+    }
+  });
+
+  //Desktop add click event
+  navTabs.forEach((tab) => {
+    tab.addEventListener('click', (event) => handleClickEvent(tab, event));
+  });
+
+}
+
+let searchData = undefined;
+
+const initSearchBar = (containerObj) => {
+  const searchInput = containerObj.querySelector('.cc-search-bar-input');
+  const searchOptionButton = containerObj.querySelector('.cc-search-bar-current-option');
+  const searchOptionButtonLabel = containerObj.querySelector('.cc-search-current-option-label');
+  const optionDropdown = containerObj.querySelector('.cc-search-bar-dropdown');
+  const searchOptions = containerObj.querySelectorAll('.cc-search-group .dropdown-item');
+  const searchButton = containerObj.querySelector('.cc-search-bar-button');
+  const searchError = containerObj.querySelector('.cc-search-bar-error');
+  const resultsPanel = containerObj.querySelector('.cc-search-results');
+  const resultsContainer = containerObj.querySelector('.cc-search-results-container');
+  const resultsSummary = containerObj.querySelector('.cc-search-results-summary');
+  const resultsClose = containerObj.querySelector('.cc-search-results-close');
+  //0 is both, 1 is instructor, 2 is student.
+  let searchOptionNum = undefined;
+  let resultsShown = false;
+
+  //Saving results with this after a successful search is run in case the user chooses to filter results after they've searched. 
+  let previousSearchResults = undefined;
+
+  if (searchOptionButton) {
+    //If there's a button, we're looking at the instructor search, so let this to 0 by default. 
+    searchOptionNum = 0;
+    searchOptions.forEach((option) => {
+      option.addEventListener('click', (event) => {
+        event.preventDefault();
+        searchOptionButtonLabel.textContent = option.querySelector('.cc-search-bar-option-label').textContent;
+        searchOptionNum = parseInt(option.getAttribute('data-option'));
+
+        //Check if there are currently results displayed. If so, let's filter those. 
+        if (resultsShown && previousSearchResults.length > 0) {
+          const newFilteredResults = previousSearchResults.filter((article) => checkFilters(article));
+          displayResults(buildResults(newFilteredResults));
+        }
+      });
+    });
+  } else {
+    //We're a student, so set this to 2.
+    searchOptionNum = 2;
+  }
+
+  const showError = (message = 'You must enter a word at least 4 characters long.') => {
+    searchError.innerHTML = `<span class="cc-search-bar-error-message">${message}</span>`;
+    searchError.classList.add('active');
+  }
+
+  const hideError = () => {
+    searchError.classList.remove('active');
+  }
+
+
+  //Checks article.Viewer.Name to see if it matches our filter. Returns bool. 0 = both. 1 = faculty. 2 = student.
+  const checkFilters = (article) => {
+    switch (searchOptionNum) {
+      case 0:
+        //Both, so just push the result.
+        return true;
+        break;
+      case 1:
+        //Instructor articles only, so check for that. 
+        if (article.Viewer.Name === "Faculty") {
+          return true;
+        }
+        break;
+      case 2:
+        //Student articles only, so check for that. 
+        if (article.Viewer.Name === "Student") {
+          return true;
+        }
+        break;
+    }
+
+    return false;
+  }
+
+  const searchArticles = (searchTermArray) => {
+
+
+    let resultsArray = searchData.reduce((results, originalArticle) => {
+      //These are the two properties of the article we'll be using to determine if it is a match for our search terms. 
+      const article = { ...originalArticle };
+      const title = article.Title;
+      const keywords = article.Keywords.trim().split(/\s+/);
+      //const ommittedKeyWords = article.Description.OmitKeywords.trim().split(/\s+/);
+      //I'm using this as a way to sort results. The more search terms match the criteria, the better the result. We'll sort by this value descending later. 
+      //Let's check to see if this object already has a resultScore. If so, save it for later. Object may already have a score if we decide later that we want to weigh some results higher than others by default. 
+      let originalScore = 0;
+      if (article.resultScore !== undefined) {
+        originalScore = article.resultScore;
+      } else {
+        //Currently there should never be a resultScore already assigned, so this will always run. 
+        article.resultScore = 0;
+      }
+      //I'll use this to highlight matching words later. 
+      article.matchedTerms = [];
+
+
+      //Search through the array of search terms. Modifies the article object.
+      searchTermArray.every((term, index) => {
+        //Check to see if the article's title contains a given search term.
+        if (title.toLowerCase().includes(term.toLowerCase())) {
+          //Increase resultScore.
+          article.resultScore++;
+          //Add to matchedTerms array for later title highlighting.
+          article.matchedTerms.push(term);
+        }
+        //Also search the article's keywords for the search term. 
+        if (keywords.includes(term.toLowerCase())) {
+          //Special check to see if the term matches the FIRST keyword, since it's the primary keyword. The article gets an additional +1 if it matches the first keyword. 
+          if (keywords[0] === term) {
+            article.resultScore++;
+          }
+
+          //Increase resultScore. Weighted slightly higher. We won't add this to the matchedTerms since they keywords don't actually appear in the UI anywhere.
+          article.resultScore += 1.1;
+        }
+
+        //Additionally, check to see if term is included in the ommitted keywords. If so it loses all its points.
+          /*
+        if (ommittedKeyWords.includes(term.toLowerCase())) {
+          article.resultScore = 0;
+          return false;
+        }
+          */
+        return true;
+      });
+
+
+      //This check currently does nothing, since we're not weighing articles higher by default currently. 
+      if (article.resultScore === originalScore) {
+        //If the resultScore is equals to the article's original score, that means that it was weighted on the DB side, but did not score during the search, meaning this should be ommited. 
+        article.resultScore = 0;
+      }
+
+      if (article.resultScore > 0) {
+        results.push(article);
+      }
+
+      return results;
+    }, []);
+
+    //If we have more than 1 result, sort them by resultScore.
+    if (resultsArray.length > 1) {
+      resultsArray.sort((a, b) => b.resultScore - a.resultScore);
+    }
+
+    return resultsArray;
+  };
+
+  //Takes an array of articles and returns an array of DOM objects to be inserted. 
+  const buildResults = (resultsArray) => {
+    let resultDOMObjects = resultsArray.map((article) => {
+
+
+
+      let highlightedTitleString = article.Title;
+
+
+      //This should modify the article's title to bold any keywords found earlier in the process. 
+      function highlightTitleString(titleString, terms) {
+
+        //Take the terms array and reduce it to a string. 
+        return terms.reduce((modifiedString, term) => {
+          const termRegExp = new RegExp(`\\b${term}\\b`, "gi");
+          const matches = modifiedString.match(termRegExp);
+
+          if (matches) {
+            matches.forEach(match => {
+              modifiedString = modifiedString.replace(
+                match,
+                `<strong>${match}</strong>`
+              );
+            });
+          }
+
+          return modifiedString;
+        }, titleString);
+      }
+
+
+      highlightedTitleString = article.matchedTerms ? highlightTitleString(highlightedTitleString, article.matchedTerms) : highlightedTitleString;
+
+      let articleTypeClass = '';
+
+
+      //Taken from original faculty resource styling.
+      switch (article.Type.Code) {
+        case 'T4288':
+        case 'T0122':
+        case 'T6048':
+          articleTypeClass = 'cc-result-tool';
+          break;
+        case 'T9182':
+        case 'T6051':
+          articleTypeClass = 'cc-result-video';
+          break;
+        case 'T4208':
+          articleTypeClass = 'cc-result-text';
+          break;
+      }
+
+
+      const ArticleDOMObject = document.createElement('div');
+      ArticleDOMObject.classList.add('cc-search-result');
+
+      if (articleTypeClass) {
+        ArticleDOMObject.classList.add(articleTypeClass);
+      }
+
+      ArticleDOMObject.innerHTML = `
+        <div class="cc-search-result-header-container"><div class="cc-search-result-header">${highlightedTitleString}</div>
+        ${searchOptionButton ? `<div class="cc-search-result-type">${article.Viewer.Name + " Resource"}</div>` : ''}</div>
+        <div class="cc-search-result-description">${article.Description}</div>
+        <div class="cc-search-result-link"><a href="${article.URL}" target="_blank">Go to ${article.Title} <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a></a></div>
+        `;
+
+      return ArticleDOMObject;
+    });
+    return resultDOMObjects;
+  }
+
+  const parseSearchTerms = (rawInput) => {
+    //Raw input from search text bar. Trim it and create an array of words separated by space(s). 
+    const rawInputArray = rawInput.trim().split(/\s+/);
+
+    //I only want letters and I only want words longer than 3 characters.
+    const filteredInputArray = rawInputArray.filter((word, index) => {
+      //Remove any non-alphabetical characters from our word.
+      const term = word.replace(/[^a-zA-Z]/g, '');
+
+      //Only return if the term is >= 3 characters, and check if there are any duplicates. 
+      return term.length >= 3 && rawInputArray.indexOf(word) === index;
+    });
+
+    return filteredInputArray;
+  }
+
+
+  const displayResults = (resultObjects) => {
+
+    resultsContainer.innerHTML = '';
+    resultObjects.forEach((object) => {
+      resultsContainer.appendChild(object);
+    });
+
+    const resultsSummaryString = resultObjects.length > 0 ? `Showing ${resultObjects.length} ${resultObjects.length !== 1 ? 'results' : 'result'} based on your search.` : 'Sorry, your search returned no results.';
+    resultsSummary.innerHTML = resultsSummaryString;
+
+
+    openResults();
+  }
+
+  const displayAllArticles = () => {
+    const allArticles = searchData;
+    previousSearchResults = allArticles;
+    displayResults(buildResults(allArticles.filter((article) => checkFilters(article))));
+  }
+
+  const runSearch = () => {
+
+    //Check to see if there is nothing in the value. If it's empty, just display all articles. 
+    if (searchInput.value === '') {
+      displayAllArticles();
+      return;
+    }
+
+    const searchTermsArray = parseSearchTerms(searchInput.value);
+    if (searchTermsArray.length <= 0) {
+      showError();
+      return;
+    } else {
+      hideError();
+    }
+
+    const searchResults = searchArticles(searchTermsArray);
+    //Saving these results in case filtering happens afterwards. 
+    previousSearchResults = searchResults;
+    const resultObjects = buildResults(searchResults.filter((article) => checkFilters(article)));
+
+    displayResults(resultObjects);
+
+  };
+
+  const openResults = () => {
+    resultsShown = true;
+    resultsPanel.classList.add('active');
+  }
+
+  const closeResults = () => {
+    resultsShown = false;
+    resultsPanel.classList.remove('active');
+  }
+
+  searchButton.addEventListener('click', runSearch);
+
+  resultsClose.addEventListener('click', closeResults);
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') {
+      if (document.activeElement === searchInput) {
+        runSearch();
+      }
+    }
+  });
+
+  async function fetchJSON(url) {
+    try {
+      const response = await fetch(url);
+      const text = await response.text();
+
+      // Extract JSON data from the variable assignment. This will need to be updated when the json provided from the url is valid JSON. Currently, we slice the raw string before we parse it. 
+      const jsonStartIndex = text.indexOf('[');
+      const jsonEndIndex = text.lastIndexOf(']') + 1;
+      const jsonData = text.slice(jsonStartIndex, jsonEndIndex);
+
+      const data = JSON.parse(jsonData);
+      return data;
+    } catch (error) {
+      console.error('Error fetching JSON:', error);
+      throw error;
+    }
+  }
+
+  // Usage example
+
+}
+
+
+function fetchSupport() {
+    ecplusClient.api.getGuides().then(function (resp) {
+        if (resp.isSuccess) {
+            //console.log(resp);
+            resourceData = resp.Result;
+            //console.log(resourceData);
+            searchData = resourceData.filter((article) => {
+              return article.IsActive && article.IsActive === true;
+            });
+            //console.log(searchData);
+
+            document.querySelectorAll('.cc-search').forEach((container) => initSearchBar(container));
+        } else {
+              console.error('Error fetching guides from ECPlus');
+        }
+    });
+}
+
+
+let linkListFunctionArr = [];
+let refreshLinkList = () => {
+  linkListFunctionArr.forEach((refreshFunction) => refreshFunction());
+}
+
+let initCheckboxes = () => {
+  document.querySelectorAll('.cc-checkbox-button').forEach((buttonElement) => {
+    buttonElement.addEventListener('click', () => {
+      buttonElement.classList.toggle('checked');
+      buttonElement.querySelector('.cc-checkbox').classList.toggle('checked');
+    });
+  })
+}
+
+

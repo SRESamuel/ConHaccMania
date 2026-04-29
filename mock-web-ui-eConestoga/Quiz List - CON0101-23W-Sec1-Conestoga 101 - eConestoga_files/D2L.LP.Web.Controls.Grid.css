@@ -1,0 +1,471 @@
+
+table.d_g tr.fgskip td {
+	height: 1px;
+	line-height: 1px;
+	padding: 0;
+	font-size: 1px;
+	border-style: none;
+}
+
+table.d2l-grid td.d_gn, 
+table.d2l-grid th.d_gn {
+	white-space: nowrap;
+}
+
+.d2l-grid-wrapper .d_g.d_gd,
+.d2l-grid-wrapper .d_g.d_gl {
+	padding-bottom: 0;
+}
+
+.d2l-table > * > tr > :has(d2l-table-col-sort-button) d2l-button-icon {
+	vertical-align: top;
+}
+
+
+@media (min-width: 768px) {
+	table.d2l-grid-sticky td[sticky], 
+	table.d2l-grid-sticky th[sticky] {
+		background-color: white;
+		left: 0;
+		position: sticky;
+	}
+	[dir="rtl"] table.d2l-grid-sticky td[sticky], 
+	[dir="rtl"] table.d2l-grid-sticky th[sticky] {
+		right: 0;
+	}
+	table.d2l-grid-sticky > thead > tr > th.d2l-table-sticky-cell,
+	table.d2l-grid-sticky > thead > tr > th[sticky],
+	table.d2l-grid-sticky > * > tr.d2l-table-header > .d2l-table-sticky-cell,
+	table.d2l-grid-sticky > * > tr.d2l-table-header > [sticky],
+	table.d2l-grid-sticky > * > tr[header] > .d2l-table-sticky-cell,
+	table.d2l-grid-sticky > * > tr[header] > [sticky] {
+		z-index: 3;
+	}
+	table.d2l-grid-sticky > thead > tr > th.d2l-table-sticky-cell.d2l-table-sticky-cell-dropdown-open,
+	table.d2l-grid-sticky > thead > tr > th[sticky].d2l-table-sticky-cell-dropdown-open,
+	table.d2l-grid-sticky > * > tr.d2l-table-header > .d2l-table-sticky-cell.d2l-table-sticky-cell-dropdown-open,
+	table.d2l-grid-sticky > * > tr.d2l-table-header > [sticky].d2l-table-sticky-cell-dropdown-open,
+	table.d2l-grid-sticky > * > tr[header] > .d2l-table-sticky-cell.d2l-table-sticky-cell-dropdown-open,
+	table.d2l-grid-sticky > * > tr[header] > [sticky].d2l-table-sticky-cell-dropdown-open {
+		z-index: 4; 
+	}
+	table.d2l-grid-sticky > tbody > tr:not([header]):not(.d2l-table-header) > .d2l-table-sticky-cell,
+	table.d2l-grid-sticky > tbody > tr:not([header]):not(.d2l-table-header) > [sticky] {
+		z-index: 1;
+	}
+	table.d2l-grid-sticky > .d2l-table-dropdown-open {
+		z-index: 1;
+	}
+	table.d2l-grid-sticky tbody :not([header]):not(.d2l-table-first-row) [sticky].d2l-table-dropdown-open {
+		z-index: 2 !important;
+	}
+}
+
+
+
+ 
+
+table.d_gd td.d_gact {
+	border: 0;
+	padding: 3px 3px 3px 0;
+	white-space: nowrap;
+}
+
+
+table.d_gl td.d_gact {
+	border-bottom-width: 0;
+	border-top-width: 0;
+	white-space: nowrap;
+}
+
+
+table.d_gn td.d_gact {
+	background-color: #f5f5f5; 
+	border-bottom: solid 1px #bbb; 
+	border-top: solid 1px #bbb; 
+	padding: 3px 3px 3px 0;
+	white-space: nowrap;
+}
+
+.d_gact.d_gd td.d_gact,
+.d_gact.d_gl td.d_gact {
+	padding: 0.5rem 1.5rem;
+}
+
+.daylight .d_gact.d_gd td.d_gact.d_gacte,
+.daylight .d_gact.d_gl td.d_gact.d_gacte {
+	padding: 1.5rem 1rem;
+	width: 12px;
+}
+
+.daylight .d_gact.d_gd td.d_gact,
+.daylight .d_gact.d_gl td.d_gact {
+	padding-left: 8px;
+}
+
+[dir='rtl'].daylight .d_gact.d_gd td.d_gact,
+[dir='rtl'].daylight .d_gact.d_gl td.d_gact {
+	padding-right: 8px;
+}
+
+
+.daylight .d_gact.d_gd td.d_gact span.di_t,
+.daylight .d_gact.d_gl td.d_gact span.di_t,
+.daylight .d_gact.d_gd td.d_gact .d2l-grid-actions-container > d2l-overflow-group,
+.daylight .d_gact.d_gl td.d_gact .d2l-grid-actions-container > d2l-overflow-group {
+	font-size: 16px;
+	font-weight: 400;
+}
+
+.daylight .d_gact.d_gd td.d_gact a.di_l,
+.daylight .d_gact.d_gl td.d_gact a.di_l {
+	color: var(--d2l-color-ferrite);
+}
+
+.daylight .d_gact.d_gd td.d_gact a.di_l:hover,
+.daylight .d_gact.d_gl td.d_gact a.di_l:hover,
+.daylight .d_gact.d_gd td.d_gact a.di_l:focus,
+.daylight .d_gact.d_gl td.d_gact a.di_l:focus {
+	color: var(--d2l-color-celestine-minus-1);
+	text-decoration: underline;
+}
+
+
+table.d_gact {
+	width:100%;
+	border-collapse:collapse;
+	padding:0;
+}
+
+
+.daylight table.d_gact td.d_gs {
+	white-space:normal;
+	padding-left:0;
+}
+
+.daylight .d2l-grid tr[header] .d_gs {
+	width: 1px;
+}
+
+.daylight table.d_gact td.d_gs.d2l-select-above-table {
+	padding-left: 22px;
+}
+
+[dir='rtl'].daylight table.d_gact td.d_gs.d2l-select-above-table input.d2l-checkbox {
+	margin-right: 0px;
+}
+
+.daylight table.d_gact td.d_gs span.di_t {
+	margin: 0;
+}
+
+
+table.d_gact td.d_gs input.d2l-checkbox {
+	margin-bottom:1px;
+	margin-right:15px
+}
+
+
+table.d_gact td.d_gp {
+	text-align:center;
+	width:100%;
+}
+
+
+table.d_gact td.d_gn {
+	text-align:right;
+	white-space:nowrap;
+}
+
+.d2l-grid-actions-container {
+	display: flex;
+	position: relative;
+}
+
+.d2l-grid-actions-container > d2l-overflow-group {
+	flex: 1;
+}
+
+
+
+
+table.d_g tr td.d_gtsl,
+table.d2l-grid tr td.d_gtsl {
+	vertical-align:top;
+	padding:.2em .3em .3em 0;
+	white-space:nowrap;
+}
+
+
+table.d_g tr td.d_gtsr,
+table.d2l-grid tr td.d_gtsr {
+	vertical-align:top;
+	padding:5px 0 .3em 0;
+}
+
+
+a.d_gt {
+	text-decoration:none;
+}
+
+.d_g_display_none {
+	display: none !important;
+}
+
+
+table.d_g td.d_gsearch {
+	text-align:left;
+	padding-right:0;
+	padding-left:0;
+	padding-top: 0;
+	white-space: nowrap;
+	border: none;
+}
+
+table.d_dgsearch {
+	width: 100%;
+}
+
+
+.daylight .d_g.d_gd,
+.daylight .d_g.d_gl {
+	border-spacing: 0;
+	border-collapse: separate;
+	display: table;
+	width: 100%;
+
+}
+
+.daylight .d_g.d_gd tbody > tr,
+.daylight .d_g.d_gl tbody > tr {
+	border: none;
+}
+
+.daylight .d_g.d_gd >:only-child .d_hch a,
+.daylight .d_g.d_gl >:only-child .d_hch a {
+	text-decoration: none;
+	color: inherit;
+}
+
+.daylight .d_g.d_gd >:only-child .d_hch a:hover,
+.daylight .d_g.d_gl >:only-child .d_hch a:hover {
+	text-decoration: underline;
+}
+
+.daylight .d_g.d_gd > :only-child > tr:not(.d_gactr):not(.d_gh),
+.daylight .d_g.d_gl > :only-child > tr:not(.d_gactr):not(.d_gh) {
+	background-color: #ffffff;
+	border: none;
+}
+
+.daylight .d_g.d_gd >:only-child > tr:not(.d_gactr):not(.d_gh) th,
+.daylight .d_g.d_gl >:only-child > tr:not(.d_gactr):not(.d_gh) th {
+	white-space: nowrap;
+}
+
+.d2l-grid[type=data] >:only-child > tr > th.d_gn,
+.d2l-grid[type=list] >:only-child > tr > th.d_gn {
+	white-space: nowrap;
+}
+
+.d2l-grid[type=data] > :only-child > tr > td.d_gd_sel,
+.d2l-grid[type=list] > :only-child > tr > td.d_gd_sel {
+	width: 1px;
+}
+
+.d2l-grid[type=data] > :only-child > tr.d_ggl2 > td,
+.d2l-grid[type=data] > :only-child > tr.d_ggl2 > th,
+.d2l-grid[type=list] > :only-child > tr.d_ggl2 > td,
+.d2l-grid[type=list] > :only-child > tr.d_ggl2 > th {
+	background-color: var(--d2l-color-regolith);
+}
+
+.daylight .d2l-grid-container {
+	padding-top: 1em;
+	padding-bottom: 1.5em;
+}
+
+.daylight .d2l-grid-container-no-top-bottom-padding {
+	padding-top: 0;
+	padding-bottom: 0;
+}
+
+.daylight .d_g_treeNodeImage {
+	width: 1.5rem;
+}
+
+.d_ggl1 {
+	background-color: var(--d2l-color-regolith);
+	font-weight: 400;
+}
+
+@keyframes vui-bubble-animation-multiaction-show {
+	0% {
+		top: -2rem;
+		opacity: 0;
+	}
+	100% {
+		top: -2.5rem;
+		opacity: 1;
+	}
+}
+
+@keyframes vui-bubble-animation-multiaction-hide {
+	0% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+.daylight .d2l-grid-actions-container .vui-validation-bubble-content {
+	width: 180px;
+	white-space: initial;
+	word-wrap: break-word;
+	position: relative;
+	text-align: center;
+	animation: vui-bubble-animation-multiaction-show 200ms ease forwards;
+	-webkit-animation: vui-bubble-animation-multiaction-show 200ms ease forwards;
+	top: -2.5rem;
+	right: auto;
+}
+
+.daylight .d2l-grid-actions-container .vui-validation-bubble-content::before {
+	top: 100%;
+	border-width: 0.7rem 0.7rem 0 0.7rem;
+	left: calc(50% - 0.7rem);
+	right: auto;
+}
+
+.daylight .d2l-grid-actions-container .vui-validation-bubble-content.vui-validation-bubble-left::before {
+	left: 20px;
+}
+
+.daylight .d2l-grid-actions-container .vui-validation-bubble-content.vui-validation-bubble-right::before {
+	left: calc(100% - 48px);
+}
+
+.daylight .d2l-grid-actions-container .d_vb.vui-validation-bubble.vui-validation-bubble-show {
+	bottom: 0;
+	position: absolute;
+	pointer-events: none;
+	top: auto;
+	right:auto;
+}
+
+.daylight .d2l-grid-actions-container .vui-validation-bubble-content.vui-validation-bubble-hide {
+	animation: vui-bubble-animation-multiaction-hide 200ms ease forwards;
+	-webkit-animation: vui-bubble-animation-multiaction-hide 200ms ease forwards;
+}
+
+.daylight table.d2l-grid td.d_gl,
+.daylight table.d2l-grid th.d_gl {
+	text-align: left;
+}
+[dir='rtl'].daylight table.d2l-grid td.d_gl,
+[dir='rtl'].daylight table.d2l-grid th.d_gl {
+	text-align: right;
+}
+
+table.d2l-grid td.d_gt, 
+table.d2l-grid th.d_gt {
+	vertical-align:top !important;
+}
+
+table.d2l-grid td.d_gb,
+table.d2l-grid th.d_gb {
+	vertical-align: bottom !important;
+}
+
+
+table.d_g tr th.d_hch,
+table.d2l-grid th.d_hch {
+	white-space:nowrap;
+}
+
+table.d_g tr th.d_hch.d_gw,
+table.d2l-grid th.d_hch.d_gw {
+	white-space:normal;
+}
+
+.daylight table.d2l-grid td.d_gc,
+.daylight table.d2l-grid th.d_gc {
+	text-align: center;
+}
+
+.daylight table.d2l-grid td.d_gr,
+.daylight table.d2l-grid th.d_gr {
+	text-align: right;
+}
+[dir='rtl'].daylight table.d2l-grid td.d_gr,
+[dir='rtl'].daylight table.d2l-grid th.d_gr {
+	text-align: left;
+}
+
+
+.daylight table.d2l-grid tr.d_gdel label, 
+.daylight table.d2l-grid tr.d_gdel th .d2l-link {
+	text-decoration: line-through;
+	opacity: 0.5;
+}
+
+.d2l-grid-row-unread td:first-child {
+	background: linear-gradient( to right, #285F7C 0px, #285F7C 4px, transparent 5px );
+}
+
+[dir="rtl"] .d2l-grid-row-unread td:first-child {
+	background: linear-gradient( to left, #285F7C 0px, #285F7C 4px, transparent 5px );
+}
+
+.daylight table.d2l-grid-responsive-actions .d_gactr td.d_gact {
+	padding-left: 0;
+	padding-right: 0;
+	text-align: center;
+	white-space: normal;
+}
+
+@media (max-width: 700px) {
+	.daylight table.d2l-grid-responsive-actions .d2l-select-container:nth-of-type(2) {
+		display: block;
+		margin-top: 1rem;
+	}
+}
+
+.daylight .d2l-grid-search-top-right-wrapper {
+	float: right;
+	padding-top: 0.3rem;
+	width: initial;
+}
+[dir="rtl"].daylight .d2l-grid-search-top-right-wrapper {
+	float: left;
+}
+
+.daylight .d2l-grid-actions-top-left-wrapper {
+	float: left;
+	width: initial;
+}
+[dir="rtl"].daylight .d2l-grid-actions-top-left-wrapper {
+	float: right;
+}
+
+@media (max-width: 1100px) {
+	.daylight .d2l-grid-search-top-right-wrapper {
+		float: initial;
+		padding-top: 0;
+		width: 100%;
+	}
+}
+
+.daylight table.d2l-table.d2l-grid.d_gd.d2l-fitted-table {
+	width: 1%;
+	white-space: nowrap;
+}
+
+.d_gempty {
+	display: none;
+}
+
+.d_gempty .d2l-msg-container {
+	margin: 0.5rem 0;
+}

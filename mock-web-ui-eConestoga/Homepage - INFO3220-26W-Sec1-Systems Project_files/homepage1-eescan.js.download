@@ -1,0 +1,2360 @@
+// JavaScript Document
+
+var EEScanTemplate = {
+    "Dismissed": false,
+    "LastUpdated": {
+        "User": {},
+        "Date": null
+    },
+    "MoreInformation": {
+        "Views": 0,
+        "Date": null
+    },
+    "Delivery": {
+        "Standard": true,
+        "User": {},
+        "Date": null
+    },
+    "Etext": {
+        "Required": false,
+        "Found": false,
+        "Titles": []
+    }
+};
+
+var publishergrades = {
+    gradeitemstrings: [{
+        Publisher: "MindTap",
+        Strings: ["SAM "]
+    }],
+    externalstrings: [{
+            Publisher: "MindTap",
+            Strings: ["mindtap"]
+        },
+        {
+            Publisher: "Pearson MyLab",
+            Strings: ["mylab", "pearson"]
+        },
+        {
+            Publisher: "Vretta",
+            Strings: ["vretta"]
+        }
+    ]
+}
+
+function calcTotalScore(thiscourse) {
+    var totalscore = 0;
+    for (var a = 0; a < thiscourse.Score.Categories.length; a++) {
+        for (var b = 0; b < thiscourse.Score.Categories[a].Items.length; b++) {
+            totalscore += 1;
+        }
+
+    }
+    return totalscore;
+}
+
+
+function evaluateItem(aInd, bInd) {
+    
+    var thiscourse = alldata;
+    var thiscat = thiscourse.Score.Categories[aInd];
+    var thisitem = thiscourse.Score.Categories[aInd].Items[bInd];    
+
+    var taskdone = false;
+    if (thisitem.Code === "Course_Information") {
+
+        var modulefound;
+        for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+            modulefound = findModule("Course Information", true, thiscourse.Content.Modules[m]);
+            //console.log(modulefound);
+            if (modulefound !== undefined) {
+                break;
+            }
+        }
+
+        var modulefirst = true;
+        if (modulefound !== undefined) {
+            for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+                if (!thiscourse.Content.Modules[m].IsHidden) {
+                    if (modulefound.SortOrder > thiscourse.Content.Modules[m].SortOrder) {
+                        modulefirst = false;
+                        break;
+                    }
+                }
+            }
+            //console.log(thiscourse.Content);
+        }
+
+        if ((modulefound !== undefined) && modulefirst) {
+            taskdone = true;
+        }
+
+        if (!taskdone) {
+            var notehtml = '';
+            if (modulefound === undefined) {
+                notehtml += scorefeedback.CourseInfo.Course_Information.NotFound;
+                notehtml += scorefeedback.General.Resources.ContentRename;
+
+                var mod_array = [];
+                if (modulefound === undefined) {
+                    for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+                        mod_array = findModulesAll("", mod_array, thiscourse.Content.Modules[m]);
+                    }
+                }
+
+                /*
+                if (mod_array.length > 0) {
+                    notehtml += '<p>Alternatively you can select an existing Module by using the option below.</p><div style="margin-bottom:16px"><btn class="btn btn-primary btn-sm mb-0" data-toggle="collapse" href="#collapseSelectRename_CI">Select Module to Rename</btn><div class="collapse collapseSelectRename" id="collapseSelectRename_CI"><div class="card card-body">';
+                    notehtml += '<div class="form-group"><label for="selectModRename">Existing Modules</label><select class="form-control" id="selectModRename" onChange="checkSelectRename(' + thisitem.Code + '\')" style="margin-bottom:16px">';
+                    notehtml += '<option value="-1"></option>';
+
+                    //console.log(mod_array);
+                    for (var m = 0; m < mod_array.length; m++) {
+                        notehtml += '<option value="' + mod_array[m].ModuleId + '">' + mod_array[m].Title + '</option>';
+                    }
+                    notehtml += '</select>';
+                    notehtml += '<div id="checkRenameConfirm" class="d-none"><div class="form-group form-check"><input type="checkbox" class="form-check-input check-rename" id="checkRenameModule" onChange="checkConfirmRename(' + thisitem.Code + '\')"><label class="form-check-label" for="checkRenameModule">I would like to rename the existing Module titled <strong><span id="selectedMod"></span></strong> to be exactly <strong>Course Information</strong>. The scan will automatically refresh after you confirm.</label></div></div>';
+                    notehtml += '<button type="submit" class="btn btn-primary" onClick="renameModuleSelect(' + '\'Course Information\',\'' + thisitem.Code + '\')" disabled="disabled">Confirm</button></div></div></div></div>';
+                }
+                
+                */
+                notehtml += scorefeedback.General.Resources.ContentCreate;
+
+            } else {
+                if (!modulefirst) {
+                    notehtml += scorefeedback.CourseInfo.Course_Information.NotFirst;
+                    notehtml += scorefeedback.General.Resources.ContentMove;
+                }
+            }
+
+            thisitem.Note = notehtml;
+        }
+    }
+    if (thisitem.Code === "Welcome_Message") {
+
+        //console.log(thiscourse.Content);
+        
+        var tfoundall = [];
+        for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+            tfoundall = findContentTopicsAll("Title", "Welcome", thiscourse.Content.Modules[m], tfoundall);
+        }
+        //console.log(tfoundall);
+        
+        var tfound;
+        if(tfoundall.length > 0) {
+            tfound = tfoundall[0].Topic;
+            for (var m = 0; m < tfoundall.length; m++) {
+                if(tfoundall[m].Topic.SortOrder < tfound.SortOrder) {
+                    tfound = tfoundall[m].Topic;
+                }
+            }
+        }
+        //console.log(tfound);
+
+        var modulefound;
+        for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+            modulefound = findModule("Course Information", false, thiscourse.Content.Modules[m]);
+            //console.log(modulefound);
+            if (modulefound !== undefined) {
+                break;
+            }
+        }
+
+        var topicfound;
+        var topicfirst = true;
+        if (modulefound !== undefined) {
+            if (tfound !== undefined) {
+
+                topicfound = findContentTopic("Identifier", tfound.Identifier, modulefound);
+                if (topicfound !== undefined) {
+
+                    var alltopics = [];
+                    var numtopics = findModuleItems(modulefound, alltopics);
+
+                    for (var t = 0; t < numtopics.length; t++) {
+                        if (topicfound.Identifier !== numtopics[t].Identifier) {
+                            if (!numtopics[t].IsHidden) {
+                                if (numtopics[t].SortOrder < topicfound.SortOrder) {
+                                    topicfirst = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if ((topicfound !== undefined) && topicfirst) {
+            taskdone = true;
+        }
+
+        if (!taskdone) {
+            var notehtml = '';
+
+            if (tfound !== undefined) {
+                if (topicfound !== undefined) {
+                    notehtml += scorefeedback.CourseInfo.Welcome_Message.NotFirst;
+                } else {
+                    notehtml += scorefeedback.CourseInfo.Welcome_Message.NotInside;
+                }
+                notehtml += scorefeedback.General.Resources.ContentMove;
+            } else {
+                notehtml += scorefeedback.CourseInfo.Welcome_Message.NotFound;
+                notehtml += scorefeedback.General.Resources.ContentRename;
+                notehtml += scorefeedback.General.Resources.ContentCreate;
+            }
+
+            thisitem.Note = notehtml;
+        }
+    }
+    if (thisitem.Code === "Instructional_Plan") {
+        var tfound;
+        for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+            tfound = findContentTopic("Title", "Instructional Plan", thiscourse.Content.Modules[m]);
+            if (tfound !== undefined) {
+                break;
+            }
+        }
+
+        var modulefound;
+        for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+            modulefound = findModule("Course Information", false, thiscourse.Content.Modules[m]);
+            //console.log(modulefound);
+            if (modulefound !== undefined) {
+                break;
+            }
+        }
+
+        if (modulefound !== undefined) {
+            var topicfound = findContentTopic("Title", "Instructional Plan", modulefound);
+        }
+
+        if (topicfound !== undefined) {
+            taskdone = true;
+        }
+
+        if (!taskdone) {
+
+            var notehtml = '';
+
+            if (tfound === undefined) {
+                notehtml += scorefeedback.CourseInfo.Instructional_Plan.NotFound;
+                notehtml += scorefeedback.General.Resources.ContentRename;
+                notehtml += scorefeedback.CourseInfo.Instructional_Plan.GetTemplate;
+            } else {
+                notehtml += scorefeedback.CourseInfo.Instructional_Plan.NotInside;
+                notehtml += scorefeedback.General.Resources.ContentMove;
+            }
+
+            thisitem.Note = notehtml;
+
+        }
+    }
+    if (thisitem.Code === "Evaluations_Module") {
+        var modulefound;
+        for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+            modulefound = findModule("Evaluations", true, thiscourse.Content.Modules[m]);
+            //console.log(modulefound);
+            if (modulefound !== undefined) {
+                taskdone = true;
+                break;
+            }
+        }
+
+        if (!taskdone) {
+
+            var notehtml = '';
+
+            notehtml += scorefeedback.Evaluations.Evaluations_Module.NotFound;
+            notehtml += scorefeedback.General.Resources.ContentRename;
+
+            var mod_array = [];
+            if (modulefound === undefined) {
+                for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+                    mod_array = findModulesAll("", mod_array, thiscourse.Content.Modules[m]);
+                }
+            }
+
+            /*
+            if (mod_array.length > 0) {
+                notehtml += '<p>Alternatively you can select an existing Module by using the option below.</p><div style="margin-bottom:16px"><btn class="btn btn-primary btn-sm mb-0" data-toggle="collapse" href="#collapseSelectRename_EVAL">Select Module to Rename</btn><div class="collapse collapseSelectRename" id="collapseSelectRename_EVAL"><div class="card card-body">';
+                notehtml += '<div class="form-group"><label for="selectModRename">Existing Modules</label><select class="form-control" id="selectModRename" onChange="checkSelectRename(' + thisitem.Code + '\')" style="margin-bottom:16px">';
+                notehtml += '<option value="-1"></option>';
+
+                //console.log(mod_array);
+                for (var m = 0; m < mod_array.length; m++) {
+                    notehtml += '<option value="' + mod_array[m].ModuleId + '">' + mod_array[m].Title + '</option>';
+                }
+                notehtml += '</select>';
+                notehtml += '<div id="checkRenameConfirm" class="d-none"><div class="form-group form-check"><input type="checkbox" class="form-check-input check-rename" id="checkRenameModule" onChange="checkConfirmRename(' + thisitem.Code + '\')"><label class="form-check-label" for="checkRenameModule">I would like to rename the existing Module titled <strong><span id="selectedMod"></span></strong> to be exactly <strong>Evaluations</strong>. The scan will automatically refresh after you confirm.</label></div></div>';
+                notehtml += '<button type="submit" class="btn btn-primary" onClick="renameModuleSelect(' + thisitem.Code + '\')" disabled="disabled">Confirm</button></div></div></div></div>';
+            }
+            */
+            
+            notehtml += scorefeedback.General.Resources.ContentCreate;
+
+            thisitem.Note = notehtml;
+        }
+    }
+    if (thisitem.Code === "Evaluations_Items") {
+
+        // First check that Grades add up to 100%. This section cannot be completed without that information.		
+
+        var modulefound;
+        var topicsfound = false;
+        var numtopics = [];
+        var gradeitems = 0;
+        var gradeitemsnopub = 0;
+        var haspublishgrades = false;
+        var publishergroups = [];
+        var gradeitemdetails = [];
+
+        if (thiscourse.GradeItems.Objects.length > 0) {
+            for (var i = 0; i < thiscourse.GradeItems.Objects.length; i++) {
+                if ((thiscourse.GradeItems.Objects[i].GradeType === "Numeric") || (thiscourse.GradeItems.Objects[i].GradeType === "PassFail") || (thiscourse.GradeItems.Objects[i].GradeType === "SelectBox")) {
+                    if (!thiscourse.GradeItems.Objects[i].IsBonus) {
+                        if (thiscourse.GradeSetup.GradingSystem === "Weighted") {
+                            if (thiscourse.GradeItems.Objects[i].WeightCalc !== undefined) {
+                                if (thiscourse.GradeItems.Objects[i].WeightCalc > 0) {
+                                    gradeitems++;   
+                                }
+                            }
+                            else {
+                                if (thiscourse.GradeItems.Objects[i].Weight > 0) {
+                                    gradeitems++;
+                                }
+                            }
+                        } else {
+                            gradeitems++;
+                        }
+                    }
+                }
+            }
+            for (var c = 0; c < thiscourse.GradeCategories.length; c++) {
+                if (thiscourse.GradeCategories[c].NumberOfLowestToDrop > 0) {
+                    gradeitems = gradeitems - thiscourse.GradeCategories[c].NumberOfLowestToDrop;
+                }
+            }
+        }
+
+        var modulefound;
+        for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+            modulefound = findModule("Evaluations", true, thiscourse.Content.Modules[m]);
+            if (modulefound !== undefined) {
+                break;
+            }
+        }
+
+        //console.log(modulefound);
+
+        var modulecontains;
+        var mod_array = [];
+        var mod_matches = [];
+
+        if (modulefound === undefined) {
+            for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+                mod_array = findModulesAll("Evaluation", mod_array, thiscourse.Content.Modules[m]);
+            }
+            if (mod_array.length > 0) {
+                for (var e = 0; e < mod_array.length; e++) {
+                    if (mod_array[e].Title.toLowerCase().indexOf("week") === -1) {
+                        mod_matches.push(mod_array[e]);
+                    }
+                }
+            }
+        } else {
+            mod_matches = [modulefound];
+        }
+
+        if (mod_matches.length > 0) {
+            for (var e = 0; e < mod_matches.length; e++) {
+                var alltopics = [];
+                var numtopics_this = findModuleItems(mod_matches[e], alltopics).length;
+
+                if (numtopics_this >= gradeitems) {
+                    topicsfound = true;
+                }
+
+                numtopics.push(numtopics_this);
+
+            }
+        }
+
+        if ((mod_matches.length > 0) && topicsfound) {
+            taskdone = true;
+        }
+
+        if (!taskdone) {
+            if (mod_matches.length > 0) {
+                var top_external = [];
+                for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+                    top_external = findContentTopicsAll("ToolId", 390000, thiscourse.Content.Modules[m], top_external);
+                }
+                if (top_external.length > 0) {
+                    //console.log(top_external);
+                    for (var e = 0; e < top_external.length; e++) {
+                        for (var s = 0; s < publishergrades.externalstrings.length; s++) {
+                            for (var s2 = 0; s2 < publishergrades.externalstrings[s].Strings.length; s2++) {
+                                if (top_external[e].Topic.Title.toLowerCase().indexOf(publishergrades.externalstrings[s].Strings[s2]) > -1) {
+                                    haspublishgrades = true;
+                                    break;
+                                }
+                            }
+
+                        }
+                        if (haspublishgrades) {
+                            break;
+                        }
+                    }
+                }
+
+                if (haspublishgrades) {
+                    //console.log(thiscourse);
+
+                    for (var s = 0; s < publishergrades.gradeitemstrings.length; s++) {
+                        newobj = {
+                            Name: publishergrades.gradeitemstrings[s].Publisher,
+                            Found: []
+                        }
+                        publishergroups.push(newobj);
+                    }
+
+
+                    gradeitemsnopub = 0;
+
+                    for (var gi = 0; gi < thiscourse.GradeItems.Objects.length; gi++) {
+                        if (thiscourse.GradeItems.Objects[gi].CategoryId === 0) {
+                            var gfound = false;
+
+                            for (var s = 0; s < publishergrades.gradeitemstrings.length; s++) {
+                                var pfound = false;
+                                for (var s2 = 0; s2 < publishergrades.gradeitemstrings[s].Strings.length; s2++) {
+                                    if (thiscourse.GradeItems.Objects[gi].Name.indexOf(publishergrades.gradeitemstrings[s].Strings[s2]) > -1) {
+                                        pfound = true;
+                                        gfound = true;
+                                    }
+                                }
+
+                                if (pfound) {
+                                    publishergroups[s].Found.push(thiscourse.GradeItems.Objects[gi]);
+                                }
+
+                            }
+
+                            if (!gfound) {
+                                gradeitemdetails.push({
+                                    Type: "Grade Item",
+                                    Data: thiscourse.GradeItems.Objects[gi]
+                                });
+                                gradeitemsnopub++;
+                            }
+                        }
+                    }
+
+                    //console.log(publishergroups);
+                    if (thiscourse.GradeCategories.length > 0) {
+                        for (var gc = 0; gc < thiscourse.GradeCategories.length; gc++) {
+                            gradeitemdetails.push({
+                                Type: "Grade Category",
+                                Data: thiscourse.GradeCategories[gc]
+                            });
+                            gradeitemsnopub += 1;
+                        }
+                    } else {
+                        for (var g = 0; g < publishergroups.length; g++) {
+                            if (publishergroups[g].Found.length > 0) {
+                                gradeitemdetails.push({
+                                    Type: "Publisher Generated",
+                                    Data: publishergroups[g]
+                                });
+                                gradeitemsnopub += 1;
+                            }
+                        }
+                    }
+
+                    //console.log(numtopics);
+                    //console.log(gradeitemsnopub);
+                    //console.log(gradeitemdetails);
+                    for (var nt = 0; nt < numtopics.length; nt++) {
+                        if (numtopics[nt] >= gradeitemsnopub) {
+                            topicsfound = true;
+                            taskdone = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!taskdone) {
+            var notehtml = '';
+
+            if (thiscourse.GradeItems.Objects.length === 0) {
+                notehtml += scorefeedback.Evaluations.Other.GradesEmpty;
+            } else {
+                if (mod_matches.length > 0) {
+
+                    if (mod_matches.length > 1) {
+                        notehtml += scorefeedback.Evaluations.Other.Multiple;
+                    } else {
+                        notehtml += scorefeedback.Evaluations.Evaluations_Items.Incomplete;
+                    }
+                    //console.log(topicsfound);
+                    //console.log(haspublishgrades);
+                    if (topicsfound === false) {
+                        if (haspublishgrades) {
+                            notehtml += '<p>This scan found a total of <strong>' + gradeitemsnopub + ' Grade Items</strong>.</p>';
+                            notehtml += '<p>This scan determined that your course may use a Publisher integration which connects to the Grades tool, and for this reason some of your Grade Items have been grouped together. The following are all expected to have a corresponding document in the \"Evaluations\" Module.</p>';
+                            notehtml += '<ul class="ee-iconlist">';
+                            for (var d = 0; d < gradeitemdetails.length; d++) {
+                                notehtml += '<li class="li-icon li-Grades">' + gradeitemdetails[d].Type + ': ' + gradeitemdetails[d].Data.Name;
+
+                                if (gradeitemdetails[d].Type === "Grade Category") {
+                                    notehtml += ' (' + gradeitemdetails[d].Data.Grades.length + ' items grouped)';
+                                }
+                                if (gradeitemdetails[d].Type === "Publisher Generated") {
+                                    notehtml += ' (' + gradeitemdetails[d].Data.Found.length + ' items grouped)';
+                                }
+
+                                notehtml += '</li>';
+                            }
+                            notehtml += '</ul>';
+                        } else {
+                            notehtml += '<p>This scan found a total of <strong>' + gradeitems + ' Grade Items</strong>.</p>';
+                        }
+
+                        for (var nt = 0; nt < numtopics.length; nt++) {
+                            notehtml += '<p>In the Module titled <strong>' + mod_matches[nt].Title + '</strong> the scan found a total of <strong>' + numtopics[nt] + ' Content Topics</strong>.<p>';
+                        }
+                    }
+                } else {
+                    notehtml += scorefeedback.Evaluations.Other.NotFound;
+                }
+            }
+
+            thisitem.Note = notehtml;
+        }
+    }
+    if (thisitem.Code === "Evaluations_Links") {
+
+        // First check that Grades add up to 100%. This section cannot be completed without that information.		
+
+        var linksfound = false;
+        var linksmissing = [];
+
+        var modulefound;
+        for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+            modulefound = findModule("Evaluations", true, thiscourse.Content.Modules[m]);
+            if (modulefound !== undefined) {
+                break;
+            }
+        }
+
+        //console.log(modulefound);
+
+        var modulecontains;
+        var mod_array = [];
+        var mod_matches = [];
+
+        if (modulefound === undefined) {
+            for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+                mod_array = findModulesAll("Evaluation", mod_array, thiscourse.Content.Modules[m]);
+            }
+            if (mod_array.length > 0) {
+                for (var e = 0; e < mod_array.length; e++) {
+                    if (mod_array[e].Title.toLowerCase().indexOf("week") === -1) {
+                        mod_matches.push(mod_array[e]);
+                    }
+                }
+            }
+        } else {
+            mod_matches = [modulefound];
+        }
+
+        //console.log(mod_matches);
+        var gradeassoc = [];
+        var gradelinks = [];
+        //console.log(thiscourse);
+
+        if (thiscourse.GradeItems.Objects.length > 0) {
+            for (var i = 0; i < thiscourse.GradeItems.Objects.length; i++) {
+                //console.log(thiscourse.GradeItems.Objects[i].AssociatedTool);
+                var thistool;
+                if (thiscourse.GradeItems.Objects[i].AssociatedTool !== null) {
+                    var associated = false;
+                    for (var ti = 0; ti < d2l_tools.Items.length; ti++) {
+                        if (thiscourse.GradeItems.Objects[i].AssociatedTool.ToolId === parseInt(d2l_tools.Items[ti].ToolId)) {
+                            thistool = d2l_tools.Items[ti];
+                            if ((thistool.DisplayName === "Assignments") || (thistool.DisplayName === "Discussions") || (thistool.DisplayName === "Announcements") || (thistool.DisplayName === "Quizzes") || (thistool.DisplayName === "Checklist")) {
+                                associated = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (associated) {
+                        
+                        var assocfound = false;
+
+                        var newobj = {
+                            ToolName: thistool.DisplayName,
+                            ToolTitle: "",
+                            ToolLink: "",
+                            GradeData: thiscourse.GradeItems.Objects[i]
+                        }
+
+                        //console.log(thistool);
+                        if (thistool.DisplayName === "Assignments") {
+                            for (var a1 = 0; a1 < thiscourse.AssignmentsAll.Objects.length; a1++) {
+                                if (thiscourse.AssignmentsAll.Objects[a1].Id === thiscourse.GradeItems.Objects[i].AssociatedTool.ToolItemId) {
+                                    assocfound = true;
+                                    newobj.ToolTitle = thiscourse.AssignmentsAll.Objects[a1].Name;
+                                    newobj.ToolLink = '/d2l/lms/dropbox/admin/mark/folder_submissions_observed.d2l?db=' + thiscourse.AssignmentsAll.Objects[a1].Id + '&ou=' + thiscourse.CourseOffering.Identifier;
+                                    //newobj.ToolLink = '/d2l/lms/dropbox/admin/modify/folder_newedit_properties.d2l?ou=' + thiscourse.CourseOffering.Identifier + '&db=' + thiscourse.AssignmentsAll.Objects[a1].Id;
+                                }
+                            }
+                        }
+                        if (thistool.DisplayName === "Discussions") {
+                            for (var a2 = 0; a2 < thiscourse.DiscussionsAll.Objects.length; a2++) {
+                                for (var a2b = 0; a2b < thiscourse.DiscussionsAll.Objects[a2].Topics.length; a2b++) {
+                                    if (thiscourse.DiscussionsAll.Objects[a2].Topics[a2b].TopicId === thiscourse.GradeItems.Objects[i].AssociatedTool.ToolItemId) {
+                                        assocfound = true;
+                                        newobj.ToolTitle = thiscourse.DiscussionsAll.Objects[a2].Topics[a2b].Name;
+                                        newobj.ToolLink = '/d2l/lms/discussions/admin/topic_new_properties.d2l?ou=' + thiscourse.CourseOffering.Identifier + '&tid=' + thiscourse.DiscussionsAll.Objects[a2].Topics[a2b].TopicId;
+                                    }
+                                }
+                            }
+                        }
+                        if (thistool.DisplayName === "Quizzes") {
+                            for (var a3 = 0; a3 < thiscourse.QuizzesAll.Objects.length; a3++) {
+                                if (thiscourse.QuizzesAll.Objects[a3].QuizId === thiscourse.GradeItems.Objects[i].AssociatedTool.ToolItemId) {
+                                    assocfound = true;
+                                    newobj.ToolTitle = thiscourse.QuizzesAll.Objects[a3].Name;
+                                    newobj.ToolLink = '/d2l/lms/quizzing/admin/modify/quiz_newedit_properties.d2l?qi=' + thiscourse.QuizzesAll.Objects[a3].QuizId + '&ou=' + thiscourse.CourseOffering.Identifier;
+                                }
+                            }
+                        }
+
+                        //console.log(newobj);
+                        if(assocfound) {
+                            gradeassoc.push(newobj);
+                        }                            
+                    }
+                }
+            }
+
+            if (gradeassoc.length > 0) {
+                //console.log(gradeassoc);
+                //console.log(thiscourse.Content);	
+                //console.log(modulefound);
+
+                if (mod_matches.length > 0) {
+                    for (var e = 0; e < mod_matches.length; e++) {
+
+                        var gradelinks_this = [];
+                        var linksmissing_this = [];
+
+                        for (var a = 0; a < gradeassoc.length; a++) {
+                            //console.log(a);
+                            var topicfound = findContentTopic("ToolItemId", gradeassoc[a].GradeData.AssociatedTool.ToolItemId, mod_matches[e]);
+                            //console.log(topicfound);
+
+                            if (topicfound !== undefined) {
+                                gradelinks_this.push(topicfound);
+                            }
+                        }
+
+                        //console.log(gradelinks);
+                        if (gradeassoc.length === gradelinks_this.length) {
+                            linksfound = true;
+                        } else {
+                            for (var a = 0; a < gradeassoc.length; a++) {
+                                var lindex = -1;
+                                for (var l = 0; l < gradelinks_this.length; l++) {
+                                    if (gradeassoc[a].GradeData.AssociatedTool.ToolItemId === gradelinks_this[l].ToolItemId) {
+                                        lindex = l;
+                                        break;
+                                    }
+                                }
+                                if (lindex === -1) {
+                                    linksmissing_this.push(gradeassoc[a]);
+                                }
+                            }
+                            //console.log(gradeassoc);
+                            //console.log(gradelinks);
+                        }
+
+                        linksmissing.push(linksmissing_this);
+                    }
+                }
+            } else {
+                linksfound = true;
+            }
+        }
+
+        if ((mod_matches.length > 0) && linksfound) {
+            taskdone = true;
+        }
+
+        if (!taskdone) {
+            var notehtml = '';
+
+            if (thiscourse.GradeItems.Objects.length === 0) {
+                notehtml += scorefeedback.Evaluations.Other.GradesEmpty;
+            } else {
+                if (mod_matches.length > 0) {
+
+                    if (mod_matches.length > 1) {
+                        notehtml += scorefeedback.Evaluations.Other.Multiple;
+                    } else {
+                        notehtml += scorefeedback.Evaluations.Evaluations_Links.Incomplete;
+                    }
+
+                    if (linksfound === false) {
+                        //console.log(linksmissing);
+
+                        for (var l1 = 0; l1 < linksmissing.length; l1++) {
+                            notehtml += '<p>Here is a list of the Graded Assessments that do not have links located in the Module titled <strong>' + mod_matches[l1].Title + '</strong>: </p>';
+                            notehtml += '<ul class="ee-iconlist">';
+                            for (var l2 = 0; l2 < linksmissing[l1].length; l2++) {
+                                //console.log(linksmissing[l1][l2]);
+                                notehtml += '<li class="li-icon li-'+linksmissing[l1][l2].ToolName+'"><strong><a href="' + linksmissing[l1][l2].ToolLink + '" target="_blank">' + linksmissing[l1][l2].ToolName + ': ' + linksmissing[l1][l2].ToolTitle + '</a></strong></li>';
+                            }
+                            notehtml += '</ul>';
+                        }
+
+                        notehtml += scorefeedback.General.Resources.EvaluationLinks;
+
+                    }
+                } else {
+                    notehtml += scorefeedback.Evaluations.Other.NotFound;
+                }
+            }
+
+            thisitem.Note = notehtml;
+        }
+    }
+    if (thisitem.Code === "Content_Modules") {
+                
+        var sdate = new Date(thiscourse.CourseOffering.StartDate);
+        var edate = new Date(thiscourse.CourseOffering.EndDate);
+
+        var nweeks = -1;
+        
+        var canbemodified = false;
+        if ((thiscourse.CourseOffering.StartDate !== null) && (thiscourse.CourseOffering.EndDate !== null)) {
+            nweeks = nWeeks(sdate, edate);
+        }
+        else {
+           canbemodified = true; 
+        }
+        //console.log(nweeks);
+
+        var modprefix = ["Week", "Unit", "Section", "Chapter"];
+        var weeknums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+        var mod_weekly = [];
+        var mod_week = [];
+        var mod_weeks = [];
+        var mod_week_b = [];
+        var mod_weeks_b = [];
+        var mod_semana = [];
+        var mod_semanas = [];
+        var mod_semana_b = [];
+        var mod_semanas_b = [];
+        var top_broken = [];
+        var emptyweeks = [];
+        var deliverydata;
+
+        if (thiscourse.Content.Modules.length > 0) {
+
+            if (alldata.EEScanner !== undefined) {
+                if(alldata.EEScanner !== null) {
+                    if(alldata.EEScanner.Delivery === undefined) {
+                        alldata.EEScanner.Delivery = JSON.parse(JSON.stringify(EEScanTemplate.Delivery));
+                    }
+                    else {
+                        deliverydata = alldata.EEScanner.Delivery;
+                        if (!alldata.EEScanner.Delivery.Standard) {
+                            taskdone = true;
+                        }
+                    }
+                }
+            }
+            
+            if(alldata.OfficialModel === true) {
+                if(alldata.ModelAttributes !== undefined) {
+                    if(alldata.ModelAttributes !== null) {
+                        if(alldata.ModelAttributes.Result !== null) {
+                            if(alldata.ModelAttributes.Result.length === 1) {
+                                if(alldata.ModelAttributes.Result[0].CourseModelShell.NumOfWeeks !== 15) {
+                                    taskdone = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!taskdone) {
+                if ((nweeks >= 0) && (nweeks <= 14)) {
+                    //Ideally this will look for additional content beyond Course Information and Evaluations
+                    taskdone = true;
+
+                } else {
+                    
+                    if(nweeks >= 16) {
+                        canbemodified = true; 
+                    }
+                    
+                    for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+                        mod_week = findModulesAll("Week ", mod_week, thiscourse.Content.Modules[m]);
+                        mod_weeks = findModulesAll("Weeks ", mod_weeks, thiscourse.Content.Modules[m]);
+                        mod_week_b = findModulesAll("Week: ", mod_week_b, thiscourse.Content.Modules[m]);
+                        mod_weeks_b = findModulesAll("Weeks: ", mod_weeks_b, thiscourse.Content.Modules[m]);
+                        mod_semana = findModulesAll("Semana ", mod_semana, thiscourse.Content.Modules[m]);
+                        mod_semanas = findModulesAll("Semanas ", mod_semanas, thiscourse.Content.Modules[m]);
+                        mod_semana_b = findModulesAll("Semana: ", mod_semana_b, thiscourse.Content.Modules[m]);
+                        mod_semanas_b = findModulesAll("Semanas: ", mod_semanas_b, thiscourse.Content.Modules[m]);                        
+                    }
+
+
+                    //console.log(mod_weekly);
+                    //console.log(top_broken);
+
+                    var mod_weekly = mod_week.concat(mod_weeks).concat(mod_week_b).concat(mod_weeks_b).concat(mod_semana).concat(mod_semanas).concat(mod_semana_b).concat(mod_semanas_b)
+                    //console.log(mod_weekly);
+                    var split_weekly_matches = ["week","weeks","(week","(weeks","week:","weeks:","(week:","(weeks:","semana","semanas","(semana","(semanas","semana:","semanas:","(semana:","(semanas:"];
+
+                    if (mod_weekly.length > 0) {
+                        for (var w = 0; w < mod_weekly.length; w++) {
+
+                            var weeksplit = mod_weekly[w].Title.toLowerCase().split(" ");
+                            //console.log(weeksplit);
+                            var weeksfound = [];
+                            var connectorarray = ["and", "&", "to", "-", "+"];
+                            
+                            for(var wind=0; wind<weeksplit.length; wind++) {
+                                if(split_weekly_matches.indexOf(weeksplit[wind]) > -1) {
+                                    
+                                    var thisweeknum;
+                                    if(wind <= (weeksplit.length - 2)) {
+                                        thisweeknum = parseInt(weeksplit[(wind + 1)]);
+                                        if (!isNaN(thisweeknum)) {
+                                            weeksfound.push(thisweeknum);
+                                        } else {
+                                            if (weeksplit[(wind + 1)].indexOf("#") === 0) {
+                                                thisweeknum = parseInt((weeksplit[(wind + 1)].slice(1)));
+                                                if (!isNaN(thisweeknum)) {
+                                                    weeksfound.push(thisweeknum);
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if(wind <= (weeksplit.length - 3)) {
+                                        if (connectorarray.indexOf(weeksplit[(wind + 2)]) > -1) {
+                                            //console.log(weeksplit);
+
+                                            if(wind <= (weeksplit.length - 4)) {
+                                                var checknext = parseInt(weeksplit[(wind + 3)]);
+                                                if (!isNaN(checknext)) {
+                                                    if ((weeksplit[(wind + 2)] === "and") || (weeksplit[(wind + 2)] === "&") || (weeksplit[(wind + 2)] === "+")) {
+                                                        weeksfound.push(checknext);
+                                                    }
+                                                    if ((weeksplit[(wind + 2)] === "to") || (weeksplit[(wind + 2)] === "-")) {
+
+                                                        for (var t = (thisweeknum + 1); t <= checknext; t++) {
+                                                            weeksfound.push(t);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            /*
+                            var weekindex = weeksplit.indexOf("week");
+                            var weeksindex = weeksplit.indexOf("weeks");
+                            var weekindex_b = weeksplit.indexOf("(week");
+                            var weeksindex_b = weeksplit.indexOf("(weeks");
+                            var weekindex_c = weeksplit.indexOf("week:");
+                            var weeksindex_c = weeksplit.indexOf("weeks:");
+                            var weekindex_d = weeksplit.indexOf("(week:");
+                            var weeksindex_d = weeksplit.indexOf("(weeks:");
+
+                            var wind = Math.max(weekindex, weeksindex, weekindex_b, weeksindex_b, weekindex_c, weeksindex_c, weekindex_d, weeksindex_d);
+                            */
+                            
+                            
+
+
+                            for (var f = 0; f < weeksfound.length; f++) {
+                                var windex = weeknums.indexOf(weeksfound[f]);
+                                if (windex > -1) {
+                                    weeknums.splice(windex, 1);
+                                }
+                            }
+
+                            //console.log(thisweeknum);
+                        }
+                        //console.log(weeknums);
+                    }
+
+                    //console.log(mod_weekly);
+                    if (weeknums.length === 0) {
+                        taskdone = true;
+                    }
+                }
+            }
+        }
+
+        var notehtml = '';
+        
+        /*
+        if(canbemodified) {
+            if (pagetype === "widget") {
+                notehtml += scorefeedback.CourseContent.Content_Modules.SetOnWidget;   
+                notehtml += '<p>Course Delivery:<br>';
+                notehtml += '<select class="form-control" id="cDeliveryOptions" onChange="cDeliveryChange()">';
+
+                if(deliverydata === undefined) {
+                  notehtml += '<option value="true">Full Semester Schedule</option><option value="false">Non-Standard Delivery</option>';  
+                }
+                else {
+                    if(deliverydata.Standard) {
+                        notehtml += '<option value="true" selected>Full Semester Schedule</option><option value="false">Non-Standard Delivery</option>';  
+                    }
+                    else {
+                        notehtml += '<option value="true">Full Semester Schedule</option><option value="false" selected>Non-Standard Delivery</option>'; 
+                    }
+                }
+
+                notehtml += '</select></p><p><button id="cDeliverySave" type="button" class="btn btn-primary" disabled onClick="cDeliverySave()">Save Course Delivery Setting</button></p>';
+
+                if(deliverydata !== undefined) {
+                    if (deliverydata.Date !== null) {
+                        notehtml += '<p><div id="cDeliveryUpdate">Last Updated by ' + deliverydata.User.FirstName + ' ' + deliverydata.User.LastName + ' on ' + new Date(deliverydata.Date).toLocaleString() + '</div></p>';
+                    }                                    
+                }                            
+            }
+        }
+        */
+        
+        if (!taskdone) {
+            if (thiscourse.Content.Modules.length === 0) {
+                notehtml += scorefeedback.General.Resources.ContentCopy;
+            } else {
+                if ((nweeks > 0) && (nweeks < 14)) {
+                    //
+                } else {
+
+                    if(canbemodified) {
+                        notehtml += scorefeedback.CourseContent.Content_Modules.NonStandard;
+                        if (pagetype === "dashboard") {
+                            notehtml += scorefeedback.CourseContent.Content_Modules.SetOnDashboard;
+                        }
+                    }
+                    else {
+                        notehtml += scorefeedback.CourseContent.Other.FullTerm;
+                    }
+
+                    if (mod_weekly.length === 0) {
+                        notehtml += scorefeedback.CourseContent.Other.NoneFound;
+                    } else {
+                        if (weeknums.length > 0) {
+                            notehtml += scorefeedback.CourseContent.Content_Modules.SomeFound;
+
+                            notehtml += '<p>Modules could not be found that matched the following weeks: </p>';
+                            notehtml += '<ul class="ee-iconlist">';
+                            for (var w = 0; w < weeknums.length; w++) {
+                                notehtml += '<li class="li-icon li-ContentModule"><strong>Week ' + weeknums[w] + '</strong></li>';
+                            }
+                            notehtml += '</ul>';
+                        }                        
+                    }
+                    notehtml += scorefeedback.CourseContent.Other.WeekInfo;
+                    notehtml += scorefeedback.General.Resources.ContentCreate;
+                }
+            }
+        }
+        thisitem.Note = notehtml;        
+    }
+    if (thisitem.Code === "Content_Topics") {
+        var sdate = new Date(thiscourse.CourseOffering.StartDate);
+        var edate = new Date(thiscourse.CourseOffering.EndDate);
+
+        var nweeks = nWeeks(sdate, edate);
+        //console.log(nweeks);
+
+        var modprefix = ["Week", "Unit", "Section", "Chapter"];
+        var weeknums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+        var mod_weekly = [];
+        var mod_week = [];
+        var mod_weeks = [];
+        var mod_week_b = [];
+        var mod_weeks_b = [];
+        var top_broken = [];
+        var emptyweeks = [];
+        var emptyterms = ["success", "no class", "holiday", "zoom"];
+
+        for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+            mod_week = findModulesAll("Week ", mod_week, thiscourse.Content.Modules[m]);
+            mod_weeks = findModulesAll("Weeks ", mod_weeks, thiscourse.Content.Modules[m]);
+            mod_week_b = findModulesAll("Week: ", mod_week_b, thiscourse.Content.Modules[m]);
+            mod_weeks_b = findModulesAll("Weeks: ", mod_weeks_b, thiscourse.Content.Modules[m]);
+            top_broken = findContentTopicsAll("IsBroken", true, thiscourse.Content.Modules[m], top_broken);
+        }
+
+        var mod_weekly = mod_week.concat(mod_weeks).concat(mod_week_b).concat(mod_weeks_b);
+
+        //console.log(nweeks);
+        if (thiscourse.Content.Modules.length > 0) {
+
+            //console.log(mod_weekly);
+            //console.log(top_broken);
+
+            for (var w = 0; w < mod_weekly.length; w++) {
+                //console.log(mod_weekly[w]);
+
+                var allowedempty = false;
+
+                for (var et = 0; et < emptyterms.length; et++) {
+                    if (mod_weekly[w].Title.toLowerCase().indexOf(emptyterms[et]) > -1) {
+                        allowedempty = true;
+                        break;
+                    }
+                    if (mod_weekly[w].Description !== null) {
+                        if (mod_weekly[w].Description.Text.toLowerCase().indexOf(emptyterms[et]) > -1) {
+                            allowedempty = true;
+                            break;
+                        }
+                    }
+                }
+
+                //console.log(allowedempty);
+                if (!allowedempty) {
+                    var alltopics = [];
+                    alltopics = findModuleItems(mod_weekly[w], alltopics);
+                    //console.log(alltopics);
+                    if (alltopics.length === 0) {
+                        emptyweeks.push(mod_weekly[w]);
+                    }
+                }
+            }
+
+            //console.log(emptyweeks);
+            if (emptyweeks.length === 0) {
+                if (top_broken.length === 0) {
+                    taskdone = true;
+                }
+            }
+        }
+
+        if (!taskdone) {
+            var notehtml = '';
+
+            if (thiscourse.Content.Modules.length === 0) {
+                notehtml += scorefeedback.General.Resources.ContentCopy;
+            } else {
+                if ((nweeks > 0) && (nweeks < 14)) {
+
+                } else {
+                    
+                    var showstandard = true;
+                    //console.log(CSVal.widget_data);
+                    //console.log(JSON.parse(JSON.stringify(thiscourse)));
+
+                    if (alldata.EEScanner !== undefined) {
+                        if (alldata.EEScanner !== null) {
+                            if (alldata.EEScanner.Delivery !== undefined) {
+                                deliverydata = alldata.EEScanner.Delivery;
+                                if (!alldata.EEScanner.Delivery.Standard) {
+                                    showstandard = false;
+                                }
+                            }                            
+                        }
+                    }
+                    
+                    if(showstandard) {
+                        notehtml += scorefeedback.CourseContent.Other.FullTerm;
+                        if (mod_weekly.length === 0) {
+                            notehtml += scorefeedback.CourseContent.Other.NoneFound;
+                            notehtml += scorefeedback.CourseContent.Other.WeekInfo;
+                            notehtml += scorefeedback.General.Resources.ContentCreate;  
+                        }                
+                    }            
+                }            
+                
+                if (mod_weekly.length > 0) {
+                    if (emptyweeks.length > 0) {
+                        notehtml += '<p>This scan found <strong>' + emptyweeks.length + ' empty Module(s)</strong> intended for weekly materials:</p>';
+                        notehtml += '<ul class="ee-iconlist">';
+                        for (var e = 0; e < emptyweeks.length; e++) {
+                            //console.log(emptyweeks[e]);
+                            notehtml += '<li class="li-icon li-ContentModule"><strong><a href="/d2l/le/content/' + thiscourse.CourseOffering.Identifier + '/Home?itemIdentifier=D2L.LE.Content.ContentObject.ModuleCO-' + emptyweeks[e].ModuleId + '" target="_blank">' + emptyweeks[e].Title + '</a></strong></li>';
+                        }
+                        notehtml += '</ul>';
+                        notehtml += scorefeedback.CourseContent.Content_Topics.SuccessWeek;
+                        notehtml += scorefeedback.General.Resources.ContentCreate;  
+                    }
+                }                  
+
+                if (top_broken.length > 0) {
+                    notehtml += '<p>This scan found <strong>' + top_broken.length + ' broken Content Topic(s)</strong>: </p>';
+                    notehtml += '<ul class="ee-iconlist">';
+                    for (var e = 0; e < top_broken.length; e++) {
+                        //console.log(top_broken[e]);
+                        notehtml += '<li class="li-icon li-ContentTopic"><strong><a href="/d2l/le/content/' + thiscourse.CourseOffering.Identifier + '/viewContent/' + top_broken[e].Topic.TopicId + '/View" target="_blank">' + top_broken[e].Topic.Title + '</a></strong> located in <strong><a href="/d2l/le/content/' + thiscourse.CourseOffering.Identifier + '/Home?itemIdentifier=D2L.LE.Content.ContentObject.ModuleCO-' + top_broken[e].Module.ModuleId + '" target="_blank">' + top_broken[e].Module.Title + '</a></strong></li>';
+                    }
+                    notehtml += '</ul>';
+                    notehtml += scorefeedback.General.Resources.BrokenTopics;
+                }
+            }
+
+            thisitem.Note = notehtml;
+
+        }
+    }
+    if (thisitem.Code === "Grade_Total") {
+        if (thiscourse.GradeSetup.GradingSystem === "Weighted") {
+            var totalweight = 0;
+            var notnumeric = false;
+
+            for (var c = 0; c < thiscourse.GradeCategories.length; c++) {
+                thiscourse.GradeCategories[c].ItemWeight = 0;
+                //if (!thiscourse.GradeCategories[c].ExcludeFromFinalGrade) {
+                    totalweight += thiscourse.GradeCategories[c].Weight;
+                //}
+            }
+
+            for (var i = 0; i < thiscourse.GradeItems.Objects.length; i++) {
+                //console.log(thiscourse.GradeItems.Objects[i]);
+                if ((thiscourse.GradeItems.Objects[i].GradeType === "Numeric") || (thiscourse.GradeItems.Objects[i].GradeType === "PassFail") || (thiscourse.GradeItems.Objects[i].GradeType === "SelectBox")) {
+                    if (thiscourse.GradeItems.Objects[i].CategoryId === 0) {
+                        if (!thiscourse.GradeItems.Objects[i].IsBonus) {
+                            totalweight += thiscourse.GradeItems.Objects[i].Weight;
+                        }
+                    } else {
+                        for (var c = 0; c < thiscourse.GradeCategories.length; c++) {
+                            if (thiscourse.GradeItems.Objects[i].CategoryId === thiscourse.GradeCategories[c].Id) {
+                                thiscourse.GradeCategories[c].ItemWeight += thiscourse.GradeItems.Objects[i].Weight;
+                            }
+                        }
+                    }
+                } else {
+                    notnumeric = true;
+                    break;
+                }
+            }
+
+            var totalweight_num = Number(totalweight.toPrecision(3));
+            //console.log(totalweight_num);
+            var weight100 = true;
+            if (totalweight_num != 100) {
+                weight100 = false;
+            }
+
+            var cat100 = true;
+            for (var c = 0; c < thiscourse.GradeCategories.length; c++) {
+                
+                //console.log(thiscourse.GradeCategories[c]);
+                
+                if (thiscourse.GradeCategories[c].Grades.length === 0) {
+                    cat100 = false;
+                }
+                else {
+                    if (thiscourse.GradeCategories[c].WeightDistributionType === 0) {
+
+                        //console.log(thiscourse.GradeCategories[c]);
+                        var catweight_num = Number(thiscourse.GradeCategories[c].ItemWeight.toPrecision(3));
+                        //console.log(catweight_num);					
+
+                        if (catweight_num !== 100) {
+                            for (var cg = 0; cg < thiscourse.GradeCategories[c].Grades.length; cg++) {
+                                if (thiscourse.GradeCategories[c].Grades[cg].IsBonus) {
+                                    catweight_num = catweight_num - thiscourse.GradeCategories[c].Grades[cg].Weight;
+                                }
+                            }
+                            if (catweight_num !== 100) {
+                                cat100 = false;
+                            }
+                        }
+                    }
+                }
+            }
+            if (weight100 && cat100) {
+                taskdone = true;
+            }
+            if (notnumeric) {
+                taskdone = true;
+            }
+
+            if (!taskdone) {
+                var displayguides = false;
+                var notehtml = '';
+                if (!weight100) {
+                    displayguides = true;
+                    notehtml += '<p>Currently your Grades tool has items that combine for an <strong>overall weight of ' + totalweight_num + '%</strong>.</p>';
+                }
+                if (!cat100) {
+                    displayguides = true;
+                    notehtml += '<p>Currently your Grades tool has at least one <strong>Grade Category</strong> that does not have items adding up to 100%.</p>';
+                }
+                if (displayguides) {
+                    notehtml += scorefeedback.General.Resources.EditGrades;
+                }
+                thisitem.Note = notehtml;
+            }
+        } else {
+            if (thiscourse.GradeItems.Objects.length > 0) {
+
+                for (var i = 0; i < thiscourse.GradeItems.Objects.length; i++) {
+                    if (!thiscourse.GradeItems.Objects[i].IsBonus) {
+                        taskdone = true;
+                        break;
+                    }
+                }
+
+                if (!taskdone) {
+                    if (thiscourse.GradeSetup.GradingSystem === "Points") {
+                        thisitem.Note = scorefeedback.GradeItems.Grade_Total.IsPoints;
+                    } else {
+                        thisitem.Note = scorefeedback.GradeItems.Grade_Total.NotWeighted;
+                    }
+                }
+            } else {
+                thisitem.Note = scorefeedback.GradeItems.Grade_Total.GradesEmpty + scorefeedback.General.Resources.EditGrades;
+            }
+        }
+    }
+    if (thisitem.Code === "Course_Dates") {
+
+        //console.log(thiscourse);
+
+        var csdate;
+        var cedate;
+        var dateoutside = [];
+
+        var csdate_display = 'None';
+        var cedate_display = 'None';
+        
+        if (thiscourse.CourseOffering.StartDate !== null) {
+            csdate = new Date(thiscourse.CourseOffering.StartDate);
+            csdate_display = csdate.toLocaleString();
+            csdate = addMinutes(csdate, -2);
+        }
+        if (thiscourse.CourseOffering.EndDate !== null) {
+            cedate = new Date(thiscourse.CourseOffering.EndDate);
+            cedate_display = cedate.toLocaleString();
+            cedate = addMinutes(cedate, 2);
+        }
+        //console.log(csdate);
+        //console.log(cedate);
+
+        if ((csdate !== undefined) && (cedate !== undefined)) {
+
+            for (var n = 0; n < thiscourse.Announcements.length; n++) {
+                var nedate = null
+                var isoutside = false;
+                var ispast = false;
+
+                if (thiscourse.Announcements[n].EndDate !== null) {
+                    nedate = new Date(thiscourse.Announcements[n].EndDate);
+                }
+                if (nedate !== null) {
+                    if (nedate < csdate) {
+                        isoutside = true;
+                        ispast = true;
+                    }
+                    if (nedate > cedate) {
+                        isoutside = true;
+                    }
+                }
+                if (isoutside) {
+                    var dobj = {
+                        Type: 'Announcement',
+                        Data: thiscourse.Announcements[n],
+                        Name: thiscourse.Announcements[n].Title,
+                        ItemId: thiscourse.Announcements[n].Id,
+                        IsPast: ispast,
+                        URL: '/d2l/lms/news/newedit.d2l?ou=' + thiscourse.CourseOffering.Identifier + '&newsId=' + thiscourse.Announcements[n].Id
+                    }
+                    dateoutside.push(dobj);
+                }
+            }
+
+            for (var a = 0; a < thiscourse.AssignmentsAll.Objects.length; a++) {
+                var asdate = null;
+                var aedate = null;
+                var addate = null;
+                var isoutside = false;
+
+                if (thiscourse.AssignmentsAll.Objects[a].Availability !== null) {
+                    if (thiscourse.AssignmentsAll.Objects[a].Availability.StartDate !== null) {
+                        asdate = new Date(thiscourse.AssignmentsAll.Objects[a].Availability.StartDate);
+                    }
+                    if (thiscourse.AssignmentsAll.Objects[a].Availability.EndDate !== null) {
+                        aedate = new Date(thiscourse.AssignmentsAll.Objects[a].Availability.EndDate);
+                    }
+                }
+                if (thiscourse.AssignmentsAll.Objects[a].DueDate !== null) {
+                    addate = new Date(thiscourse.AssignmentsAll.Objects[a].DueDate);
+                }
+
+                if (asdate !== null) {
+                    if ((asdate < csdate) || (asdate > cedate)) {
+                        isoutside = true;
+                    }
+                }
+                if (aedate !== null) {
+                    if ((aedate < csdate) || (aedate > cedate)) {
+                        isoutside = true;
+                    }
+                }
+                if (addate !== null) {
+                    if ((addate < csdate) || (addate > cedate)) {
+                        isoutside = true;
+                    }
+                }
+                if (isoutside) {
+                    var dobj = {
+                        Type: 'Assignment',
+                        Data: thiscourse.AssignmentsAll.Objects[a],
+                        Name: thiscourse.AssignmentsAll.Objects[a].Name,
+                        ItemId: thiscourse.AssignmentsAll.Objects[a].Id,
+                        URL: '/d2l/lms/dropbox/admin/mark/folder_submissions_observed.d2l?db=' + thiscourse.AssignmentsAll.Objects[a].Id + '&ou=' + thiscourse.CourseOffering.Identifier
+                        //URL: '/d2l/lms/dropbox/admin/modify/folder_newedit_properties.d2l?ou=' + thiscourse.CourseOffering.Identifier + '&db=' + thiscourse.AssignmentsAll.Objects[a].Id
+                    }
+                    dateoutside.push(dobj);
+                }
+            }
+
+            for (var ce = 0; ce < thiscourse.Calendar.length; ce++) {
+
+                var isoutside = false;
+                var ispast = false;
+                var ceedate = null;
+
+                if (thiscourse.Calendar[ce].AssociatedEntity === null) {
+
+                    if (thiscourse.Calendar[ce].EndDateTime !== null) {
+                        ceedate = new Date(thiscourse.Calendar[ce].EndDateTime);
+                    }
+                    else {
+                        if(alldata.CalendarAll[ce].EndDay !== null) {
+                            ceedate = new Date(alldata.CalendarAll[ce].EndDay);
+                        }
+                    }
+
+                    if (ceedate !== null) {
+                        if (ceedate < csdate) {
+                            isoutside = true;
+                            ispast = true;
+                        }
+                        if (ceedate > cedate) {
+                            isoutside = true;
+                        }
+                    }
+
+                    if (isoutside) {
+                        var dobj = {
+                            Type: 'CalendarEvent',
+                            Data: thiscourse.Calendar[ce],
+                            Name: thiscourse.Calendar[ce].Title,
+                            ItemId: thiscourse.Calendar[ce].CalendarEventId,
+                            IsPast: ispast,
+                            URL: '/d2l/le/calendar/' + thiscourse.CourseOffering.Identifier + '/event/' + thiscourse.Calendar[ce].CalendarEventId + '/edit'
+                        }
+                        dateoutside.push(dobj);
+                    }
+                }
+            }
+
+            for (var ch = 0; ch < thiscourse.ChecklistsAll.Objects.length; ch++) {
+                if(thiscourse.ChecklistsAll.Objects[ch].Items !== undefined) {
+                    for (var i = 0; i < thiscourse.ChecklistsAll.Objects[ch].Items.length; i++) {
+                        var ciddate = null;
+                        var isoutside = false;
+
+                        //console.log(thiscourse.ChecklistsAll.Objects[ch].Items[i]);
+
+                        if (thiscourse.ChecklistsAll.Objects[ch].Items[i].DueDate !== null) {
+                            ciddate = new Date(thiscourse.ChecklistsAll.Objects[ch].Items[i].DueDate);
+                        }
+                        if (ciddate !== null) {
+                            if ((ciddate < csdate) || (ciddate > cedate)) {
+                                isoutside = true;
+                            }
+                        }
+                        if (isoutside) {
+                            var dobj = {
+                                Type: 'ChecklistItem',
+                                Data: thiscourse.ChecklistsAll.Objects[ch].Items[i],
+                                Name: thiscourse.ChecklistsAll.Objects[ch].Items[i].Name,
+                                ItemId: thiscourse.ChecklistsAll.Objects[ch].Items[i].ChecklistItemId,
+                                URL: '/d2l/lms/checklist/edititem.d2l?checklistId=' + thiscourse.ChecklistsAll.Objects[ch].Items[i].ChecklistId + '&itemId=' + thiscourse.ChecklistsAll.Objects[ch].Items[i].ChecklistItemId + '&ou=' + thiscourse.CourseOffering.Identifier
+                            }
+                            dateoutside.push(dobj);
+                        }
+                    }
+                }
+            }
+
+            var datemodules = [];
+            for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+                datemodules = findModuleDates(thiscourse.Content.Modules[m], datemodules);
+            }
+            //console.log(datemodules);
+
+            for (var z = 0; z < datemodules.length; z++) {
+                var cmsdate = null;
+                var cmedate = null;
+                var isoutside = false;
+
+                if (datemodules[z].StartDateTime !== null) {
+                    cmsdate = new Date(datemodules[z].StartDateTime);
+                }
+                if (datemodules[z].EndDateTime !== null) {
+                    cmedate = new Date(datemodules[z].EndDateTime);
+                }
+
+                if (cmsdate !== null) {
+                    if ((cmsdate < csdate) || (cmsdate > cedate)) {
+                        isoutside = true;
+                    }
+                }
+                if (cmedate !== null) {
+                    if ((cmedate < csdate) || (cmedate > cedate)) {
+                        isoutside = true;
+                    }
+                }
+                if (isoutside) {
+                    var dobj = {
+                        Type: 'ContentModule',
+                        Data: datemodules[z],
+                        Name: datemodules[z].Title,
+                        ItemId: -1,
+                        URL: '/d2l/le/content/' + thiscourse.CourseOffering.Identifier + '/Home?itemIdentifier=D2L.LE.Content.ContentObject.ModuleCO-' + datemodules[z].ModuleId
+                    }
+                    dateoutside.push(dobj);
+                }
+            }
+
+            var datetopics = [];
+            for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+                var pmod = [thiscourse.Content.Modules[m]];
+                datetopics = findContentTopicDates(thiscourse.Content.Modules[m], datetopics, pmod);
+            }
+            //console.log(datetopics);
+
+            for (var z = 0; z < datetopics.length; z++) {
+                var associated = false;
+                if (datetopics[z].Topic.ToolId !== null) {
+                    for (var ti = 0; ti < d2l_tools.Items.length; ti++) {
+                        if (datetopics[z].Topic.ToolId === parseInt(d2l_tools.Items[ti].ToolId)) {
+                            var thistool = d2l_tools.Items[ti];
+                            if ((thistool.DisplayName === "Assignments") || (thistool.DisplayName === "Discussions") || (thistool.DisplayName === "Announcements") || (thistool.DisplayName === "Quizzes") || (thistool.DisplayName === "Checklist")) {
+                                associated = true;
+                            }
+                        }
+                    }
+                }
+                
+                if (!associated) {
+                    var ctsdate = null;
+                    var ctedate = null;
+                    var isoutside = false;
+
+                    if (datetopics[z].Topic.StartDateTime !== null) {
+                        ctsdate = new Date(datetopics[z].Topic.StartDateTime);
+                    }
+                    if (datetopics[z].Topic.EndDateTime !== null) {
+                        ctedate = new Date(datetopics[z].Topic.EndDateTime);
+                    }
+
+                    if (ctsdate !== null) {
+                        if ((ctsdate < csdate) || (ctsdate > cedate)) {
+                            isoutside = true;
+                        }
+                    }
+                    if (ctedate !== null) {
+                        if ((ctedate < csdate) || (ctedate > cedate)) {
+                            isoutside = true;
+                        }
+                    }
+                    if (isoutside) {
+                        var dobj = {
+                            Type: 'ContentTopic',
+                            Data: datetopics[z].Topic,
+                            Name: datetopics[z].Topic.Title,
+                            ItemId: datetopics[z].Topic.ToolItemId,
+                            URL: '/d2l/le/content/' + thiscourse.CourseOffering.Identifier + '/viewContent/' + datetopics[z].Topic.TopicId + '/View'
+                        }
+                        dateoutside.push(dobj);
+                    }
+                }
+            }
+
+            for (var d = 0; d < thiscourse.DiscussionsAll.Objects.length; d++) {
+
+                var dsdate = null;
+                var dedate = null;
+                var dpsdate = null;
+                var dpedate = null;
+                var isoutside = false;
+
+                if (thiscourse.DiscussionsAll.Objects[d].StartDate !== null) {
+                    dsdate = new Date(thiscourse.DiscussionsAll.Objects[d].StartDate);
+                }
+                if (thiscourse.DiscussionsAll.Objects[d].EndDate !== null) {
+                    dedate = new Date(thiscourse.DiscussionsAll.Objects[d].EndDate);
+                }
+                if (thiscourse.DiscussionsAll.Objects[d].PostStartDate !== null) {
+                    dpsdate = new Date(thiscourse.DiscussionsAll.Objects[d].PostStartDate);
+                }
+                if (thiscourse.DiscussionsAll.Objects[d].PostEndDate !== null) {
+                    dpedate = new Date(thiscourse.DiscussionsAll.Objects[d].PostEndDate);
+                }
+
+                if (dsdate !== null) {
+                    if ((dsdate < csdate) || (dsdate > cedate)) {
+                        isoutside = true;
+                    }
+                }
+                if (dedate !== null) {
+                    if ((dedate < csdate) || (dedate > cedate)) {
+                        isoutside = true;
+                    }
+                }
+                if (dpsdate !== null) {
+                    if ((dpsdate < csdate) || (dpsdate > cedate)) {
+                        isoutside = true;
+                    }
+                }
+                if (dpedate !== null) {
+                    if ((dpedate < csdate) || (dpedate > cedate)) {
+                        isoutside = true;
+                    }
+                }
+                if (isoutside) {
+                    var dobj = {
+                        Type: 'DiscussionForum',
+                        Data: thiscourse.DiscussionsAll.Objects[d],
+                        Name: thiscourse.DiscussionsAll.Objects[d].Name,
+                        ItemId: thiscourse.DiscussionsAll.Objects[d].ForumId,
+                        URL: '/d2l/lms/discussions/admin/forum_new_properties.d2l?ou=' + thiscourse.CourseOffering.Identifier + '&fid=' + thiscourse.DiscussionsAll.Objects[d].ForumId
+                    }
+                    dateoutside.push(dobj);
+                }
+
+                if(thiscourse.DiscussionsAll.Objects[d].Topics !== undefined) {
+                    for (var t = 0; t < thiscourse.DiscussionsAll.Objects[d].Topics.length; t++) {
+                        var dtsdate = null;
+                        var dtedate = null;
+                        var dtusdate = null;
+                        var dtuedate = null;
+                        var isoutside = false;
+
+                        if (thiscourse.DiscussionsAll.Objects[d].Topics[t].StartDate !== null) {
+                            dtsdate = new Date(thiscourse.DiscussionsAll.Objects[d].Topics[t].StartDate);
+                        }
+                        if (thiscourse.DiscussionsAll.Objects[d].Topics[t].EndDate !== null) {
+                            dtedate = new Date(thiscourse.DiscussionsAll.Objects[d].Topics[t].EndDate);
+                        }
+                        if (thiscourse.DiscussionsAll.Objects[d].Topics[t].UnlockStartDate !== null) {
+                            dtusdate = new Date(thiscourse.DiscussionsAll.Objects[d].Topics[t].UnlockStartDate);
+                        }
+                        if (thiscourse.DiscussionsAll.Objects[d].Topics[t].UnlockEndDate !== null) {
+                            dtuedate = new Date(thiscourse.DiscussionsAll.Objects[d].Topics[t].UnlockEndDate);
+                        }
+
+                        if (dtsdate !== null) {
+                            if ((dtsdate < csdate) || (dtsdate > cedate)) {
+                                isoutside = true;
+                            }
+                        }
+                        if (dtedate !== null) {
+                            if ((dtedate < csdate) || (dtedate > cedate)) {
+                                isoutside = true;
+                            }
+                        }
+                        if (dtusdate !== null) {
+                            if ((dtusdate < csdate) || (dtusdate > cedate)) {
+                                isoutside = true;
+                            }
+                        }
+                        if (dtuedate !== null) {
+                            if ((dtuedate < csdate) || (dtuedate > cedate)) {
+                                isoutside = true;
+                            }
+                        }
+                        if (isoutside) {
+                            var dobj = {
+                                Type: 'DiscussionTopic',
+                                Data: thiscourse.DiscussionsAll.Objects[d].Topics[t],
+                                Name: thiscourse.DiscussionsAll.Objects[d].Topics[t].Name,
+                                Forum: thiscourse.DiscussionsAll.Objects[d],
+                                ItemId: thiscourse.DiscussionsAll.Objects[d].Topics[t].TopicId,
+                                URL: '/d2l/lms/discussions/admin/topic_new_properties.d2l?ou=' + thiscourse.CourseOffering.Identifier + '&tid=' + thiscourse.DiscussionsAll.Objects[d].Topics[t].TopicId
+
+                            }
+                            dateoutside.push(dobj);
+                        }
+                    }
+                }
+            }
+
+            for (var q = 0; q < thiscourse.QuizzesAll.Objects.length; q++) {
+                var qsdate = null;
+                var qedate = null;
+                var qddate = null;
+                var isoutside = false;
+
+                if (thiscourse.QuizzesAll.Objects[q].StartDate !== null) {
+                    qsdate = new Date(thiscourse.QuizzesAll.Objects[q].StartDate);
+                }
+                if (thiscourse.QuizzesAll.Objects[q].EndDate !== null) {
+                    qedate = new Date(thiscourse.QuizzesAll.Objects[q].EndDate);
+                }
+                if (thiscourse.QuizzesAll.Objects[q].DueDate !== null) {
+                    qddate = new Date(thiscourse.QuizzesAll.Objects[q].DueDate);
+                }
+
+                if (qsdate !== null) {
+                    if ((qsdate < csdate) || (qsdate > cedate)) {
+                        isoutside = true;
+                    }
+                }
+                if (qedate !== null) {
+                    if ((qedate < csdate) || (qedate > cedate)) {
+                        isoutside = true;
+                    }
+                }
+                if (qddate !== null) {
+                    if ((qddate < csdate) || (qddate > cedate)) {
+                        isoutside = true;
+                    }
+                }
+                if (isoutside) {
+                    var dobj = {
+                        Type: 'Quiz',
+                        Data: thiscourse.QuizzesAll.Objects[q],
+                        Name: thiscourse.QuizzesAll.Objects[q].Name,
+                        ItemId: thiscourse.QuizzesAll.Objects[q].QuizId,
+                        URL: '/d2l/lms/quizzing/admin/modify/quiz_newedit_properties.d2l?qi=' + thiscourse.QuizzesAll.Objects[q].QuizId + '&ou=' + thiscourse.CourseOffering.Identifier
+                    }
+                    dateoutside.push(dobj);
+                }
+
+            }
+
+            for (var o = 0; o < dateoutside.length; o++) {
+
+                dateoutside[o].Graded = false;
+
+                if (dateoutside[o].Type === "ContentModule") {
+                    var gradetopics = [];
+                    gradetopics = findContentTopicsAll("GradeItemId", "notnull", dateoutside[o].Data, gradetopics);
+                    //console.log(gradetopics);
+
+                    if (gradetopics.length > 0) {
+                        dateoutside[o].Graded = true;
+                    }
+                } else {
+                    for (var i = 0; i < thiscourse.GradeItems.Objects.length; i++) {
+                        //console.log(thiscourse.GradeItems.Objects[i].AssociatedTool);
+                        if (thiscourse.GradeItems.Objects[i].AssociatedTool !== null) {
+                            if (thiscourse.GradeItems.Objects[i].AssociatedTool.ToolItemId === dateoutside[o].ItemId) {
+                                dateoutside[o].Graded = true;
+                                break;
+                            } else {
+                                if (dateoutside[o].Type === "DiscussionForum") {
+                                    for (var t = 0; t < dateoutside[o].Data.Topics.length; t++) {
+                                        if (thiscourse.GradeItems.Objects[i].AssociatedTool.ToolItemId === dateoutside[o].Data.Topics[t].TopicId) {
+                                            dateoutside[o].Graded = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        //console.log(csdate);
+        //console.log(cedate);
+
+        taskdone = true;
+        var datetypes = [];
+        for (var o = 0; o < dateoutside.length; o++) {
+            if (dateoutside[o].Graded) {
+                taskdone = false;
+            }
+
+            var tind = datetypes.indexOfObject("Name", dateoutside[o].Type);
+            if (tind === -1) {
+                datetypes.push({
+                    'Name': dateoutside[o].Type,
+                    'Count': 1
+                })
+                tind = datetypes.length - 1;
+            } else {
+                datetypes[tind].Count++;
+            }
+
+            if ((dateoutside[o].Type === "Announcement") || (dateoutside[o].Type === "CalendarEvent")) {
+                if (dateoutside[o].IsPast) {
+                    if (datetypes[tind].Past === undefined) {
+                        datetypes[tind].Past = 1;
+                    } else {
+                        datetypes[tind].Past++;
+                    }
+                }
+            }
+        }
+
+        //console.log(datetypes);
+        //console.log(dateoutside);
+
+        var notehtml = '';
+        if (dateoutside.length > 0) {
+            notehtml += '<p>The scan determined that the following items have date restrictions set outside the current <strong>Course Start Date</strong> and <strong>Course End Date</strong>.</p>';
+            notehtml += '<div class="table-responsive-sm"><table id="table-course-dates" class="table"><tbody><tr><td>Start Date</td><td>'+csdate_display+'</td></tr><tr><td>End Date</td><td>'+cedate_display+'</td></tr></tbody></table></div>';
+            notehtml += '<p>You can review this date range by going to Course Admin > Course Offering Information.</p>'
+            notehtml += '<ul class="ee-iconlist">';
+            for (var o = 0; o < dateoutside.length; o++) {
+                notehtml += '<li class="li-icon li-'+dateoutside[o].Type+'" id="Org' + thiscourse.CourseOffering.Identifier + dateoutside[o].Type + dateoutside[o].ItemId + '">';
+                if (dateoutside[o].Graded) {
+                    notehtml += '<strong><a href="' + dateoutside[o].URL + '" target="_blank">' + insertSpaces(dateoutside[o].Type) + ': ' + dateoutside[o].Name + '</a></strong>';
+                } else {
+                    notehtml += '<a href="' + dateoutside[o].URL + '" target="_blank">' + insertSpaces(dateoutside[o].Type) + ': ' + dateoutside[o].Name + '</a>';
+                }
+                notehtml += '</li>';
+            }
+            notehtml += '</ul>';
+
+            if (!taskdone) {
+                notehtml += '<p>Note that the <strong>bold items are Graded</strong>. Only these items need to be updated for the scan to consider this objective complete for the course.</p>';
+            } else {
+                notehtml += '<p>This objective was considered to be complete because none are items identified above are Graded.</p>';
+            }
+
+            var dannounce = datetypes.indexOfObject("Name", "Announcement");
+            var dcalendar = datetypes.indexOfObject("Name", "CalendarEvent");
+            var haspast = false;
+            var pastannounce = 0;
+            var pastcalendar = 0;
+
+            if (dannounce > -1) {
+                if (datetypes[dannounce].Past !== undefined) {
+                    haspast = true;
+                    pastannounce = datetypes[dannounce].Past;
+                }
+            }
+            if (dcalendar > -1) {
+                if (datetypes[dcalendar].Past !== undefined) {
+                    haspast = true;
+                    pastcalendar = datetypes[dcalendar].Past;
+                }
+            }
+
+            /*
+            if (haspast) {
+                notehtml += '<p>Would you like to bulk delete all past Announcements and / or Calendar Items?</p>';
+
+                notehtml += '<div style="margin-bottom:16px"><btn class="btn btn-primary btn-sm mb-0" data-toggle="collapse" href="#collapseDeletePast">Delete Past Items</btn><div class="collapse" id="collapseDeletePast"><div class="card card-body"><div class="form-group">';
+
+                if (pastannounce > 0) {
+                    notehtml += '<div class="form-group form-check"><input type="checkbox" class="form-check-input check-delete isactive" id="checkDeleteAnnounce" onChange="checkConfirmDelete()"><label class="form-check-label" for="checkDeleteAnnounce">I would like to delete all past <strong>Announcements (' + pastannounce + ')</strong>. These items <strong>can be restored</strong> later if necessary, directly in the Announcements tool.</label></div>';
+                }
+                if (pastcalendar > 0) {
+                    notehtml += '<div class="form-group form-check"><input type="checkbox" class="form-check-input check-delete isactive" id="checkDeleteCalendar" onChange="checkConfirmDelete()"><label class="form-check-label" for="checkDeleteCalendar">I would like to delete all past <strong>Calendar Items (' + pastcalendar + ')</strong>. These items <strong>cannot be restored</strong> after you confirm, unless they exist in a previous course.</label></div>';
+                }
+
+                notehtml += '<button type="submit" class="btn btn-primary" onClick="confirmDeletePast()" disabled="disabled">Confirm</button></div>';
+                notehtml += '<p class="confirmDeleteMsg" style="display:none">Items deleted successfully.</p>';
+                notehtml += '</div></div></div>';
+
+            }
+            */
+            
+            if ((datetypes.indexOfObject("Name", "Assignment") > -1) || (datetypes.indexOfObject("Name", "ContentModule") > -1) || (datetypes.indexOfObject("Name", "ContentTopic") > -1) || (datetypes.indexOfObject("Name", "DiscussionForum") > -1) || (datetypes.indexOfObject("Name", "DiscussionTopic") > -1) || (datetypes.indexOfObject("Name", "Quiz") > -1)) {
+
+                notehtml += '<p>You can learn more about modifying date restrictions in the following guide(s):';
+
+                if (datetypes.indexOfObject("Name", "Assignment") > -1) {
+                    notehtml += '<br><a href="https://youtu.be/2Tk-pKwpKag" target="_blank">Video: Modifying Date Restrictions - Assignments <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>';
+                }
+                if ((datetypes.indexOfObject("Name", "ContentModule") > -1) || (datetypes.indexOfObject("Name", "ContentTopic") > -1)) {
+                    notehtml += '<br><a href="https://youtu.be/8vVI00sCS-Y" target="_blank">Video: Modifying Date Restrictions - Content <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>';
+                }
+                if ((datetypes.indexOfObject("Name", "DiscussionForum") > -1) || (datetypes.indexOfObject("Name", "DiscussionTopic") > -1)) {
+                    notehtml += '<br><a href="https://youtu.be/_mIVvbbc0Tk" target="_blank">Video: Modifying Date Restrictions - Discussions <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>';
+                }
+                if (datetypes.indexOfObject("Name", "Quiz") > -1) {
+                    notehtml += '<br><a href="https://youtu.be/IvPpJ1Nw7nU" target="_blank">Video: Modifying Date Restrictions - Quizzes <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>';
+                }
+
+                notehtml += '</p>';
+            }
+
+        }
+
+        if (notehtml !== '') {
+            thisitem.Note = notehtml;
+        }
+
+    }
+    
+    if(thisitem.Code === "eText_Links") {
+        
+        var thisdata;
+        thisdata = alldata.EEScanner;
+        if (thisdata.Etext === undefined) {
+            thisdata.Etext = JSON.parse(JSON.stringify(EEScanTemplate.Etext));
+        }
+        thisdata.Etext.Titles = [];
+        thisdata.Etext.Required = true;
+        
+        var erequired = [];
+        //var isTexidium = false;
+        //var isDigitalCode = false;
+        var isVitalsource = false;
+        //var isOther = false;
+        var thiscode;
+        
+        //console.log(thiscourse);
+        //console.log(etextmapping);
+        
+        for(var ee=0; ee<etextmapping.length; ee++) {
+            thiscode = etextmapping[ee][colname_code].trim();
+
+            if(thiscourse.Offering.Code.indexOf(thiscode) > -1) {
+                
+                isVitalsource = true;
+                erequired.push(2);                
+                  
+                /*
+                if(etextmapping[ee][colname_cat1] !== undefined) {
+                    isTexidium = true;
+                    erequired.push(0);
+                }                    
+                if(etextmapping[ee][colname_cat2] !== undefined) {
+                    isDigitalCode = true;
+                    erequired.push(1);
+                }                    
+                if(etextmapping[ee][colname_cat3] !== undefined) {
+                    isVitalsource = true;
+                    erequired.push(2);
+                }
+                
+                if(erequired.length === 0) {
+                    if(etextmapping[ee][colname_other] !== undefined) {
+                        isOther = true;
+                    }
+                }   
+                */
+            }
+        }
+        
+        var mod_array = [];
+        for (var m = 0; m < thiscourse.Content.Modules.length; m++) {
+            mod_array = findModulesAll("", mod_array, thiscourse.Content.Modules[m]);
+        }
+        //console.log(mod_array);    
+        
+        var linkfound = false;
+        var linklist = []
+        for(var ec=0; ec<thiscourse.EText.length; ec++) {
+            if(thiscourse.EText[ec].Search.length > 0) {
+                linkfound = true;
+                for(var es=0; es<thiscourse.EText[ec].Search.length; es++) {
+                    linklist.push({
+                        URL: '/d2l/le/content/' + thiscourse.CourseOffering.Identifier + '/viewContent/' + thiscourse.EText[ec].Search[es].Topic.TopicId + '/View',
+                        Title: thiscourse.EText[ec].Search[es].Topic.Title
+                    });
+                    thisdata.Etext.Titles.push(thiscourse.EText[ec].Search[es].Topic.Title);
+                }                    
+            }
+        }        
+        
+        var notehtml = '';
+        var taskdone = true;
+
+        //console.log(erequired);
+        if(erequired.length > 0) {
+            if(erequired.length === 1) {
+                notehtml += '<p>There is ' + erequired.length + ' eText related link that is required for this course:</p>';
+            }
+            else {
+                notehtml += '<p>There are ' + erequired.length + ' eText related links that are required for this course:</p>';
+            }
+            notehtml += '<table class="table">';
+            notehtml += '<tbody>';
+            for(var er=0; er<erequired.length; er++) {
+                //console.log(thiscourse.EText[erequired[er]]);
+                                
+                if(thiscourse.EText[erequired[er]].Search.length > 0) {
+                    notehtml += '<tr>';
+                    notehtml += '<td class="etext-link-'+erequired[er]+'"><a href="/d2l/le/content/'+thiscourse.CourseOffering.Identifier+'/viewContent/'+thiscourse.EText[erequired[er]].Search[0].Topic.TopicId+'/View" target="_blank">'+thiscourse.EText[erequired[er]].Title+'</a></td>';
+                    notehtml += '<td class="etext-status-'+erequired[er]+'"><i class="fa fa-check icon-pass" aria-hidden="true"></i></td>';
+                    notehtml += '</tr>';
+                }
+                else {
+                    taskdone = false;
+                    notehtml += '<tr>';
+                    notehtml += '<td class="etext-link-'+erequired[er]+'"><strong>'+thiscourse.EText[erequired[er]].Title+'</strong></td>';
+                    notehtml += '<td class="etext-status-'+erequired[er]+'"><i class="fa fa-times icon-fail" aria-hidden="true"></i>';
+                    notehtml += '</td>';
+                    notehtml += '</tr>';
+                    /*
+                    if(mod_array.length > 0) {
+                        notehtml += '<tr class="etext-addzone-'+erequired[er]+'">';
+                        notehtml += '<td colspan="2">';
+                        notehtml += '<div style="margin-bottom:16px"><btn class="btn btn-primary btn-sm mb-0" data-toggle="collapse" href="#collapseAddEtext-'+erequired[er]+'">Add Link to Course Content</btn><div class="collapse" id="collapseAddEtext-'+erequired[er]+'"><div class="card card-body">';
+                        notehtml += '<div class="form-group"><label for="selectEtextModule-'+erequired[er]+'">Select Module</label><select class="form-control" id="selectEtextModule-'+erequired[er]+'" onChange="checkEtextModule(' + erequired[er] + ')" style="margin-bottom:16px">';
+                        notehtml += '<option value="-1"></option>';    
+
+                        var cifound = false;
+                        for (var m = 0; m < mod_array.length; m++) {
+                            if(cifound) {
+                                notehtml += '<option value="' + mod_array[m].ModuleId + '">' + mod_array[m].Title + '</option>';
+                            }
+                            else {
+                                if(mod_array[m].Title.toLowerCase().indexOf("course information") > -1) {
+                                    cifound = true;
+                                    notehtml += '<option value="' + mod_array[m].ModuleId + '" selected>' + mod_array[m].Title + '</option>';
+                                }
+                                else {
+                                    notehtml += '<option value="' + mod_array[m].ModuleId + '">' + mod_array[m].Title + '</option>';
+                                }
+                            }                        
+                        }                    
+                        notehtml += '</select>';
+                        notehtml += '<div id="checkEtextMessage-'+erequired[er]+'"';                    
+                        if(!cifound) {
+                            notehtml += ' class="d-none"';
+                        }                                        
+                        notehtml += '><div class="form-group form-check"><input type="checkbox" class="form-check-input check-etext" id="checkEtextConfirm-'+erequired[er]+'" onChange="checkEtextLink(' + erequired[er] + ')"><label class="form-check-label" for="checkEtextConfirm-'+erequired[er]+'">I would like to add the necessary <strong>'+thiscourse.EText[erequired[er]].Title+'</strong> link to the Module selected above.</label></div></div>';
+                        notehtml += '<button type="submit" class="btn btn-primary" onClick="addEtextSelect(' + erequired[er] + ',' + erequired + ')" disabled="disabled">Confirm</button></div></div></div></div>';
+                        notehtml += '</td>';
+                        notehtml += '</tr>';      
+                    }             
+                    */
+                }                             
+            }
+            notehtml += '</tbody>';
+            notehtml += '</table>';
+            if( (erequired.indexOf(0) > -1) || (erequired.indexOf(1) > -1) ) {
+                if( (erequired.indexOf(0) > -1) && (erequired.indexOf(1) > -1) ) {
+                    notehtml += '<p>For more information about <strong>eTexts, Texidium, and Digital Access Codes</strong>, you can review the following resources:</p>'; 
+                }
+                else {
+                    if(erequired.indexOf(0) > -1) {
+                        notehtml += '<p>For more information about <strong>eTexts and Texidium</strong>, you can review the following resources:</p>'; 
+                    }
+                    else {                        
+                        notehtml += '<p>For more information about <strong>Digital Access Codes</strong>, you can review the following resources:</p>'; 
+                    }                        
+                }                
+                notehtml += '<ul>';
+                notehtml += '<li>An email from <a href="mailto:Kbrown1@conestogac.on.ca">Kevin Brown</a> (eText coordinator from the bookstore). These emails are sent to instructors within the 4 weeks leading up to classes commencing. If you do not see this in your inbox currently, please contact him and request this email for your course code.</li>';
+                notehtml += '<li>Bookstore\'s <a href="https://conestoga.bookware3000.ca/etext-programs" target="_blank">Website for the eText program for Students. <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>.</li>';
+                notehtml += '<li>Bookstore\'s <a href="https://stuconestogacon.sharepoint.com.mcas.ms/sites/CourseMaterialServices/SitePages/eText-(Inclusive-Access)-Program.aspx" target="_blank">Faculty page for the eText (Inclusive Access) Program. <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>.</li>';
+                notehtml += '<li>Texidium\'s <a href="https://texidium.com/faculty/" target="_blank">Faculty information</a> page which you can book a demo through. <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></li>';
+                notehtml += '<li>Texidium\'s <a href="https://texidium.com/students/" target="_blank">Student information</a> page. <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></li>';
+                notehtml += '</ul>';
+            }
+            if(erequired.indexOf(2) > -1) {
+                notehtml += '<p>For more information about <strong>Vitalsource</strong>, you can review the following resources:</p>';
+                notehtml += '<ul>';
+                notehtml += '<li>An email from <a href="mailto:Kbrown1@conestogac.on.ca">Kevin Brown</a> (eText coordinator from the bookstore). These emails are sent to instructors within the 4 weeks leading up to classes commencing. If you do not see this in your inbox currently, please contact him and request this email for your course code.</li>';
+                notehtml += '<li>Vitalsource\'s user <a href="https://support.vitalsource.com/hc/en-us" target="_blank">support page</a> that includes a getting started with bookshelf video. <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></li>';
+                notehtml += '<li>Vitalsource\'s <a href="https://support.vitalsource.com/hc/en-us/categories/360001228113" target="_blank">Faculty Sampling Portal <i class="fas fa-external-link" aria-hidden="true"></i><span class="sr-only">Opens in a new tab</span></a>.</li>';
+                notehtml += '</ul>';
+            }
+            notehtml += '<p>Note that if you believe the eText link requirements listed above are incorrect, please <a href="mailto:etext@conestogac.on.ca;econestoga@conestogac.on.ca?subject=eText Issue in Essential Elements Scanner">contact eText Support and eConestoga Support</a>.';
+            notehtml += '</p>';
+        }
+        else {
+            //console.log("Not found in spreadsheet");
+            //console.log(thiscourse.EText);
+            
+            if(linkfound) {
+                if(linklist.length === 1) {
+                    notehtml += '<p>The following eText related link was found in the Content of this course:</p>';
+                }
+                else {
+                    notehtml += '<p>The following eText related links were found in the Content of this course:</p>';
+                }
+                
+                notehtml += '<ul class="ee-iconlist">';
+                for(var el=0; el<linklist.length; el++) {
+                    notehtml += '<li class="li-icon li-External"><a href="'+linklist[el].URL+'" target="_blank">'+linklist[el].Title+'</a></li>';
+                }
+                notehtml += '</ul>';
+                notehtml += '<p>If you are unsure which eText links are required for this course, please <a href="mailto:etext@conestogac.on.ca?subject=eText Links in eConestoga">contact eText Support</a>.</p>';
+            }
+            else {
+                
+                taskdone = false;
+                /*
+                    taskdone = false;
+                    notehtml += '<p>The scan did not find any eText related links in the Content of this course.</p>';
+                    notehtml += '<p><strong>Not sure why this item is appearing?</strong></p>';
+                    notehtml += '<p>The Essential Elements Scanner is expecting to locate one or more eText link within this course section because the value for "Is eText Enforced" is set to "Yes" within Conestoga\'s Student Information System (SIS).</p>';
+                    notehtml += '<p><img src="/shared/CustomWidgets/Essential-Elements-Scanner/images/etextenforced.png"></p>';
+                    notehtml += '<p>Note that this value should only be set to "Yes" for courses that are formally part of Conestoga\'s <a href="https://stuconestogacon.sharepoint.com.mcas.ms/sites/CourseMaterialServices/SitePages/eText-(Inclusive-Access)-Program.aspx" target="_blank">eText (Inclusive Access) Program</a>. The most common integrations are through <a href="https://texidium.com/faculty/" target="_blank">Texidium</a> and <a href="https://support.vitalsource.com/hc/en-us" target="_blank">Vitalsource</a>.</p>';
+                    notehtml += '<p><strong>If you believe that this course is not part of the eText Program</strong>, please <a href="mailto:etext@conestogac.on.ca?subject=eText%20Links%20in%20eConestoga">contact eText Support</a> and provide them with your course code, semester, and section so they can confirm.</p>';
+                    notehtml += '<p><strong>If you believe that this course is part of the eText Program</strong>, you should receive an email from <a href="mailto:Kbrown1@conestogac.on.ca">Kevin Brown</a> (eText coordinator from the bookstore). These emails are sent to instructors within the 4 weeks leading up to classes commencing. If you do not see this in your inbox currently, please contact him and request this email for your course code.</p>';
+                    
+                    if(mod_array.length > 0) {
+                        notehtml += '<p>Once you have confirmed whether an eText link is expected for your course, you can optionally use the buttons below to quickly and easily add the appropriate item(s) within course content.</p>';                    
+                        notehtml += '<table class="table">';
+                        notehtml += '<tbody>';                
+                        for(var ec=0; ec<thiscourse.EText.length; ec++) {
+                            notehtml += '<tr>';
+                            notehtml += '<td class="etext-link-'+ec+'"><strong>'+thiscourse.EText[ec].Title+'</strong></td>';
+                            notehtml += '<td class="etext-status-'+ec+'">';
+                            notehtml += '</td>';
+                            notehtml += '</tr>';                       
+                            notehtml += '<tr class="etext-addzone-'+ec+'">';
+                            notehtml += '<td colspan="2">';
+                            notehtml += '<div style="margin-bottom:16px"><btn class="btn btn-primary btn-sm mb-0" data-toggle="collapse" href="#collapseAddEtext-'+ec+'">Add Link to Course Content</btn><div class="collapse" id="collapseAddEtext-'+ec+'"><div class="card card-body">';
+                            notehtml += '<div class="form-group"><label for="selectEtextModule-'+ec+'">Select Module</label><select class="form-control" id="selectEtextModule-'+ec+'" onChange="checkEtextModule(' + ec + ')" style="margin-bottom:16px">';
+                            notehtml += '<option value="-1"></option>';    
+
+                            var cifound = false;
+                            for (var m = 0; m < mod_array.length; m++) {
+                                if(cifound) {
+                                    notehtml += '<option value="' + mod_array[m].ModuleId + '">' + mod_array[m].Title + '</option>';
+                                }
+                                else {
+                                    if(mod_array[m].Title.toLowerCase().indexOf("course information") > -1) {
+                                        cifound = true;
+                                        notehtml += '<option value="' + mod_array[m].ModuleId + '" selected>' + mod_array[m].Title + '</option>';
+                                    }
+                                    else {
+                                        notehtml += '<option value="' + mod_array[m].ModuleId + '">' + mod_array[m].Title + '</option>';
+                                    }
+                                }                        
+                            }                    
+                            notehtml += '</select>';
+                            notehtml += '<div id="checkEtextMessage-'+ec+'"';                    
+                            if(!cifound) {
+                                notehtml += ' class="d-none"';
+                            }                                        
+                            notehtml += '><div class="form-group form-check"><input type="checkbox" class="form-check-input check-etext" id="checkEtextConfirm-'+ec+'" onChange="checkEtextLink(' + ec + ')"><label class="form-check-label" for="checkEtextConfirm-'+ec+'">I would like to add the necessary <strong>'+thiscourse.EText[ec].Title+'</strong> link to the Module selected above.</label></div></div>';
+                            notehtml += '<button type="submit" class="btn btn-primary" onClick="addEtextSelect(' + ec + ')" disabled="disabled">Confirm</button></div></div></div></div>';                        
+                            notehtml += '</td>';
+                            notehtml += '</tr>';
+                        }
+                        notehtml += '</tbody>';
+                        notehtml += '</table>';
+                    */
+
+            }
+            //console.log(linkfound);
+            //console.log(linklist);
+            
+        }
+        
+        if (notehtml !== '') {
+            thisitem.Note = notehtml;
+        } 
+
+        thisdata.Etext.Found = taskdone;
+        
+        //console.log(thisdata);
+        
+    }
+
+    if (taskdone) {
+        thiscat.SubTotal++;
+        thiscourse.Score.Total++;
+    }
+
+    thisitem.Done = taskdone;
+    //console.log(thiscourse);
+    //console.log(thisitem);
+
+}
+
+
+var coursescoredone = false;
+function evaluateCourse() {
+    var thiscourse = alldata;
+    if(alldata.EEScanner === null) {
+        alldata.EEScanner = JSON.parse(JSON.stringify(EEScanTemplate));
+    }
+        
+    thiscourse.Score.Total = 0;
+    //console.log(thiscourse);
+    
+    for (var a = 0; a < thiscourse.Score.Categories.length; a++) {
+        var thiscat = thiscourse.Score.Categories[a];
+        thiscat.SubTotal = 0;
+        for (var b = 0; b < thiscourse.Score.Categories[a].Items.length; b++) {
+            var thisitem = thiscourse.Score.Categories[a].Items[b];
+            evaluateItem(a, b);
+        }
+    }
+    
+    var updateinfo = {
+        "User": {
+            "FirstName": alldata.WhoAmI.FirstName,
+            "LastName": alldata.WhoAmI.LastName
+        },
+        "Date": getServerTime(),
+        "Score": thiscourse.Score.Total,
+        "Total": calcTotalScore(thiscourse)
+    }    
+    
+    if(alldata.EEScanner !== null) {
+        alldata.EEScanner.LastUpdated = updateinfo;
+    }
+    else {
+        alldata.EEScanner = {
+            LastUpdated: updateinfo
+        }
+    }
+
+    var newWidgetData = {
+        "Data": JSON.stringify(alldata.EEScanner)
+    }
+
+    //console.log(newWidgetData);
+    coursescoredone = true;
+    updateWidgetDataAuto();
+    
+    /*
+    CSVal.put_custom_widget_data(thiscourse.CourseOffering.Identifier, cWidgetId, newWidgetData);   
+    */
+    
+}
+
+
+function progressCircle(userscore, elementid) {
+    
+    //console.log(userscore);
+    
+    var bar = new ProgressBar.Circle("#"+elementid, {
+        easing: 'easeInOut',
+        fill: 'rgba(255, 255, 255, 0)',
+        duration: 1400,
+        text: {
+            autoStyleContainer: false
+        },
+        from: {
+            color: '#337780 ',
+            width: 10
+        },
+        to: {
+            color: '#337780 ',
+            width: 10
+        },
+        color: '#000 ',
+        trailColor: '#eee',
+        trailWidth: 10,
+        svgStyle: null,
+        step: function (state, circle) {
+            circle.path.setAttribute('stroke', state.color);
+            circle.path.setAttribute('stroke-width', state.width);
+
+            var value = Math.round(circle.value() * 100);
+            if (value === 0) {
+                circle.setText('0%');
+            } else {
+                circle.setText(value + '%');
+            }
+
+        }
+    });
+    bar.text.style.fontFamily = '"Raleway", Helvetica, sans-serif';
+    bar.text.style.fontSize = '0.9rem';
+    bar.animate(userscore); // Number from 0.0 to 1.0	
+}
+
+
+function openRefreshEE() {
+    
+    $('.essential-elements-controls button').attr('disabled','disabled');
+    
+    checkCourseScores();
+}
+
+
+function openReviewEE() {
+    
+    alldata.EEScanner.MoreInformation.Views++;
+    alldata.EEScanner.MoreInformation.Date = getServerTime();
+
+    var newWidgetData = {
+        "Data": JSON.stringify(alldata.EEScanner)
+    }
+
+    //console.log(newWidgetData);
+    putCustomWidgetData(CustomWidgetEE); 
+    
+    $('#eeScannerModal .modal-body').html(buildScannerReview());
+    $('#eeScannerModal').modal('show');
+}
+
+
+function showItemDesc(aindex, bindex, tasknum) {
+
+    var thistask = alldata.Score.Categories[aindex].Items[bindex];
+    var thisdesc = '';
+    
+    var thisbtn;
+    var thisdisplay;
+
+    thisbtn = $('#' + thistask.Code + '_btn');
+    thisdisplay = $('#' + thistask.Code + '_desc');
+
+    if(thisbtn.hasClass('detailsdisplayed')) {
+        
+        thisdisplay.html('');
+        thisbtn.removeClass('detailsdisplayed');
+        thisbtn.attr('title','Show Task Feedback');
+        
+    }
+    else {
+        if (thistask.Done) {
+            thisdesc += '<p>Success! The scan has identified that this item is complete.</p>';
+        }
+
+        thisdesc += '<p><strong>' + thistask.Desc + '</strong></p>';
+
+        if (thistask.Note !== undefined) {
+            thisdesc += thistask.Note;
+        }
+
+        thisdisplay.html(thisdesc);
+        thisbtn.addClass('detailsdisplayed');
+        thisbtn.attr('title','Hide Task Feedback');
+        
+    }
+    
+}
+
+
+function buildScannerReview() {
+
+    var thiscourse = alldata;
+    var userHTML = '<h3>Scan Results: ' + thiscourse.Score.Total + ' / ' + calcTotalScore(thiscourse) + '</h3>';
+
+    var taskindex = 0;
+
+    for (var a = 0; a < thiscourse.Score.Categories.length; a++) {
+        userHTML += '<div class="row evaltasks evaltasks-' + thiscourse.CourseOffering.Identifier + '">';
+        userHTML += '<div class="col-12">';
+        userHTML += '<p><strong>' + thiscourse.Score.Categories[a].Name + ': ' + thiscourse.Score.Categories[a].SubTotal + ' / ' + thiscourse.Score.Categories[a].Items.length + '</strong></p>';
+        userHTML += '<p>' + thiscourse.Score.Categories[a].Desc + '</p>';
+        userHTML += '</div>';
+        userHTML += '</div>';
+        
+        for (var b = 0; b < thiscourse.Score.Categories[a].Items.length; b++) {
+
+            var thisitem = thiscourse.Score.Categories[a].Items[b];
+
+            userHTML += '<div class="row mt-2 mb-2">';
+            
+            userHTML += '<div class="col-12 col-md-5 mb-2">';
+            userHTML += '<table>';
+            userHTML += '<tbody>';
+            userHTML += '<tr>';
+            userHTML += '<td class="evaltasks-icon">';
+            if (!thisitem.Done) {
+                userHTML += '<div class="cc-checkbox" title="Item Incomplete"><span class="sr-only">Item Incomplete</span></div>';
+            } else {
+                userHTML += '<div class="cc-checkbox checked" title="Item Complete"><span class="sr-only">Item Complete</span></div>';
+            }
+            userHTML += '</td>';
+            userHTML += '<td class="evaltasks-title"><strong>' + thisitem.Name + '</strong></td>';
+            userHTML += '</tr>';
+            userHTML += '</tbody>';
+            userHTML += '</table>';
+            userHTML += '</div>';
+            
+            userHTML += '<div class="col-12 col-md-7 mb-2">';
+            userHTML += '<table>';
+            userHTML += '<tbody>';
+            userHTML += '<tr>';
+            userHTML += '<td class="evaltasks-info">';
+            userHTML += '<button id="' + thisitem.Code + '_btn" class="btn btn-secondary evalPopover" onClick="showItemDesc(' + a + ',' + b + ',' + taskindex + ')" title="Show Task Feedback"><i class="fa fa-info-circle" aria-hidden="true"></i></button>';
+            userHTML += '</td>';
+            userHTML += '<td class="evaltasks-desc" id="' + thisitem.Code + '_desc"></td>';
+            userHTML += '</tr>';
+            userHTML += '</tbody>';
+            userHTML += '</table>';
+            userHTML += '</div>';
+            
+            userHTML += '</div>';
+
+            taskindex++;
+        }
+
+        userHTML += '</div>';
+    }
+
+    return userHTML;
+}
+
+
+function checkCourseScores() {
+    //ModelAttributes needed to determine length for Models.
+    // In non-Model courses alldone.ModelAttributes set to true early in code without fetching data.
+    
+    //console.log("1");
+    //console.log(alldone.ModelAttributes);
+    //console.log(alldone.ETextMap);
+    
+    if((alldone.ModelAttributes === true) && (alldone.ETextMap === true)) {
+        //console.log("2");
+        
+        var thiscourse = alldata;
+        if (thiscourse.Score === undefined) {
+            thiscourse.Score = JSON.parse(JSON.stringify(scoretemplate));
+
+            var addetext = checkAddEtext(thiscourse);          
+            if(addetext) {
+                if(checkExcelEtext(thiscourse)) {
+                    thiscourse.Score.Categories.push(JSON.parse(JSON.stringify(etextitem)));
+                }                
+            }
+
+            evaluateCourse();
+        }
+
+        var userscore = ((thiscourse.Score.Total / calcTotalScore(thiscourse)).toFixed(2));
+
+        $('.radial-progress').html('');
+        $('.radial-progress').removeClass('invisible');    
+        progressCircle(userscore, "radial-progress-1");
+        progressCircle(userscore, "radial-progress-2");
+
+
+        $('.essential-elements-controls button').removeAttr('disabled');
+
+
+        $('.btn-eescan-review').on('click', function () {
+            openReviewEE();
+        });
+
+        $('.btn-eescan-refresh').on('click', function () {
+            openRefreshEE();
+        });
+
+        $('.btn-eescan-dismiss').on('click', function () {
+            openDismissEE();
+        });
+
+        alldata.Displayed.EEScanner = true;
+
+        checkAllDisplayed();
+    }
+}

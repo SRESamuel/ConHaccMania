@@ -1,0 +1,272 @@
+// JavaScript Document
+
+var imagegalleryorgid = -1;
+var imagegallerypagenum = 1;
+var imagegallerypagesize = 24;
+var imagegallerypagetotal = 1;
+
+
+function setCourseImage (orgid, imageid) {
+    var token;
+    $.ajax({
+        method: "GET",
+        url: "/d2l/lp/auth/xsrf-tokens",
+        success: function(ltoken) {
+            token = ltoken;
+            //console.log(token);
+            
+            var route = '/d2l/api/lp/1.9/courses/'+orgid+'/image?imagePath=/images/'
+            route += imageid;
+            //console.log(route);
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", route, true);
+            xhr.setRequestHeader("X-Csrf-Token", token.referrerToken);
+            xhr.onload = function () {        
+                if (xhr.status === 200) {
+
+                    var newtime = new Date().getTime();
+                    //console.log(newtime);
+                    //console.log(imageid);
+                    $('.nav-course-icon img').attr("src","/d2l/api/lp/" + alldata.APIVersions.LP.LatestVersion + "/courses/" + orgUnitId + "/image?t=" + newtime);
+
+                    if(alldata.CustomSettings !== undefined) {
+                        alldata.CustomSettings.ImageSet = true;
+                        putCustomWidgetData(CustomWidgetH1);
+                    }
+                    /*
+                    else {
+                        alldata.CustomSettings = {
+                            ImageSet: true
+                        }
+                    }
+                    */
+                    
+                }        
+            }
+            xhr.send();
+        }
+    });
+};
+
+
+function searchCourseImage(search, pagesize, pagenum, orgid) {
+	var route = 'https://course-image-catalog.api.brightspace.com/images?search=';
+	route += search;
+	route += "&pageSize=" + pagesize + "&pageNum=" + pagenum;
+
+	var xhr = new XMLHttpRequest();
+	xhr.open("GET", route, false);
+	xhr.send();
+
+	//console.log(xhr.status);
+	//console.log(xhr.statusText);
+	var imageresults = JSON.parse(xhr.responseText);
+	//console.log(imageresults);
+	$('#imageGalleryModal .modal-body #imagegallery').html('');
+	imagegallerypagetotal = Math.ceil(imageresults.properties.pagingInfo.total / imagegallerypagesize);
+
+	var firstresultnum;
+	var finalresultnum;
+	var searchdetailstext;
+
+	if (imageresults.properties.pagingInfo.total > 0) {
+		$("#imgpagenavigation2").css("display", "block");
+		searchdetailstext = 'Total Results: ' + imageresults.properties.pagingInfo.total + '<br>';
+
+		if (imageresults.properties.pagingInfo.page == imagegallerypagetotal) {
+			firstresultnum = ((imageresults.properties.pagingInfo.page - 1) * imagegallerypagesize) + 1;
+			finalresultnum = (imageresults.properties.pagingInfo.page - 1) * imagegallerypagesize + imageresults.properties.pagingInfo.pageSize;
+
+			$('#imageGalleryModal .modal-body .pagenav-next').attr('disabled', 'disabled');
+
+		} else {
+			$('#imageGalleryModal .modal-body .pagenav-next').removeAttr('disabled');
+
+			firstresultnum = ((imageresults.properties.pagingInfo.page - 1) * imageresults.properties.pagingInfo.pageSize) + 1;
+			finalresultnum = imageresults.properties.pagingInfo.page * imageresults.properties.pagingInfo.pageSize;
+		}
+
+		searchdetailstext += 'Showing Images: ' + firstresultnum + ' to ' + finalresultnum;
+	} else {
+
+		searchdetailstext = 'No Matches Found';
+		$("#imgpagenavigation2").css("display", "none");
+		$('#imageGalleryModal .modal-body .pagenav-next').attr('disabled', 'disabled');
+		$('#imageGalleryModal .modal-body .pagenav-prev').attr('disabled', 'disabled');
+	}
+
+	$('#imageGalleryModal .modal-body #imgsearchdetails').html(searchdetailstext);
+
+	for (var i = 0; i < imageresults.entities.length; i++) {
+		(function () {
+			
+			var lindex = -1;
+			for(var l = 0; l < imageresults.entities[i].links.length; l++) {
+				if(imageresults.entities[i].links[l].href.indexOf("tile-low-density-max-size") > -1) {
+					lindex = l;
+				}
+			}
+			
+			if(lindex > -1) {
+				var newimage = '<div class="col-md-4 col-sm-6 col-xs-12"><a class="imgselect" id="imgselect-' + i + '" href="javascript:void(0)"><div class="imgsave" id="imgsave-' + i + '">Use this image</div><img src="' + imageresults.entities[i].links[lindex].href + '"></a></div>';
+				$('#imageGalleryModal .modal-body #imagegallery').append(newimage);
+				var imgindex = i;
+				$('#imageGalleryModal .modal-body .row #imgselect-' + imgindex).on("click", function () {
+
+					var imgid = imageresults.entities[imgindex].links[0].href.slice(imageresults.entities[imgindex].links[0].href.indexOf("/images/") + 8);
+                    
+                    //console.log(imgid);
+                    
+					setCourseImage(orgid, imgid);
+					$('#imageGalleryModal').modal('toggle');
+
+				});
+			}
+
+		})();
+	}
+};
+
+function setImageLandscape() {
+    var route = 'https://course-image-catalog.api.brightspace.com/images?search=';
+    route += "landscape";
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", route, false);
+    xhr.send();
+    //console.log(xhr.status);
+    //console.log(xhr.statusText);
+    var imageresults = JSON.parse(xhr.responseText);
+    var randindex = getRandomInt(0, imageresults.entities.length);
+    var imgid = imageresults.entities[randindex].links[0].href.slice(imageresults.entities[randindex].links[0].href.indexOf("/images/") + 8);
+    setCourseImage(orgUnitId, imgid);
+}
+
+function courseImageFallback() {
+    if(alldata.CurrentRole !== undefined) {
+        if((studentroles.indexOf(alldata.CurrentRole) === -1) && (observeroles.indexOf(alldata.CurrentRole) === -1)) {
+            var imageneeded = true;
+            if(alldata.CustomSettings !== undefined) {
+                if(alldata.CustomSettings !== null) {
+                    if(alldata.CustomSettings.ImageSet !== undefined) {
+                        if(alldata.CustomSettings.ImageSet === true) {
+                            imageneeded = false;
+                        }
+                    }
+                }
+                if(imageneeded) {
+                    setImageLandscape();
+                }
+            }
+        }
+    }            
+}
+
+function studentImageFallback() {    
+    if(alldata.CurrentRole !== undefined) {
+        if(studentroles.indexOf(alldata.CurrentRole) > -1) {
+            var route = 'https://course-image-catalog.api.brightspace.com/images?search=';
+            route += "landscape";
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", route, false);
+            xhr.send();
+            //console.log(xhr.status);
+            //console.log(xhr.statusText);
+            var imageresults = JSON.parse(xhr.responseText);
+            var randindex = getRandomInt(0, imageresults.entities.length);
+            //console.log(imageresults.entities[randindex]);
+            
+            var thisimg = imageresults.entities[randindex];
+            for(var imgl=0; imgl<thisimg.links.length; imgl++) {
+                if(thisimg.links[imgl].class !== undefined) {
+                    if((thisimg.links[imgl].class.indexOf("tile") > -1) && (thisimg.links[imgl].class.indexOf("low-density") > -1)) {
+                        $('#student-nav .nav-course-icon img').attr("src",thisimg.links[imgl].href);    
+                        break;
+                    }                    
+                }
+            }
+            //
+        }
+    }
+}
+
+function getRandomInt(min, max) {
+	return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+
+$('#imageGalleryModal .modal-body .pagenav-prev').on("click", function () {
+    if ($(this).attr("disabled") !== "disabled") {
+        if (imagegallerypagenum > 1) {
+            imagegallerypagenum = imagegallerypagenum - 1;
+        }
+        if (imagegallerypagenum == 1) {
+            $('#imageGalleryModal .modal-body .pagenav-prev').attr("disabled", "disabled");
+        }
+
+        if (imagegallerypagenum < imagegallerypagetotal) {
+            $('#imageGalleryModal .modal-body .pagenav-next').removeAttr("disabled");
+        }
+
+        var searchterms = $('#imageGalleryModal .modal-body .input-group input').val();
+        searchCourseImage(searchterms, imagegallerypagesize, imagegallerypagenum, imagegalleryorgid);
+    }
+
+})
+
+$('#imageGalleryModal .modal-body .pagenav-next').on("click", function () {
+    if ($(this).attr("disabled") !== "disabled") {
+        if (imagegallerypagenum < imagegallerypagetotal) {
+            imagegallerypagenum = imagegallerypagenum + 1;
+        }
+
+        if (imagegallerypagenum == imagegallerypagetotal) {
+            $('#imageGalleryModal .modal-body .pagenav-next').attr("disabled", "disabled");
+        }
+
+        if (imagegallerypagenum > 1) {
+            $('#imageGalleryModal .modal-body .pagenav-prev').removeAttr("disabled");
+        }
+
+        var searchterms = $('#imageGalleryModal .modal-body .input-group input').val();
+        searchCourseImage(searchterms, imagegallerypagesize, imagegallerypagenum, imagegalleryorgid);
+    }
+})
+
+$('#imageGalleryModal .modal-body .input-group button#gallerysearchgo').on("click", function () {
+
+    imagegallerypagenum = 1;
+
+    var searchterms = $('#imageGalleryModal .modal-body .input-group input').val();
+    $('#imageGalleryModal .modal-body .pagenav-prev').attr("disabled", "disabled");
+
+    searchCourseImage(searchterms, imagegallerypagesize, imagegallerypagenum, imagegalleryorgid);
+
+});
+
+$('#imageGalleryModal .modal-body .input-group input').on('keyup', function (e) {
+    if (e.keyCode == 13) {
+
+        imagegallerypagenum = 1;
+
+        var searchterms = $('#imageGalleryModal .modal-body .input-group input').val();
+        $('#imageGalleryModal .modal-body .pagenav-prev').attr("disabled", "disabled");
+
+        searchCourseImage(searchterms, imagegallerypagesize, imagegallerypagenum, imagegalleryorgid);
+
+    }
+});
+
+
+function browseImages(orgid) {
+	imagegalleryorgid = orgid;
+	imagegallerypagenum = 1;
+	$('#imageGalleryModal .modal-body .input-group input').val("");
+
+	$('#imageGalleryModal .modal-body #imguploadlink').attr('href', '/d2l/lp/manageCourses/course_offering_info_viewedit.d2l?ou=' + orgid);
+
+	$('#imageGalleryModal .modal-body .pagenav-prev').attr('disabled', 'disabled');
+
+	$('#imageGalleryModal').modal('toggle');
+	searchCourseImage("", imagegallerypagesize, imagegallerypagenum, orgid);
+}

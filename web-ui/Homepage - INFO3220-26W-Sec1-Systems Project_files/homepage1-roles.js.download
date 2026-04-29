@@ -1,0 +1,5 @@
+// JavaScript Document
+
+var studentroles = ["Student", "Student Preview"];
+var observeroles = ["Observer", "Cascading Observer", "Copy Access Only", "Grant Access", "AccessibilityService", "AccessibilityTesting", "Model Viewer", "Teaching Assistant", "Quality Assurance Support", "Student Admin", "CD Testing"]
+var adminroles = ["Administrator", "Global Editor", "eConestoga Support"];
