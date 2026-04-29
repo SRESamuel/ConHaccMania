@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+  <g id="Group_2347" data-name="Group 2347" transform="translate(-469 -4548)">
+    <g id="bar-chart-2" transform="translate(475 4554)">
+      <path id="Line_120" data-name="Line 120" d="M0,11a1,1,0,0,1-1-1V0A1,1,0,0,1,0-1,1,1,0,0,1,1,0V10A1,1,0,0,1,0,11Z" transform="translate(18 10)"/>
+      <path id="Line_121" data-name="Line 121" d="M0,17a1,1,0,0,1-1-1V0A1,1,0,0,1,0-1,1,1,0,0,1,1,0V16A1,1,0,0,1,0,17Z" transform="translate(12 4)"/>
+      <path id="Line_122" data-name="Line 122" d="M0,7A1,1,0,0,1-1,6V0A1,1,0,0,1,0-1,1,1,0,0,1,1,0V6A1,1,0,0,1,0,7Z" transform="translate(6 14)"/>
+    </g>
+    <rect id="Rectangle_2770" data-name="Rectangle 2770" width="36" height="36" transform="translate(469 4548)" fill="none"/>
+  </g>
+</svg>
