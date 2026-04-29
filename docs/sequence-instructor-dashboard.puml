@@ -1,0 +1,72 @@
+@startuml Instructor Views Dashboard
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontName "Segoe UI"
+skinparam shadowing false
+skinparam sequenceArrowThickness 2
+skinparam participantPadding 20
+skinparam boxPadding 10
+
+title UC4: Instructor Views Dashboard
+
+actor Instructor as I
+box "Frontend (React)" #EFF6FF
+  participant "Analysis\nDashboard" as AD
+end box
+box "Submission API (FastAPI)" #FEF3C7
+  participant "SubmissionRouter" as SR
+end box
+box "Analysis Service (FastAPI)" #FCE7F3
+  participant "DashboardRouter" as DR
+  participant "ValidateRouter" as VR
+  participant "ClaudeValidator" as CV
+end box
+participant "Claude CLI\n(subprocess)" as CLI #F1F5F9
+database "Neon\n(PostgreSQL)" as DB #F1F5F9
+
+== 1. View Students ==
+
+I -> AD : Open dashboard
+AD -> SR : GET /api/submissions
+SR -> DB : SELECT DISTINCT student_name,\nCOUNT(*) as submission_count\nFROM submissions\nGROUP BY student_name
+DB --> SR : students[]
+SR --> AD : 200 OK { students }
+AD -> I : Display student list\n(name, submission count, analysis status)
+
+== 2. View Student's Submissions ==
+
+I -> AD : Click on a student
+AD -> SR : GET /api/submissions?student_name={name}
+SR -> DB : SELECT submissions + answers\n+ selected solutions\nWHERE student_name
+DB --> SR : submissions with answers[]
+SR --> AD : 200 OK { submissions }
+AD -> I : Display student's submissions\n+ reasoning per question
+
+== 3. Trigger Analysis (if not yet analyzed) ==
+
+I -> AD : Click "Analyze"
+AD -> VR : POST /api/analysis/validate\n{ submission_id }
+note right of VR : See UC3 for full\nClaude validation flow
+VR --> AD : 201 Created { analysis_id }
+AD -> I : "Analysis complete"
+
+== 4. View Student Analysis ==
+
+I -> AD : Click "View Results"
+AD -> DR : GET /api/analysis/{submission_id}
+DR -> DB : SELECT analysis + answer_analyses\nWHERE submission_id
+DB --> DR : analysis with per-answer details
+DR --> AD : 200 OK { analysis }
+AD -> I : Display student review:\n- Overall score\n- Per-question score\n- Strengths per answer\n- Gaps per answer\n- AI-generated flags\n- Recommended topics
+
+== 5. View Aggregated Dashboard ==
+
+I -> AD : Click "Class Overview"
+AD -> DR : GET /api/analysis/dashboard
+DR -> DB : SELECT analyses + answer_analyses\nJOIN submissions
+DB --> DR : all analyses
+DR -> DR : Aggregate:\n- Average score\n- Common gaps across students\n- AI-generated flag count\n- Per-question difficulty
+DR --> AD : 200 OK { dashboard_data }
+AD -> I : Display class overview:\n- Avg score, submission count\n- Most common gaps\n- AI-flag count\n- Weakest topics
+
+@enduml

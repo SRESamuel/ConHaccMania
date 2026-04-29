@@ -56,9 +56,9 @@ VR -> VR : Aggregate:\n- top strengths across answers\n- recurring gaps\n- recom
 VR -> DB : UPDATE analyses\nSET overall_score, overall (JSONB)\nWHERE analysis_id
 DB --> VR : updated
 
-== 5. Return Results ==
+== 5. Done ==
 
-VR --> AD : 200 OK { analysis_id,\noverall_score, per_answer results }
-AD -> I : Display analysis results
+VR --> AD : 201 Created { analysis_id }
+note right of AD : Analysis stored in DB.\nInstructor views results\nvia GET in UC4.
 
 @enduml

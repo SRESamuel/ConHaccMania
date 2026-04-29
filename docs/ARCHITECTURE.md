@@ -168,51 +168,45 @@ All UI. eConestoga shell is optional/demo-only. Everything can be built in React
 | Analysis Dashboard | Per-student AI analysis, knowledge gaps, flags          |
 | Criteria Editor    | Define what concepts/weights to evaluate                |
 
-### 2. Quiz API (REST — lightweight)
+### 2. Quiz API (FastAPI + Gemini)
 
-Simple CRUD. Can be Node/Express or FastAPI — separate from Analysis.
+CRUD + AI-assisted wrong option generation. Owns Gemini.
 
 ```
-GET    /api/quizzes                    → List quizzes
-POST   /api/quizzes                    → Create quiz (instructor)
-GET    /api/quizzes/{id}               → Get quiz + questions
-POST   /api/quizzes/{id}/questions     → Add question
-PUT    /api/questions/{id}             → Update question
+GET    /api/quizzes                              → List quizzes
+POST   /api/quizzes                              → Create quiz (instructor)
+GET    /api/quizzes/{id}                         → Get quiz + questions
+POST   /api/quizzes/{id}/questions               → Add question
+PUT    /api/questions/{id}                       → Update question
+POST   /api/questions/{id}/generate-wrong-options → AI generates wrong options (Gemini)
+POST   /api/questions/{id}/solutions             → Save accepted wrong option
 ```
 
-### 3. Submission API (REST — lightweight)
+### 3. Submission API (FastAPI)
 
 ```
 POST   /api/submissions                → Submit answers + reasoning
-GET    /api/submissions?quiz_id=X      → List submissions (instructor)
-GET    /api/submissions/{id}           → Get single submission
+GET    /api/submissions                → List submissions (supports ?student_name=X)
+GET    /api/submissions/{id}           → Get single submission with answers
 ```
 
-### 4. Analysis Service — FastAPI (Python)
+### 4. Analysis Service (FastAPI + Claude)
 
-The only service that talks to AI. Handles all AI-powered features.
+Reasoning validation only. Owns Claude CLI.
 
 ```
-# Reasoning Validation
-POST   /api/analysis/validate          → Validate a submission's reasoning
+POST   /api/analysis/validate          → Validate a submission's reasoning (stores to DB)
 GET    /api/analysis/{submission_id}   → Get analysis results
-
-# Question Generation (Instructor Tool)
-POST   /api/analysis/generate-distractors
-       Body: { scenario, correct_solution, language, count: 3 }
-       Returns: { distractors: [{ code, why_wrong, hint }] }
-
-# Instructor Dashboard
-GET    /api/analysis/dashboard?quiz_id=X  → Aggregated results
+GET    /api/analysis/dashboard         → Aggregated class overview
 ```
 
 **AI Features**:
 
-| Feature               | AI Provider | Description                                       |
-| --------------------- | ----------- | ------------------------------------------------- |
-| Reasoning Validation  | Claude CLI  | Score reasoning, find gaps, detect AI-written     |
-| Distractor Generation | Gemini API  | Generate plausible wrong answers from correct one |
-| Custom Criteria Eval  | Claude CLI  | Evaluate based on instructor-defined priorities   |
+| Feature              | Service      | AI Provider | Description                                    |
+| -------------------- | ------------ | ----------- | ---------------------------------------------- |
+| Wrong Option Gen     | Quiz API     | Gemini API  | Generate plausible wrong options from correct   |
+| Reasoning Validation | Analysis Svc | Claude CLI  | Score reasoning, find gaps, detect AI-written  |
+| Custom Criteria Eval | Analysis Svc | Claude CLI  | Evaluate based on instructor-defined criteria  |
 
 ---
 
@@ -277,11 +271,6 @@ Analysis scores reflect instructor's priorities
   "title": "Assessment 1: Array Operations",
   "course": "PROG2070",
   "created_by": "instructor_id",
-  "evaluation_criteria": {
-    "focus_areas": ["Time Complexity", "Error Handling", "Readability"],
-    "weights": { "Time Complexity": 40, "Error Handling": 30, "Readability": 30 },
-    "custom_instructions": "Prioritize whether student identifies mutation side effects"
-  },
   "questions": ["question_id_1", "question_id_2"]
 }
 ```
@@ -293,6 +282,7 @@ Analysis scores reflect instructor's priorities
   "id": "uuid",
   "quiz_id": "uuid",
   "scenario": "You are building a function that checks for duplicates...",
+  "eval_criteria": "Focus on whether student identifies mutation side effects and Big-O tradeoffs",
   "solutions": [
     {
       "label": "A",
@@ -318,8 +308,7 @@ Analysis scores reflect instructor's priorities
       "is_correct": false,
       "why_wrong": "Mutates original array (side effect), O(n log n) vs O(n)"
     }
-  ],
-  "concepts": ["Time Complexity", "Space Complexity", "Side Effects"]
+  ]
 }
 ```
 
