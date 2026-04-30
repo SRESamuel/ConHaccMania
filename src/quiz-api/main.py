@@ -7,10 +7,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from database import close_pool, get_pool, open_pool
 from models import (
+    CreateQuestionDto,
+    CreateQuizDto,
+    CreateSolutionDto,
+    GenerateDto,
     Quiz,
     QuizDetail,
     QuizDetailStudentView,
 )
+from gemini_generator import generate_wrong_options as gemini_generate
 
 
 @asynccontextmanager
@@ -113,14 +118,41 @@ async def get_quiz(
     }
 
 
-@app.post("/api/quizzes")
-async def create_quiz():
-    raise HTTPException(status_code=501, detail="Not implemented")
+@app.post("/api/quizzes", response_model=Quiz, status_code=201)
+async def create_quiz(dto: CreateQuizDto):
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "INSERT INTO quizzes (title, course, created_by) "
+            "VALUES ($1, $2, $3) RETURNING id, title, course, created_by, created_at",
+            dto.title, dto.course, dto.created_by,
+        )
+    return dict(row)
 
 
-@app.post("/api/quizzes/{quiz_id}/questions")
-async def add_question(quiz_id: UUID):
-    raise HTTPException(status_code=501, detail="Not implemented")
+@app.post("/api/quizzes/{quiz_id}/questions", status_code=201)
+async def add_question(quiz_id: UUID, dto: CreateQuestionDto):
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        quiz = await conn.fetchrow("SELECT id FROM quizzes WHERE id = $1", quiz_id)
+        if quiz is None:
+            raise HTTPException(status_code=404, detail=f"Quiz {quiz_id} not found")
+
+        question = await conn.fetchrow(
+            "INSERT INTO questions (quiz_id, scenario, eval_criteria) "
+            "VALUES ($1, $2, $3) RETURNING id",
+            quiz_id, dto.scenario, dto.eval_criteria,
+        )
+        question_id = question["id"]
+
+        await conn.execute(
+            "INSERT INTO solutions (question_id, label, code, language, hint, is_correct) "
+            "VALUES ($1, 'A', $2, $3, $4, true)",
+            question_id, dto.correct_solution.code,
+            dto.correct_solution.language, dto.correct_solution.hint,
+        )
+
+    return {"question_id": question_id}
 
 
 @app.put("/api/questions/{question_id}")
@@ -129,10 +161,45 @@ async def update_question(question_id: UUID):
 
 
 @app.post("/api/questions/{question_id}/generate-wrong-options")
-async def generate_wrong_options(question_id: UUID):
-    raise HTTPException(status_code=501, detail="Not implemented")
+async def generate_wrong_options_endpoint(question_id: UUID, dto: GenerateDto):
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        question = await conn.fetchrow(
+            "SELECT scenario FROM questions WHERE id = $1", question_id
+        )
+        if question is None:
+            raise HTTPException(status_code=404, detail="Question not found")
+
+        correct = await conn.fetchrow(
+            "SELECT code, language FROM solutions WHERE question_id = $1 AND is_correct = true",
+            question_id,
+        )
+        if correct is None:
+            raise HTTPException(status_code=400, detail="No correct solution found")
+
+    options = await gemini_generate(
+        scenario=question["scenario"],
+        correct_code=correct["code"],
+        language=correct["language"],
+        count=dto.count,
+    )
+    return {"generated_options": options}
 
 
-@app.post("/api/questions/{question_id}/solutions")
-async def add_solution(question_id: UUID):
-    raise HTTPException(status_code=501, detail="Not implemented")
+@app.post("/api/questions/{question_id}/solutions", status_code=201)
+async def add_solution(question_id: UUID, dto: CreateSolutionDto):
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        # Get next label
+        existing = await conn.fetch(
+            "SELECT label FROM solutions WHERE question_id = $1 ORDER BY label DESC LIMIT 1",
+            question_id,
+        )
+        next_label = chr(ord(existing[0]["label"]) + 1) if existing else "A"
+
+        await conn.execute(
+            "INSERT INTO solutions (question_id, label, code, language, hint, is_correct, why_wrong) "
+            "VALUES ($1, $2, $3, $4, $5, false, $6)",
+            question_id, next_label, dto.code, dto.language, dto.hint, dto.why_wrong,
+        )
+    return {"label": next_label}

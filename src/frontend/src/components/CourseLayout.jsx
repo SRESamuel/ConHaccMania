@@ -1,6 +1,11 @@
 import { Outlet } from 'react-router-dom';
+import { useRole } from '../context/RoleContext';
 
 export default function CourseLayout() {
+  const { role, toggleRole } = useRole();
+  const isStudent = role === 'student';
+  const avatarLabel = isStudent ? 'ST' : 'IN';
+  const avatarColor = isStudent ? '#9860AF' : '#085394';
   return (
     <div style={{ maxWidth: '1050px', margin: '0 auto' }}>
       {/* === Top Nav Band === */}
@@ -27,12 +32,20 @@ export default function CourseLayout() {
           <span style={{ fontSize: '22px', color: '#e8a838' }}>🔔</span>
           <span style={{ fontSize: '16px', color: '#e8a838' }}>⚠</span>
           <span style={{ color: '#cdd5dc', fontSize: '18px' }}>⋮</span>
-          <div style={{
-            width: '38px', height: '38px', borderRadius: '50%',
-            background: '#9860AF', color: '#fff', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            fontSize: '14px', fontWeight: 700
-          }}>JK</div>
+          <div
+            onClick={toggleRole}
+            title={`Switch to ${isStudent ? 'Instructor' : 'Student'} view`}
+            style={{
+              width: '38px', height: '38px', borderRadius: '50%',
+              background: avatarColor, color: '#fff', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+              transition: 'background 0.2s'
+            }}
+          >{avatarLabel}</div>
+          <span style={{ fontSize: '12px', color: '#6e7477' }}>
+            {isStudent ? 'Student' : 'Instructor'}
+          </span>
           <span style={{ fontSize: '20px', color: '#494c4e' }}>⚙</span>
         </div>
       </div>
