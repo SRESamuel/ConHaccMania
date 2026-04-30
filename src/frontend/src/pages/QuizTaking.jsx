@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchQuizForStudent, submitAnswers } from '../api/quizTaking';
+import { useRole } from '../context/RoleContext';
 
 export default function QuizTaking() {
+  const { currentUser } = useRole();
   const { id } = useParams();
   const navigate = useNavigate();
   const [quiz, setQuiz] = useState(null);
@@ -36,7 +38,7 @@ export default function QuizTaking() {
     try {
       await submitAnswers({
         quiz_id: id,
-        student_name: 'Jindo Kim',
+        student_name: currentUser.name,
         answers: Object.entries(answers).map(([qid, a]) => ({
           question_id: qid,
           selected_solution_id: a.selected,

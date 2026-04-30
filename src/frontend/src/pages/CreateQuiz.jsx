@@ -6,7 +6,7 @@ export default function CreateQuiz() {
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [course] = useState('PROG3176');
-  const [createdBy] = useState('Dr. Samuel Ricardo Estrada');
+  const [createdBy] = useState('Aeiman Gadafi');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
