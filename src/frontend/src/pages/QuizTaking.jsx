@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchQuizForStudent } from '../api/quizTaking';
+import { fetchQuizForStudent, submitAnswers } from '../api/quizTaking';
 
 export default function QuizTaking() {
   const { id } = useParams();
@@ -28,21 +28,28 @@ export default function QuizTaking() {
 
   const answeredCount = Object.values(answers).filter(a => a.selected && a.reasoning).length;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (answeredCount < quiz.questions.length) {
       if (!confirm(`You have answered ${answeredCount}/${quiz.questions.length} questions. Submit anyway?`)) return;
     }
-    alert('Submitted! (Submission API not running yet — answers logged to console)');
-    console.log('Submission:', {
-      quiz_id: id,
-      student_name: 'Student',
-      answers: Object.entries(answers).map(([qid, a]) => ({
-        question_id: qid,
-        selected_solution_id: a.selected,
-        reasoning: a.reasoning,
-      })),
-    });
-    navigate('/quizzes');
+    setSubmitting(true);
+    try {
+      await submitAnswers({
+        quiz_id: id,
+        student_name: 'Jindo Kim',
+        answers: Object.entries(answers).map(([qid, a]) => ({
+          question_id: qid,
+          selected_solution_id: a.selected,
+          reasoning: a.reasoning,
+        })),
+      });
+      alert('Submitted successfully!');
+      navigate('/quizzes');
+    } catch (err) {
+      alert(`Submission failed: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

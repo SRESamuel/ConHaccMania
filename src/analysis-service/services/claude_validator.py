@@ -9,6 +9,7 @@ Uses the user's Claude subscription via the CLI — no API key, no cost.
 
 import json
 import subprocess
+import tempfile
 from pathlib import Path
 
 PROMPT_TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "prompts" / "validation_prompt.txt"
@@ -53,13 +54,22 @@ def validate(prompt: str) -> dict:
     Returns a dict with keys: score (int), strengths (list[str]), gaps (list[str]),
     is_ai_generated (bool), confidence (float).
     """
-    proc = subprocess.run(
-        ["claude", "-p", prompt, "--output-format", "json"],
-        capture_output=True,
-        text=True,
-        timeout=CLAUDE_TIMEOUT_SECONDS,
-        stdin=subprocess.DEVNULL,
-    )
+    claude_bin = str(Path(__file__).resolve().parent.parent / "node_modules" / ".bin" / "claude.cmd")
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as f:
+        f.write(prompt)
+        prompt_file = f.name
+
+    try:
+        proc = subprocess.run(
+            f'type "{prompt_file}" | "{claude_bin}" -p - --output-format json',
+            capture_output=True,
+            text=True,
+            timeout=CLAUDE_TIMEOUT_SECONDS,
+            shell=True,
+        )
+    finally:
+        Path(prompt_file).unlink(missing_ok=True)
     if proc.returncode != 0:
         raise ValidatorError(f"claude CLI exited {proc.returncode}: {proc.stderr.strip()}")
 

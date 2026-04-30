@@ -7,6 +7,7 @@ import QuizSummary from './pages/QuizSummary';
 import CreateQuiz from './pages/CreateQuiz';
 import QuestionBuilder from './pages/QuestionBuilder';
 import QuizTaking from './pages/QuizTaking';
+import InstructorDashboard from './pages/InstructorDashboard';
 import './styles/econestoga.css';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
             <Route path="/quizzes/create" element={<CreateQuiz />} />
             <Route path="/quiz/:id/edit" element={<QuestionBuilder />} />
             <Route path="/quiz/:id/take" element={<QuizTaking />} />
+            <Route path="/quiz/:id/submissions" element={<InstructorDashboard />} />
           </Route>
         </Routes>
       </BrowserRouter>
