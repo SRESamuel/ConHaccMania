@@ -15,17 +15,17 @@ export default function QuestionBuilder() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [generating, setGenerating] = useState(null); // question id being generated
-  const [generatedOptions, setGeneratedOptions] = useState([]); // pending accept/reject
-  const [saving, setSaving] = useState(null); // index being saved
+  const [generatedOptionsMap, setGeneratedOptionsMap] = useState({}); // { questionId: [...options] }
+  const [saving, setSaving] = useState(null); // "questionId-index" being saved
 
   const loadQuiz = () => fetchQuizForEdit(id).then(setQuiz);
 
   const handleGenerate = async (questionId) => {
     setGenerating(questionId);
-    setGeneratedOptions([]);
+    setGeneratedOptionsMap(prev => ({ ...prev, [questionId]: [] }));
     try {
       const result = await generateWrongOptions(questionId, 2);
-      setGeneratedOptions(result.generated_options || []);
+      setGeneratedOptionsMap(prev => ({ ...prev, [questionId]: result.generated_options || [] }));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -34,7 +34,8 @@ export default function QuestionBuilder() {
   };
 
   const handleAccept = async (questionId, option, index) => {
-    setSaving(index);
+    const savingKey = `${questionId}-${index}`;
+    setSaving(savingKey);
     try {
       const q = quiz.questions.find(q => q.id === questionId);
       const lang = q?.solutions[0]?.language || 'csharp';
@@ -44,7 +45,10 @@ export default function QuestionBuilder() {
         hint: option.hint,
         why_wrong: option.why_wrong,
       });
-      setGeneratedOptions(prev => prev.filter((_, i) => i !== index));
+      setGeneratedOptionsMap(prev => ({
+        ...prev,
+        [questionId]: (prev[questionId] || []).filter((_, i) => i !== index),
+      }));
       await loadQuiz();
     } catch (err) {
       setError(err.message);
@@ -53,8 +57,11 @@ export default function QuestionBuilder() {
     }
   };
 
-  const handleReject = (index) => {
-    setGeneratedOptions(prev => prev.filter((_, i) => i !== index));
+  const handleReject = (questionId, index) => {
+    setGeneratedOptionsMap(prev => ({
+      ...prev,
+      [questionId]: (prev[questionId] || []).filter((_, i) => i !== index),
+    }));
   };
 
   useEffect(() => { loadQuiz(); }, [id]);
@@ -156,30 +163,28 @@ export default function QuestionBuilder() {
             ))}
           </div>
 
-          {/* Generate Wrong Options Button */}
-          {q.solutions.filter(s => !s.is_correct).length < 2 && (
-            <div style={{ marginTop: '12px' }}>
-              <button
-                onClick={() => handleGenerate(q.id)}
-                disabled={generating === q.id}
-                style={{
-                  background: '#e87511', color: '#fff', border: 'none',
-                  borderRadius: '4px', padding: '8px 16px', fontSize: '13px',
-                  fontWeight: 600, cursor: generating === q.id ? 'wait' : 'pointer'
-                }}
-              >
-                {generating === q.id ? 'Generating with Gemini...' : '🤖 Generate Wrong Options'}
-              </button>
-            </div>
-          )}
+          {/* Generate Wrong Options Button — always visible */}
+          <div style={{ marginTop: '12px' }}>
+            <button
+              onClick={() => handleGenerate(q.id)}
+              disabled={generating === q.id}
+              style={{
+                background: '#e87511', color: '#fff', border: 'none',
+                borderRadius: '4px', padding: '8px 16px', fontSize: '13px',
+                fontWeight: 600, cursor: generating === q.id ? 'wait' : 'pointer'
+              }}
+            >
+              {generating === q.id ? 'Generating with Gemini...' : '🤖 Generate Wrong Options'}
+            </button>
+          </div>
 
-          {/* Generated Options — Accept/Reject */}
-          {generatedOptions.length > 0 && (
+          {/* Generated Options — Accept/Reject (scoped per question) */}
+          {(generatedOptionsMap[q.id] || []).length > 0 && (
             <div style={{ marginTop: '16px', border: '1px dashed #e87511', borderRadius: '6px', padding: '12px' }}>
               <div style={{ fontSize: '13px', fontWeight: 700, color: '#e87511', marginBottom: '12px' }}>
                 AI-Generated Options (review and accept/reject)
               </div>
-              {generatedOptions.map((opt, idx) => (
+              {(generatedOptionsMap[q.id] || []).map((opt, idx) => (
                 <div key={idx} style={{ background: '#fff9f0', padding: '12px', borderRadius: '4px', marginBottom: '8px' }}>
                   <div style={{ fontSize: '12px', color: '#6e7477', marginBottom: '4px' }}>
                     {opt.hint}
@@ -195,17 +200,17 @@ export default function QuestionBuilder() {
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                       onClick={() => handleAccept(q.id, opt, idx)}
-                      disabled={saving === idx}
+                      disabled={saving === `${q.id}-${idx}`}
                       style={{
                         background: '#027a21', color: '#fff', border: 'none',
                         borderRadius: '3px', padding: '4px 14px', fontSize: '12px',
                         fontWeight: 600, cursor: 'pointer'
                       }}
                     >
-                      {saving === idx ? 'Saving...' : '✓ Accept'}
+                      {saving === `${q.id}-${idx}` ? 'Saving...' : '✓ Accept'}
                     </button>
                     <button
-                      onClick={() => handleReject(idx)}
+                      onClick={() => handleReject(q.id, idx)}
                       style={{
                         background: '#cd2026', color: '#fff', border: 'none',
                         borderRadius: '3px', padding: '4px 14px', fontSize: '12px',
