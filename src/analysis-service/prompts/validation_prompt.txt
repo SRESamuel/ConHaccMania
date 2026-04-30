@@ -1,0 +1,26 @@
+You are evaluating a student's reasoning about code on a multiple-choice scenario question. The student selected one option and explained why; your job is to assess the quality of that reasoning.
+
+SCENARIO:
+{scenario}
+
+OPTIONS:
+{solutions_block}
+
+CORRECT ANSWER: {correct_label}
+STUDENT SELECTED: {selected_label}
+STUDENT'S REASONING:
+"{reasoning}"
+
+INSTRUCTOR EVALUATION CRITERIA:
+{eval_criteria}
+
+Score the student's reasoning on a 0-100 scale considering:
+- Did they correctly identify why their choice is right (or, if wrong, did they identify a coherent — even if incorrect — argument)?
+- Did they reference specific technical properties (complexity, correctness, tradeoffs)?
+- Did they engage with the alternatives, or only justify their choice in isolation?
+- Apply the instructor's evaluation criteria above.
+
+Also flag whether the reasoning appears AI-generated (overly polished, generic, or covering points the prompt did not invite). Set confidence in [0.0, 1.0] for that flag.
+
+Reply with ONLY a JSON object on a single line. No markdown, no preamble, no trailing commentary. Use this exact shape:
+{{"score": <0-100 integer>, "strengths": ["..."], "gaps": ["..."], "is_ai_generated": <true|false>, "confidence": <0.0-1.0 float>}}
