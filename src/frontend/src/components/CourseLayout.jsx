@@ -14,7 +14,9 @@ export default function CourseLayout() {
         display: 'flex', alignItems: 'center', height: '58px',
         padding: '0 20px', borderBottom: '1px solid #e3e9f1', background: '#fff'
       }}>
-        <a href="/"><img src="/img/nav-home-icon.png" alt="Home" style={{ height: '24px', marginRight: '10px', cursor: 'pointer' }} /></a>
+        <a href="/" title="Home" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+          <img src="/img/newgen-logo.jpg" alt="NewGenLearning — Home" style={{ height: '36px', marginRight: '10px', cursor: 'pointer' }} />
+        </a>
         <span style={{ color: '#cdd5dc', margin: '0 8px', fontSize: '18px' }}>⋮</span>
         <img src="/img/econestoga-logo.png" alt="eConestoga" style={{ height: '28px', marginRight: '12px' }} />
         <span style={{ color: '#cdd5dc', margin: '0 8px', fontSize: '18px' }}>⋮</span>

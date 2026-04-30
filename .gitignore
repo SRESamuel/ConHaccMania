@@ -32,3 +32,10 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Playwright MCP test artifacts
+.playwright-mcp/
+
+# Heavy source logos — keep only the small Fullwhite.jpg in git
+image/Logo/Final.png
+image/Logo/NewGenL.png
