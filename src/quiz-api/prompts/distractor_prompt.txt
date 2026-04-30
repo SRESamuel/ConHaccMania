@@ -1,0 +1,23 @@
+You are designing multiple-choice questions for a coding assessment. Given a programming scenario and the CORRECT solution, generate {count} plausible but INCORRECT alternative solutions in {language}.
+
+Each wrong solution must:
+- Be syntactically valid {language} that compiles/parses without error
+- Look believable on first glance — not obviously wrong
+- Have a clear, articulable reason it is incorrect (subtle bug, off-by-one, suboptimal complexity, ignores an edge case, breaks the contract, etc.)
+- Differ meaningfully from the correct solution AND from each other
+
+SCENARIO:
+{scenario}
+
+CORRECT SOLUTION ({language}):
+{correct_code}
+
+Reply with ONLY a JSON object on this exact shape, no markdown, no preamble, no trailing commentary:
+{{"options": [
+  {{"code": "<the incorrect {language} code, with newlines as literal \\n characters in the JSON string>",
+    "language": "{language}",
+    "hint": "<short label, max 60 chars, e.g. 'Off-by-one error' or 'Mutates input list'>",
+    "why_wrong": "<concise explanation, 1-2 sentences, of why this solution is incorrect or strictly worse than the correct one>"}}
+]}}
+
+The "options" array must contain exactly {count} entries.
