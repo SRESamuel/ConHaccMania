@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchSubmissions, triggerAnalysis, fetchAnalysis } from '../api/analysis';
+import { fetchSubmissions, fetchSubmissionDetail, triggerAnalysis, fetchAnalysis } from '../api/analysis';
+import { fetchQuizForEdit } from '../api/questions';
 
 export default function InstructorDashboard() {
   const { id: quizId } = useParams();
@@ -9,12 +10,15 @@ export default function InstructorDashboard() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeResult, setAnalyzeResult] = useState(null);
   const [selectedSub, setSelectedSub] = useState(null);
+  const [subDetail, setSubDetail] = useState(null);
+  const [quiz, setQuiz] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchSubmissions(quizId).then(setSubmissions);
+    fetchQuizForEdit(quizId).then(setQuiz);
   }, [quizId]);
 
   const handleAnalyzeAll = async () => {
@@ -34,10 +38,15 @@ export default function InstructorDashboard() {
   const handleViewAnalysis = async (submissionId) => {
     setSelectedSub(submissionId);
     setAnalysis(null);
+    setSubDetail(null);
     setLoadingAnalysis(true);
     try {
-      const result = await fetchAnalysis(submissionId);
-      setAnalysis(result);
+      const [analysisResult, detail] = await Promise.all([
+        fetchAnalysis(submissionId),
+        fetchSubmissionDetail(submissionId),
+      ]);
+      setAnalysis(analysisResult);
+      setSubDetail(detail);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -177,31 +186,89 @@ export default function InstructorDashboard() {
           )}
 
           {/* Per-Answer */}
-          {analysis.per_answer?.map((pa, i) => (
-            <div key={i} style={{ border: '1px solid #e3e9f1', borderRadius: '4px', padding: '12px', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#006fbf' }}>QUESTION {i + 1}</span>
-                <span style={{ fontSize: '14px', fontWeight: 700, color: pa.score >= 80 ? '#027a21' : pa.score >= 60 ? '#e87511' : '#cd2026' }}>
-                  {pa.score}/100
-                </span>
+          {analysis.per_answer?.map((pa, i) => {
+            const answer = subDetail?.answers?.[i];
+            const question = quiz?.questions?.find(q => q.id === answer?.question_id);
+            const selectedSolution = question?.solutions?.find(s => s.id === answer?.selected_solution_id);
+
+            return (
+              <div key={i} style={{ border: '1px solid #e3e9f1', borderRadius: '6px', padding: '16px', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#006fbf' }}>QUESTION {i + 1}</span>
+                  <span style={{ fontSize: '16px', fontWeight: 700, color: pa.score >= 80 ? '#027a21' : pa.score >= 60 ? '#e87511' : '#cd2026' }}>
+                    {pa.score}/100
+                  </span>
+                </div>
+
+                {pa.is_ai_generated && (
+                  <div style={{ background: '#ffede8', color: '#cd2026', padding: '4px 10px', borderRadius: '3px', fontSize: '12px', fontWeight: 700, marginBottom: '12px', display: 'inline-block' }}>
+                    ⚠ Possibly AI-Generated
+                  </div>
+                )}
+
+                {/* Scenario */}
+                {question && (
+                  <div style={{ background: '#f9fbff', border: '1px solid #e3e9f1', borderRadius: '4px', padding: '12px', marginBottom: '12px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#6e7477', marginBottom: '4px' }}>SCENARIO</div>
+                    <div style={{ fontSize: '13px', color: '#494c4e', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                      {question.scenario}
+                    </div>
+                  </div>
+                )}
+
+                {/* Student's Selection */}
+                {selectedSolution && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#6e7477', marginBottom: '4px' }}>
+                      SELECTED: Solution {selectedSolution.label}
+                      {selectedSolution.is_correct
+                        ? <span style={{ color: '#027a21', marginLeft: '8px' }}>✓ Correct</span>
+                        : <span style={{ color: '#cd2026', marginLeft: '8px' }}>✗ Incorrect</span>
+                      }
+                    </div>
+                    <pre style={{
+                      fontSize: '12px', background: '#1e1e1e', color: '#d4d4d4',
+                      padding: '10px', borderRadius: '4px', overflow: 'auto',
+                      margin: 0, whiteSpace: 'pre-wrap'
+                    }}>{selectedSolution.code}</pre>
+                  </div>
+                )}
+
+                {/* Student's Reasoning */}
+                {answer && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#6e7477', marginBottom: '4px' }}>STUDENT'S REASONING</div>
+                    <div style={{
+                      fontSize: '13px', color: '#202122', lineHeight: 1.6,
+                      background: '#fff9f0', border: '1px solid #e3e9f1',
+                      borderRadius: '4px', padding: '12px', fontStyle: 'italic'
+                    }}>
+                      "{answer.reasoning}"
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Analysis */}
+                <div style={{ borderTop: '1px solid #e3e9f1', paddingTop: '12px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#6e7477', marginBottom: '8px' }}>AI ANALYSIS</div>
+                  {pa.strengths?.length > 0 && (
+                    <div style={{ marginBottom: '6px' }}>
+                      {pa.strengths.map((s, j) => (
+                        <span key={j} style={{ display: 'inline-block', background: '#e7ffe3', color: '#027a21', padding: '2px 8px', borderRadius: '3px', fontSize: '12px', margin: '2px 4px 2px 0' }}>{s}</span>
+                      ))}
+                    </div>
+                  )}
+                  {pa.gaps?.length > 0 && (
+                    <div>
+                      {pa.gaps.map((g, j) => (
+                        <span key={j} style={{ display: 'inline-block', background: '#ffede8', color: '#cd2026', padding: '2px 8px', borderRadius: '3px', fontSize: '12px', margin: '2px 4px 2px 0' }}>{g}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              {pa.is_ai_generated && (
-                <div style={{ background: '#ffede8', color: '#cd2026', padding: '4px 10px', borderRadius: '3px', fontSize: '12px', fontWeight: 700, marginBottom: '8px', display: 'inline-block' }}>
-                  ⚠ Possibly AI-Generated
-                </div>
-              )}
-              {pa.strengths?.length > 0 && (
-                <div style={{ fontSize: '12px', color: '#027a21', marginBottom: '4px' }}>
-                  <strong>Strengths:</strong> {pa.strengths.join(', ')}
-                </div>
-              )}
-              {pa.gaps?.length > 0 && (
-                <div style={{ fontSize: '12px', color: '#cd2026' }}>
-                  <strong>Gaps:</strong> {pa.gaps.join(', ')}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

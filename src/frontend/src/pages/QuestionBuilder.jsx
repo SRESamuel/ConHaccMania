@@ -299,6 +299,9 @@ export default function QuestionBuilder() {
                   <option value="python">Python</option>
                   <option value="javascript">JavaScript</option>
                   <option value="java">Java</option>
+                  <option value="dockerfile">Dockerfile</option>
+                  <option value="yaml">YAML</option>
+                  <option value="sql">SQL</option>
                 </select>
               </div>
               <div style={{ flex: 1 }}>
